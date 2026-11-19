@@ -1,0 +1,22 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ramp.gd" id="1_ramp"]
+
+[sub_resource type="RectangleShape2D" id="rs_pad"]
+size = Vector2(44, 96)
+
+[node name="Ramp" type="Area2D"]
+collision_layer = 0
+collision_mask = 1
+script = ExtResource("1_ramp")
+
+[node name="Pad" type="Polygon2D" parent="."]
+color = Color(1, 0.760784, 0.101961, 0.45)
+polygon = PackedVector2Array(-22, -48, 22, -48, 22, 48, -22, 48)
+
+[node name="Chevron" type="Polygon2D" parent="."]
+color = Color(0.043137, 0.058824, 0.090196, 0.9)
+polygon = PackedVector2Array(-12, -22, 20, 0, -12, 22, -2, 0)
+
+[node name="Shape" type="CollisionShape2D" parent="."]
+shape = SubResource("rs_pad")

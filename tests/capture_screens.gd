@@ -1,0 +1,177 @@
+extends SceneTree
+# Regenerates docs/screenshots/*.png: the race HUD (countdown, a wall-hit
+# warning, game over, the hairpin levels) and every menu (main menu, settings,
+# How to Play, level select, the leaderboard as shown inside a Reddit post), at
+# phone size (860x1520, i.e. the 430x760 layout at 2x) and desktop size.
+#
+# It needs a real window to render, and a normal (even hidden) window takes the
+# keyboard focus and swallows whatever is being typed, so run it on its own
+# invisible desktop with the helper beside this file (PowerShell):
+#
+#   .\tests\run_offscreen.ps1 -CommandLine '"<godot.exe>" --fixed-fps 60 --resolution 860x1520 --path "<project>" --log-file "<log>" -s tests/capture_screens.gd'
+#
+# It never finishes a race, so the save file is only read. This folder is
+# .gdignore'd: never imported or exported.
+
+var _layout
+var _game
+var _builder
+var _out: String
+
+
+func _initialize() -> void:
+	_out = ProjectSettings.globalize_path("res://docs/screenshots")
+	_run.call_deferred()
+
+
+func _frames(n: int) -> void:
+	for i in n:
+		await process_frame
+
+
+func _shot(name: String) -> void:
+	await _frames(3)
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("%s/%s.png" % [_out, name])
+	print("saved ", name)
+
+
+func _touch(index: int, pos: Vector2, pressed: bool) -> void:
+	var e := InputEventScreenTouch.new()
+	e.index = index
+	e.position = root.get_final_transform() * pos
+	e.pressed = pressed
+	Input.parse_input_event(e)
+
+
+func _drag(index: int, pos: Vector2) -> void:
+	var e := InputEventScreenDrag.new()
+	e.index = index
+	e.position = root.get_final_transform() * pos
+	Input.parse_input_event(e)
+
+
+## Any key press switches the UI to keyboard mode.
+func _key() -> void:
+	var key := InputEventKey.new()
+	key.physical_keycode = KEY_F12
+	key.pressed = true
+	Input.parse_input_event(key)
+
+
+func _race(level: int, wait: int) -> void:
+	_game.current_level = level
+	change_scene_to_file("res://scenes/Main.tscn")
+	await _frames(wait)
+
+
+## Parks the car on the centre line at `fraction` of the lap, facing along it.
+func _place(level: int, fraction: float) -> void:
+	var car = get_first_node_in_group("car")
+	var line: PackedVector2Array = _builder.centerline(_game.get_level(level)["track"])
+	var idx := int(line.size() * fraction)
+	car.position = line[idx]
+	car.rotation = _builder.tangent(line, idx).angle() + PI / 2.0
+	car.velocity = Vector2.ZERO
+
+
+## Slides the car sideways into the left wall at `fraction` of the lap.
+func _ram(level: int, fraction: float) -> void:
+	var car = get_first_node_in_group("car")
+	var line: PackedVector2Array = _builder.centerline(_game.get_level(level)["track"])
+	var idx := int(line.size() * fraction)
+	var along: Vector2 = _builder.tangent(line, idx)
+	car.position = line[idx]
+	car.rotation = along.angle() + PI / 2.0 - 0.5
+	car.velocity = Vector2(-along.y, along.x) * 240.0
+	await _frames(14)
+
+
+## A stand-in for the Devvit server, so the leaderboard shots have rows.
+func _fake_server(_method: String, path: String, _body: Dictionary, done: Callable) -> void:
+	var names := ["apex_hunter", "crabwalk", "local_driver", "late_braker", "four_by_four",
+		"pivot_king", "sideways_sam", "gate_keeper"]
+	var overall := path.contains("board=overall")
+	var top: Array = []
+	for i in names.size():
+		var base := 301000 if overall else 58420
+		top.append({"rank": i + 1, "name": names[i], "timeMs": base + i * (9130 if overall else 2470)})
+	done.call({
+		"players": 132, "mapsDone": 5, "mapsTotal": 5, "top": top,
+		"me": {"rank": 3, "name": "local_driver", "timeMs": int(top[2]["timeMs"])},
+	})
+
+
+## The menu screens: main menu, its settings card, level select, How to Play,
+## and the leaderboard as it looks inside a Reddit post.
+func _menus(prefix: String) -> void:
+	change_scene_to_file("res://scenes/MainMenu.tscn")
+	await _frames(6)
+	await _shot(prefix + "-main-menu")
+	current_scene._on_settings()
+	await _shot(prefix + "-settings")
+	for spec in [["Instructions", "how-to-play"], ["LevelSelect", "level-select"]]:
+		change_scene_to_file("res://scenes/%s.tscn" % spec[0])
+		await _frames(6)
+		await _shot("%s-%s" % [prefix, spec[1]])
+	var reddit = root.get_node("/root/Reddit")
+	reddit.transport = _fake_server
+	reddit.apply_init({"username": "local_driver", "day": 2, "levelId": _game.level_id(1)})
+	change_scene_to_file("res://scenes/Leaderboard.tscn")
+	await _frames(6)
+	await _shot(prefix + "-leaderboard")
+	reddit.transport = Callable()
+	reddit.apply_init({"username": null, "day": 0, "levelId": -1})
+
+
+func _run() -> void:
+	_layout = root.get_node("/root/Layout")
+	_game = root.get_node("/root/Game")
+	_builder = load("res://scripts/track_builder.gd")
+
+	# ---- Phone (2x), touch ----
+	root.size = Vector2i(860, 1520)
+	await _frames(5)
+	await _race(0, 5)
+	_touch(5, Vector2(200, 300), true)      # any touch switches the UI to touch mode
+	_touch(5, Vector2(200, 300), false)
+	await _frames(70)
+	await _shot("mobile-countdown")
+	await _frames(180)                      # past GO
+
+	var view: Vector2 = _layout.view_size()
+	var left := Vector2(90, view.y - 110)
+	var right := Vector2(view.x - 90, view.y - 110)
+	_touch(0, left, true)
+	_touch(1, right, true)
+	_drag(0, left + Vector2(10, -60))
+	_drag(1, right + Vector2(0, -60))
+	await _frames(26)
+	await _shot("mobile-race")              # both pads up: boosting
+	_touch(0, Vector2.ZERO, false)
+	_touch(1, Vector2.ZERO, false)
+
+	await _ram(0, 0.20)
+	await _shot("mobile-wall-warning")
+	await _frames(90)
+	await _ram(0, 0.45)
+	await _frames(90)
+	await _ram(0, 0.70)
+	await _frames(20)
+	await _shot("mobile-game-over")
+
+	for spec in [[3, 0.405, "mobile-level4-hairpin"], [4, 0.80, "mobile-level5-switchback"]]:
+		await _race(spec[0], 200)
+		_place(spec[0], spec[1])
+		await _frames(40)
+		await _shot(spec[2])
+
+	await _menus("mobile")
+
+	# ---- Desktop, keyboard ----
+	root.size = Vector2i(1280, 720)
+	_key()
+	await _race(0, 250)
+	await _shot("desktop-race")
+	await _menus("desktop")
+	quit()

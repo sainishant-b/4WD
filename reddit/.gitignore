@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.export/
+
+# Generated into public/ by tools/build.mjs and tools/export-godot.mjs
+public/splash.js
+public/game.js
+public/godot-config.js
+public/index.js
+public/index.wasm
+public/index.pck
+public/index.audio.worklet.js
+public/index.audio.position.worklet.js

@@ -1,0 +1,321 @@
+/* Inline post view. Colours mirror res://ui/Palette.gd. No inline styles
+   anywhere: Reddit's web view CSP only allows same-origin stylesheets. */
+
+@font-face {
+  font-family: 'Chakra Petch';
+  src: url('../fonts/ChakraPetch-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Barlow';
+  src: url('../fonts/Barlow-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  --bg: #0b0f17;
+  --surface: #161d2b;
+  --stroke: #2a3346;
+  --gold: #ffc21a;
+  --gold-bright: #ffd24d;
+  --gold-deep: #e0a200;
+  --blue: #2fa8ff;
+  --blue-deep: #1b7ad0;
+  --text: #f2f6fc;
+  --text-muted: #93a0b4;
+  --on-gold: #0b0f17;
+  --wheel: #3c4a63;
+  --wheel-edge: #93a0b4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Barlow', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.card {
+  height: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: clamp(12px, 4vh, 28px) 20px clamp(10px, 3vh, 20px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(8px, 2.4vh, 18px);
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  font-family: 'Chakra Petch', system-ui, sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+
+h1 {
+  margin: 0;
+  font-family: 'Chakra Petch', system-ui, sans-serif;
+  font-size: clamp(26px, 8vw, 38px);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.tagline {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+/* ---- Steering demo: the only "tutorial" on this screen ---- */
+
+.demo {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 2vh, 14px);
+}
+
+.car {
+  flex: none;
+  height: clamp(84px, 30vh, 190px);
+  width: auto;
+  overflow: visible;
+  animation: drift 7s ease-in-out infinite;
+}
+
+.body {
+  fill: var(--blue);
+}
+
+.nose {
+  fill: var(--gold);
+}
+
+.glass {
+  fill: var(--blue-deep);
+}
+
+.wheel rect {
+  fill: var(--wheel);
+  stroke: var(--wheel-edge);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.front rect {
+  animation: steer-front 7s ease-in-out infinite;
+}
+
+.rear rect {
+  animation: steer-rear 7s ease-in-out infinite;
+}
+
+figcaption {
+  position: relative;
+  width: 100%;
+  height: 18px;
+  white-space: nowrap;
+  font-family: 'Chakra Petch', system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.move {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.pivot {
+  animation: show-first 7s linear infinite;
+}
+
+.crab {
+  animation: show-second 7s linear infinite;
+}
+
+/* First half of the loop: axles opposed (pivot). Second half: aligned (crab). */
+@keyframes steer-front {
+  0%, 6% { transform: rotate(0deg); }
+  14%, 38% { transform: rotate(28deg); }
+  46%, 56% { transform: rotate(0deg); }
+  64%, 88% { transform: rotate(28deg); }
+  96%, 100% { transform: rotate(0deg); }
+}
+
+@keyframes steer-rear {
+  0%, 6% { transform: rotate(0deg); }
+  14%, 38% { transform: rotate(-28deg); }
+  46%, 56% { transform: rotate(0deg); }
+  64%, 88% { transform: rotate(28deg); }
+  96%, 100% { transform: rotate(0deg); }
+}
+
+@keyframes drift {
+  0%, 10% { transform: translateX(0) rotate(0deg); }
+  38% { transform: translateX(0) rotate(32deg); }
+  50%, 60% { transform: translateX(0) rotate(0deg); }
+  88% { transform: translateX(26px) rotate(0deg); }
+  100% { transform: translateX(0) rotate(0deg); }
+}
+
+@keyframes show-first {
+  0%, 8% { opacity: 0; }
+  14%, 40% { opacity: 1; }
+  46%, 100% { opacity: 0; }
+}
+
+@keyframes show-second {
+  0%, 58% { opacity: 0; }
+  64%, 90% { opacity: 1; }
+  96%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .car,
+  .front rect,
+  .rear rect,
+  .move {
+    animation: none;
+  }
+
+  .front rect {
+    transform: rotate(28deg);
+  }
+
+  .rear rect {
+    transform: rotate(-28deg);
+  }
+
+  .pivot {
+    opacity: 1;
+  }
+}
+
+/* ---- Stats ---- */
+
+.stats {
+  width: 100%;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stats div {
+  padding: 8px 4px;
+  background: var(--surface);
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+}
+
+dt {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+dd {
+  margin: 2px 0 0;
+  font-family: 'Chakra Petch', system-ui, sans-serif;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Call to action ---- */
+
+#play {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--gold);
+  box-shadow: 0 4px 0 var(--gold-deep);
+  color: var(--on-gold);
+  font-family: 'Chakra Petch', system-ui, sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#play:hover {
+  background: var(--gold-bright);
+}
+
+#play:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--gold-deep);
+}
+
+#play:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+
+/* Secondary action: opens the game straight onto its leaderboard. */
+.quiet {
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 16px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font-family: 'Chakra Petch', system-ui, sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.quiet:hover {
+  background: var(--surface);
+}
+
+.quiet:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+
+.footnote {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+@media (max-height: 420px) {
+  .tagline {
+    display: none;
+  }
+}

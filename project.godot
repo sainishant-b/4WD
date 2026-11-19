@@ -1,0 +1,49 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
+[application]
+
+config/name="Four Wheel Steer"
+run/main_scene="res://scenes/MainMenu.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Game="*res://scripts/game_data.gd"
+InputState="*res://scripts/input_state.gd"
+Palette="*res://ui/Palette.gd"
+Layout="*res://scripts/layout.gd"
+MuteButton="*res://scripts/mute_button.gd"
+Net="*res://scripts/net.gd"
+Reddit="*res://scripts/reddit.gd"
+Leaderboard="*res://scripts/leaderboard.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation="portrait"
+
+[gui]
+
+theme/custom="res://ui/four_wheel_steer_theme.tres"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.043137, 0.058824, 0.090196, 1)

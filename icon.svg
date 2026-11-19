@@ -1,0 +1,12 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="20" fill="#26282e"/>
+  <!-- wheels -->
+  <rect x="28" y="30" width="14" height="26" rx="4" fill="#101010"/>
+  <rect x="86" y="30" width="14" height="26" rx="4" fill="#101010"/>
+  <rect x="28" y="74" width="14" height="26" rx="4" fill="#101010"/>
+  <rect x="86" y="74" width="14" height="26" rx="4" fill="#101010"/>
+  <!-- body -->
+  <polygon points="64,20 88,40 88,104 40,104 40,40" fill="#3b71e6"/>
+  <!-- nose -->
+  <polygon points="64,22 76,40 52,40" fill="#ffd633"/>
+</svg>

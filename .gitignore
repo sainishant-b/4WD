@@ -1,0 +1,26 @@
+# Godot's cache (rebuilt on import)
+.godot/
+
+# Old builds dumped in the project root by earlier exports. They are rebuilt
+# from source, and the largest (100+ MB) are over GitHub's file size limit.
+/Four Wheel Steer.*
+/build/
+*.apk
+*.aab
+
+# Generated previews
+/track_preview.png
+/track_preview.png.import
+/preview_t*.png
+/preview_t*.png.import
+
+# Duplicate of the "Four Wheel Steer — Design System" folder
+/Four Wheel Steer — Design System.zip
+
+# Local tool settings
+/.claude/
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+*.tmp

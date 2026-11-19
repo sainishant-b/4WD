@@ -1,0 +1,27 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/cone.gd" id="1_cone"]
+
+[sub_resource type="CircleShape2D" id="cs_area"]
+radius = 13.0
+
+[sub_resource type="CircleShape2D" id="cs_solid"]
+radius = 11.0
+
+[node name="Cone" type="Area2D"]
+collision_layer = 0
+collision_mask = 1
+script = ExtResource("1_cone")
+
+[node name="Visual" type="Polygon2D" parent="."]
+color = Color(1, 0.552941, 0.160784, 1)
+polygon = PackedVector2Array(0, -15, 11, 11, -11, 11)
+
+[node name="AreaShape" type="CollisionShape2D" parent="."]
+shape = SubResource("cs_area")
+
+[node name="Solid" type="StaticBody2D" parent="."]
+collision_layer = 0
+
+[node name="SolidShape" type="CollisionShape2D" parent="Solid"]
+shape = SubResource("cs_solid")

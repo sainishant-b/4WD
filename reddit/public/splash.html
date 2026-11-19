@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Four Wheel Steer</title>
+    <link rel="stylesheet" href="styles/splash.css" />
+  </head>
+  <body>
+    <main class="card">
+      <header>
+        <p class="eyebrow" id="eyebrow">Daily Circuit</p>
+        <h1>Four Wheel Steer</h1>
+        <p class="tagline">Front and rear wheels steer separately. A featured circuit every day.</p>
+      </header>
+
+      <figure class="demo" aria-label="The car turns its front and rear wheels independently">
+        <svg class="car" viewBox="0 0 120 150" aria-hidden="true">
+          <g class="wheel front" transform="translate(27 44)"><rect x="-7" y="-14" width="14" height="28" rx="4" /></g>
+          <g class="wheel front" transform="translate(93 44)"><rect x="-7" y="-14" width="14" height="28" rx="4" /></g>
+          <g class="wheel rear" transform="translate(27 108)"><rect x="-7" y="-14" width="14" height="28" rx="4" /></g>
+          <g class="wheel rear" transform="translate(93 108)"><rect x="-7" y="-14" width="14" height="28" rx="4" /></g>
+          <rect class="body" x="34" y="18" width="52" height="116" rx="12" />
+          <path class="nose" d="M34 44 V30 a12 12 0 0 1 12 -12 h28 a12 12 0 0 1 12 12 v14 z" />
+          <rect class="glass" x="43" y="58" width="34" height="30" rx="6" />
+        </svg>
+        <figcaption>
+          <span class="move pivot">Opposite: tight pivot</span>
+          <span class="move crab">Same way: crab sideways</span>
+        </figcaption>
+      </figure>
+
+      <dl class="stats">
+        <div>
+          <dt>Your best</dt>
+          <dd id="stat-best">--</dd>
+        </div>
+        <div>
+          <dt>Rank</dt>
+          <dd id="stat-rank">--</dd>
+        </div>
+        <div>
+          <dt>Streak</dt>
+          <dd id="stat-streak">0</dd>
+        </div>
+      </dl>
+
+      <button id="play" type="button">Drive</button>
+      <button id="board" class="quiet" type="button">Leaderboard</button>
+      <p class="footnote" id="footnote">&nbsp;</p>
+    </main>
+    <script type="module" src="splash.js"></script>
+  </body>
+</html>

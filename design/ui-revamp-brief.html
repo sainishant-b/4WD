@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Four Wheel Steer — UI Revamp Brief</title>
+<style>
+  :root {
+    --bg:        #14161a;
+    --bg-2:      #1c1f26;
+    --bg-3:      #242833;
+    --line:      #2f3441;
+    --text:      #e7e9ee;
+    --text-dim:  #9aa0ad;
+    --gold:      #ffd93b;
+    --blue:      #3a70e6;
+    --green:     #3ea66a;
+    --radius:    14px;
+    --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    --sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 80% -10%, #1d2230 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 48px 24px 96px; }
+
+  /* Header */
+  .eyebrow {
+    text-transform: uppercase; letter-spacing: .18em; font-size: 12px;
+    color: var(--gold); font-weight: 700; margin: 0 0 10px;
+  }
+  h1 { font-size: 40px; line-height: 1.1; margin: 0 0 12px; letter-spacing: -.01em; }
+  .lede { font-size: 18px; color: var(--text-dim); max-width: 60ch; margin: 0; }
+
+  h2 {
+    font-size: 22px; margin: 48px 0 16px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  h3 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); margin: 0 0 8px; }
+  p { margin: 0 0 14px; }
+  a { color: var(--blue); }
+  code { font-family: var(--mono); font-size: .9em; background: var(--bg-3); padding: 1px 6px; border-radius: 6px; }
+
+  .card {
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px 22px; margin-bottom: 14px;
+  }
+  .grid { display: grid; gap: 14px; }
+  .grid.two { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 640px) { .grid.two { grid-template-columns: 1fr; } }
+
+  ul { margin: 0 0 14px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  .muted { color: var(--text-dim); }
+
+  /* Prompt block */
+  .prompt-shell {
+    background: linear-gradient(180deg, #1a1d24, #15171c);
+    border: 1px solid var(--gold);
+    border-radius: var(--radius);
+    overflow: hidden; position: relative;
+  }
+  .prompt-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; background: rgba(255,217,59,.07); border-bottom: 1px solid var(--line);
+  }
+  .prompt-bar span { font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--gold); }
+  .copy-btn {
+    font: 600 13px var(--sans); cursor: pointer;
+    background: var(--gold); color: #1a1408; border: 0;
+    padding: 7px 14px; border-radius: 8px; transition: transform .08s ease, filter .15s ease;
+  }
+  .copy-btn:hover { filter: brightness(1.08); }
+  .copy-btn:active { transform: scale(.96); }
+  .copy-btn.done { background: var(--green); color: #fff; }
+  #promptText {
+    margin: 0; padding: 22px; white-space: pre-wrap; word-wrap: break-word;
+    font-family: var(--mono); font-size: 13.5px; line-height: 1.7; color: #d4d8e2;
+  }
+
+  /* Palette */
+  .swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+  .sw { flex: 1 1 120px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .sw .chip { height: 56px; }
+  .sw .meta { padding: 8px 10px; font-size: 12px; }
+  .sw .meta b { display: block; font-size: 12px; }
+  .sw .meta code { background: transparent; padding: 0; color: var(--text-dim); }
+
+  /* Screen table */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--text-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  td b { color: var(--text); }
+
+  .pill { display: inline-block; font-size: 11px; padding: 2px 9px; border-radius: 999px;
+          border: 1px solid var(--line); color: var(--text-dim); margin: 0 4px 4px 0; }
+  .footnote { font-size: 13px; color: var(--text-dim); margin-top: 40px; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Design brief · paste into Claude (design mode)</p>
+  <h1>Four Wheel Steer — UI Revamp</h1>
+  <p class="lede">A 2D top-down arcade time-trial racer whose hook is steering the front and rear
+  wheels independently. The gameplay is solid; the menus and HUD are placeholder default-Godot
+  widgets. This brief asks for a cohesive visual identity and a full screen redesign.</p>
+
+  <h2>The prompt</h2>
+  <p>Copy the block below and give it to Claude in design mode. Everything under it is supporting
+  reference you can paste or attach alongside.</p>
+
+  <div class="prompt-shell">
+    <div class="prompt-bar">
+      <span>UI REVAMP PROMPT</span>
+      <button class="copy-btn" id="copyBtn" onclick="copyPrompt()">Copy prompt</button>
+    </div>
+<pre id="promptText">You are designing the UI for "Four Wheel Steer," a 2D top-down arcade time-trial
+racing game built in Godot 4. The signature mechanic is steering the FRONT and REAR
+wheels independently — align both axles to "crab-walk" sideways, oppose them for a
+tight pivot. It's a checkpoint circuit racer: 3 laps, medals (gold/silver/bronze),
+unlockable levels, best-time/best-lap chasing.
+
+GOAL
+Replace the current placeholder UI (default Godot buttons + flat dark background) with
+a cohesive, energetic arcade-racer visual identity, and redesign every screen.
+
+DELIVERABLES (in this order)
+1. Two or three distinct mood directions (1 paragraph + a color/type sketch each), then
+   recommend one. Think: clean modern arcade, retro-90s-racer, or neon synthwave —
+   surprise me, but it must feel fast and readable.
+2. A design system for the chosen direction:
+   - Color tokens (bg, surfaces, primary/secondary accent, success/medal colors,
+     text + muted text, danger). Give hex values.
+   - Type scale (display / title / heading / body / caption) with one or two web-safe
+     or freely-licensed font suggestions.
+   - Spacing scale and corner-radius scale.
+   - Components with ALL states: Button (default / hover / pressed / disabled / focused),
+     Panel/Card, Slider (used for volume AND for the touch steering), Title bar,
+     Medal badge, Level tile (locked vs unlocked).
+3. High-fidelity mockups of each screen (list below), in BOTH a landscape (desktop) and
+   a portrait (mobile) frame, since the game ships on both.
+4. The in-race HUD laid out for portrait and landscape (it overlays a moving green
+   racetrack, so call out contrast/legibility — outlines, scrims, or chips).
+5. A short "Godot mapping" note per component: which Godot Theme primitives implement it
+   (StyleBoxFlat fill/border/corner-radius, font + font_size + outline, content margins),
+   so an engineer can rebuild it as a Theme resource.
+
+SCREENS TO DESIGN
+- Main Menu: title + tagline, buttons [Play] [How to Play] [Settings] [Quit], a volume
+  settings panel.
+- How to Play: explains the hook with 3 little top-down car diagrams (independent steer /
+  opposite = pivot / same = crab walk) + a big "Got it" CTA.
+- Level Select: a grid of level tiles. Each unlocked tile shows level name, top speed,
+  best time, and earned medal; locked tiles are visibly disabled. Plus a Back button.
+- Race HUD: total timer (center top), current lap time, "Lap x/3", level name, best time
+  + best lap (best-lap flashes on a new record), a speedometer, a 3-2-1-GO countdown, and
+  an off-screen arrow pointing to the next checkpoint gate.
+- Results panel: medal headline (colored by medal), Total / Best / Best-lap stats, and
+  [Retry] [Next] [Menu].
+- Pause panel: PAUSED title, [Resume] [Restart] [Menu], and a volume slider.
+- Touch controls (mobile only, overlaying the race): TWO bottom sliders (left = front
+  wheels, right = rear wheels) + GAS and REV buttons. Big, thumb-friendly.
+
+HARD CONSTRAINTS
+- Must be buildable as a Godot 4 Theme + simple layouts (no fancy shaders required).
+  Favor flat fills, solid strokes, simple gradients, vector shapes — it should match the
+  game's existing flat/vector art (the cars are simple colored polygons).
+- Responsive: desktop opens maximized/landscape, mobile runs PORTRAIT. Layouts must
+  anchor/reflow between the two aspect ratios.
+- Touch targets >= 48px on mobile.
+- HUD text must stay readable over a bright moving background.
+- Keep dependencies light: at most one or two font files; prefer vector/procedural over
+  large image assets.
+
+BRAND NOTES
+- The current accent is a hot yellow-gold (the car's nose and the HUD arrow) on a near-black
+  bg, with a blue player car. You may keep, evolve, or replace this — but the result should
+  feel kinetic and confident, not corporate.
+- The personality is playful precision: the four-wheel-steer trick is clever and satisfying,
+  so the UI should feel crisp and a little show-offy without being noisy.
+
+Ask me anything you need before producing the directions.</pre>
+  </div>
+
+  <h2>Game at a glance</h2>
+  <div class="grid two">
+    <div class="card">
+      <h3>What it is</h3>
+      <ul>
+        <li>2D top-down arcade racer, Godot 4 (<code>gl_compatibility</code>)</li>
+        <li>Hook: independent front/rear steering → crab-walk &amp; tight pivot</li>
+        <li>3-lap checkpoint circuits, sim-ish slip-angle handling</li>
+        <li>Gold/silver/bronze medals by total time; levels unlock in sequence</li>
+        <li>2 levels today (wide intro → tight twisty); progress saved to disk</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Platforms &amp; juice</h3>
+      <ul>
+        <li>Desktop: maximized / landscape</li>
+        <li>Android: <b>portrait</b>, on-screen sliders + GAS/REV</li>
+        <li>Existing feel: skid marks, dust, screen shake, gate pop, countdown beeps</li>
+        <li>All art is flat/vector (cars are simple colored polygons)</li>
+        <li>No external art assets today — SFX are generated procedurally</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Current UI — what we're replacing</h2>
+  <p>Every screen is built <b>programmatically in GDScript</b> with stock Godot
+  <code>Button</code>/<code>Label</code>/<code>Panel</code> widgets — no Theme resource, no custom
+  fonts, no styled panels. The look is a flat near-black background with white text and font-size
+  overrides. Functional, but visually placeholder. That's the target of this revamp.</p>
+
+  <table>
+    <thead><tr><th>Screen</th><th>Script</th><th>What's on it now</th></tr></thead>
+    <tbody>
+      <tr><td><b>Main Menu</b></td><td><code>main_menu.gd</code></td><td>Title + subtitle, vertical buttons (Play / How to Play / Settings / Quit), pop-out volume panel</td></tr>
+      <tr><td><b>How to Play</b></td><td><code>instructions.gd</code></td><td>3 rows: little drawn car + text explaining steer / pivot / crab walk; "Got it" CTA</td></tr>
+      <tr><td><b>Level Select</b></td><td><code>level_select.gd</code></td><td>Grid of level buttons (name, top speed, best time, medal); locked = disabled; Back button</td></tr>
+      <tr><td><b>Race HUD</b></td><td><code>hud.gd</code></td><td>Timer, lap time, Lap x/3, level name, best/best-lap, speedometer, countdown, next-gate arrow</td></tr>
+      <tr><td><b>Results / Pause</b></td><td><code>hud.gd</code></td><td>Centered panels: medal + stats + Retry/Next/Menu; Paused + Resume/Restart/Menu + volume</td></tr>
+      <tr><td><b>Touch controls</b></td><td><code>touch_controls.gd</code></td><td>Two bottom sliders (front / rear) + GAS / REV buttons (mobile)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Current palette (for reference / to evolve)</h2>
+  <p class="muted">Pulled from the code. The brief lets the designer keep, evolve, or replace these.</p>
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:#171A1F"></div><div class="meta"><b>Background</b><code>#171A1F</code></div></div>
+    <div class="sw"><div class="chip" style="background:#FFD93B"></div><div class="meta"><b>Accent gold</b><code>#FFD93B</code></div></div>
+    <div class="sw"><div class="chip" style="background:#3A70E6"></div><div class="meta"><b>Player car blue</b><code>#3A70E6</code></div></div>
+    <div class="sw"><div class="chip" style="background:#3EA66A"></div><div class="meta"><b>Track green</b><code>#3EA66A</code></div></div>
+    <div class="sw"><div class="chip" style="background:#FFD600"></div><div class="meta"><b>Gold medal</b><code>#FFD600</code></div></div>
+    <div class="sw"><div class="chip" style="background:#CCD9E6"></div><div class="meta"><b>Silver medal</b><code>#CCD9E6</code></div></div>
+    <div class="sw"><div class="chip" style="background:#CC8040"></div><div class="meta"><b>Bronze medal</b><code>#CC8040</code></div></div>
+  </div>
+
+  <h2>How to use this</h2>
+  <div class="card">
+    <ol style="margin:0; padding-left:20px;">
+      <li>Hit <b>Copy prompt</b> above and paste it into a new chat with Claude in design mode.</li>
+      <li>Optionally attach a screenshot of the current menu/race so it sees the starting point.</li>
+      <li>Let it return the mood directions first, pick one, then ask for the full system + mockups.</li>
+      <li>When you're happy, bring the "Godot mapping" notes back here and I'll rebuild the screens as a Theme resource.</li>
+    </ol>
+  </div>
+
+  <p class="footnote">Generated as a starting brief — edit the prompt freely. Tags:
+    <span class="pill">Godot 4</span><span class="pill">desktop + portrait mobile</span>
+    <span class="pill">flat / vector art</span><span class="pill">Theme-resource friendly</span>
+  </p>
+
+</div>
+
+<script>
+  function copyPrompt() {
+    const text = document.getElementById('promptText').innerText;
+    const btn = document.getElementById('copyBtn');
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied ✓';
+      btn.classList.add('done');
+      setTimeout(() => { btn.textContent = 'Copy prompt'; btn.classList.remove('done'); }, 1800);
+    }).catch(() => {
+      // Fallback: select the text so the user can copy manually
+      const r = document.createRange();
+      r.selectNodeContents(document.getElementById('promptText'));
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      btn.textContent = 'Press Ctrl+C';
+    });
+  }
+</script>
+</body>
+</html>
