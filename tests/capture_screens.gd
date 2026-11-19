@@ -1,8 +1,8 @@
 extends SceneTree
 # Regenerates docs/screenshots/*.png: the race HUD (countdown, a wall-hit
 # warning, game over, the hairpin levels) and every menu (main menu, settings,
-# How to Play, level select, and as shown inside a Reddit post today's circuit
-# and the leaderboard), at
+# How to Play, level select, and as shown inside a Reddit post today's circuit,
+# the results card and the leaderboard), at
 # phone size (860x1520, i.e. the 430x760 layout at 2x) and desktop size.
 #
 # It needs a real window to render, and a normal (even hidden) window takes the
@@ -121,6 +121,17 @@ func _menus(prefix: String) -> void:
 	change_scene_to_file("res://scenes/LevelSelect.tscn")   # Reddit: today's circuit only
 	await _frames(6)
 	await _shot(prefix + "-todays-circuit")
+	# Reddit's results card, filled by hand: finishing a race would write the save.
+	await _race(3, 5)
+	var hud = current_scene.get_node("HUD")
+	current_scene._touch.set_enabled(false)   # as a real finish does
+	hud.show_results(78.42, "silver", 78.42, 25.61, false)
+	hud.show_daily_pending()
+	hud.show_daily_result({
+		"accepted": true, "improved": true, "rank": 12, "players": 340, "streak": 4,
+		"best_streak": 6, "next_ms": 5 * 3_600_000 + 12 * 60_000 + 9_000, "at_msec": Time.get_ticks_msec(),
+	})
+	await _shot(prefix + "-reddit-results")
 	change_scene_to_file("res://scenes/Leaderboard.tscn")
 	await _frames(6)
 	await _shot(prefix + "-leaderboard")

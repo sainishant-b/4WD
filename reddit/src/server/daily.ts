@@ -57,6 +57,15 @@ export function dayOf(nowMs: number): number {
   return Math.floor((nowMs - FIRST_DAY_UTC) / DAY_MS) + 1;
 }
 
+/**
+ * Milliseconds from `nowMs` until the next Daily Circuit starts. Sent as a
+ * duration, not a clock time, so a player's wrong device clock cannot skew
+ * the countdown the game shows.
+ */
+export function msUntilNextDay(nowMs: number): number {
+  return FIRST_DAY_UTC + dayOf(nowMs) * DAY_MS - nowMs;
+}
+
 export function dateOf(day: number): string {
   return new Date(FIRST_DAY_UTC + (day - 1) * DAY_MS).toISOString().slice(0, 10);
 }
@@ -198,6 +207,7 @@ export async function getInit(
     players: board.players,
     top: board.top,
     mapsDone,
+    nextCircuitInMs: msUntilNextDay(nowMs),
   };
 }
 
@@ -317,5 +327,6 @@ export async function submitRun(
     level,
     overall,
     mapsDone,
+    nextCircuitInMs: msUntilNextDay(nowMs),
   };
 }

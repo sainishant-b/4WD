@@ -335,12 +335,17 @@ func _finish() -> void:
 		_hud.show_results(_elapsed, "none", 0.0, _best_lap_run, false)
 		return
 	var medal := Game.record_result(_level_idx, _elapsed, _best_lap_run)
-	# Upload the time to the online leaderboard (no-op until Appwrite is configured).
-	Leaderboard.submit_score(Game.get_player_name(), Game.level_id(_level_idx), int(round(_elapsed * 1000.0)))
 	_hud.show_results(
 		_elapsed, medal, Game.best_time(_level_idx), Game.best_lap(_level_idx),
 		Game.has_next_level(_level_idx)
 	)
+	# On Reddit the card waits for the server's answer (place today, streak,
+	# countdown). Connected before submitting: the answer may come at once.
+	if Reddit.is_available():
+		_hud.show_daily_pending()
+		Leaderboard.run_recorded.connect(_hud.show_daily_result, CONNECT_ONE_SHOT)
+	# Upload the time to the online leaderboard (no-op until Appwrite is configured).
+	Leaderboard.submit_score(Game.get_player_name(), Game.level_id(_level_idx), int(round(_elapsed * 1000.0)))
 
 
 func _set_active(idx: int) -> void:
@@ -382,5 +387,8 @@ func _on_ui_action(action: String) -> void:
 		"next":
 			if Game.has_next_level(_level_idx):
 				Game.start_level(_level_idx + 1)
+		"leaderboard":   # Reddit's results card: open on today's board
+			Leaderboard.open_on_day = true
+			Game.goto_leaderboard()
 		"menu":
 			Game.goto_menu()

@@ -4,6 +4,27 @@ Running history of major changes. Newest on top. See `CLAUDE.md` for when to add
 
 ## 2026-11-20
 
+- **Reddit results card: today's place, streak, countdown, and a TODAY board.** *Why:* the
+  user picked the to-do item "result card on Reddit" next (Delightful UX / Daily Content).
+  - After a finish inside a Reddit post the results card shows an inset strip under the times:
+    "POSTING YOUR TIME..." until the server answers, then the place on the day's board ("#12 OF
+    340 TODAY", or "ON DAY n" on an older post), a green NEW BEST chip and a gold "4-DAY STREAK"
+    chip, and a live "NEXT CIRCUIT IN h:mm:ss" countdown. Logged out it says LOG IN TO RANK; with
+    no answer, COULDN'T REACH REDDIT. The gold button is **Leaderboard** (the next step), which
+    opens the Leaderboard screen on the new TODAY board. Off Reddit nothing changes.
+  - Server: `GET /api/init` and `POST /api/run` now also return `nextCircuitInMs` (time to the
+    next 00:00 UTC, `msUntilNextDay` in `daily.ts`). It is a duration, so a wrong device clock
+    cannot skew the countdown. +1 server test (13).
+  - Game: `Leaderboard.run_recorded(info)` hands the server's answer to the card;
+    `Leaderboard.DAY` fetches the day board; `Leaderboard.open_on_day` starts the screen there.
+    The Leaderboard screen on Reddit is OVERALL (still first), TODAY, then one board per level.
+    `Reddit.is_today` comes from `/api/init`. `game.gd` shows the card, then connects to
+    `run_recorded`, then posts the time.
+  - Tests: `leaderboard_test.gd` +9: the TODAY board, and a real finish on Reddit through the
+    stand-in server (place, chips, countdown, the Leaderboard button opening TODAY, logged-out and
+    no-answer wording). It puts the save file back afterwards. `capture_screens.gd` shoots the
+    card (`*-reddit-results.png`). Not verified on real Reddit yet.
+
 - **Less drift, one circuit a day on Reddit, a picture-only How to Play, pads in mobile view.**
   *Why:* the user's first playtest on Reddit: the car drifted into the walls, the level screen
   offered Level 1 and Level 4 instead of just today's map, How to Play had too many words, and

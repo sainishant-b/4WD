@@ -7,7 +7,9 @@ extends SceneTree
 # The real page bridge (JavaScriptBridge) only exists in a browser, so this
 # covers everything up to `Reddit.request()`; reddit/src/server/daily.test.ts
 # covers the server's side of the same messages.
-# It restores the mute setting it flips. This folder is .gdignore'd.
+# It finishes one race to check the Reddit results card, then puts the save
+# file back exactly as it was; it restores the mute setting it flips too.
+# This folder is .gdignore'd.
 
 var _failures := 0
 var _calls: Array = []      # [method, path, body] of every request the game made
@@ -35,7 +37,22 @@ func _frames(n: int) -> void:
 func _server(method: String, path: String, body: Dictionary, done: Callable) -> void:
 	_calls.append([method, path, body])
 	if method == "POST" and path == "/api/run":
-		done.call({"accepted": _logged_in, "improved": true})
+		done.call({
+			"accepted": _logged_in, "improved": _logged_in, "countsForDay": true,
+			"me": {"rank": 3, "name": "local_driver", "timeMs": 61500} if _logged_in else null,
+			"players": 41, "streak": {"current": 4, "best": 6} if _logged_in else {"current": 0, "best": 0},
+			"nextCircuitInMs": 5 * 3_600_000 + 30_000,
+		})
+	elif path.begins_with("/api/leaderboard?board=day"):
+		done.call({
+			"kind": "day", "players": 41, "mapsDone": 3, "mapsTotal": 5,
+			"top": [
+				{"rank": 1, "name": "apex_hunter", "timeMs": 58020},
+				{"rank": 2, "name": "crabwalk", "timeMs": 60110},
+				{"rank": 3, "name": "local_driver", "timeMs": 61500},
+			],
+			"me": {"rank": 3, "name": "local_driver", "timeMs": 61500},
+		})
 	elif path.begins_with("/api/leaderboard?board=overall"):
 		done.call({
 			"kind": "overall", "levelId": null, "players": 2, "mapsDone": 3, "mapsTotal": 5,
@@ -112,19 +129,66 @@ func _run() -> void:
 	change_scene_to_file("res://scenes/Leaderboard.tscn")
 	await _frames(4)
 	var screen = current_scene
-	_check("OVERALL is the first board, then one per level",
-		screen._boards.size() == game.level_count() + 1 and screen._boards[0] == -1, str(screen._boards))
+	_check("OVERALL is the first board, then TODAY, then one per level",
+		screen._boards.size() == game.level_count() + 2 and screen._board_title(0) == "OVERALL"
+		and screen._board_title(1) == "TODAY", str(screen._boards))
 	_check("it opens on OVERALL with both rows", screen._board == 0 and screen._rows_box.get_child_count() == 2,
 		"rows=%d" % screen._rows_box.get_child_count())
 	_check("the summary explains the ranking and the player's place",
 		"added up" in screen._status.text and "#2" in screen._status.text, screen._status.text)
 	screen._select(1)
 	await _frames(2)
+	_check("TODAY asks for the day board and shows its rows",
+		_calls[-1][1].begins_with("/api/leaderboard?board=day") and screen._rows_box.get_child_count() == 3
+		and "#3 of 41" in screen._status.text, screen._status.text)
+	screen._select(2)
+	await _frames(2)
 	_check("picking Level 1 shows that level's board", screen._rows_box.get_child_count() == 1
 		and "Best time on this map" in screen._status.text, screen._status.text)
 	root.size = Vector2i(390, 760)
 	await _frames(4)
-	_check("the phone layout keeps the same boards", current_scene._boards.size() == game.level_count() + 1)
+	_check("the phone layout keeps the same boards", current_scene._boards.size() == game.level_count() + 2)
+
+	print("results card on Reddit")
+	const SAVE_PATH := "user://save.json"
+	var had_save := FileAccess.file_exists(SAVE_PATH)
+	var save_before := FileAccess.get_file_as_string(SAVE_PATH) if had_save else ""
+	root.size = Vector2i(1280, 720)
+	game.current_level = 1
+	change_scene_to_file("res://scenes/Main.tscn")
+	await _frames(4)
+	var race = current_scene
+	var hud = race.get_node("HUD")
+	race._elapsed = 61.5
+	race._best_lap_run = 20.1
+	race._finish()   # a real finish: records the run, posts it, fills the card
+	await _frames(2)
+	var chips: Array = hud._daily_chips.get_children().map(func(c: Label) -> String: return c.text)
+	_check("the card shows the place on today's board", hud._daily_rank.text == "#3 OF 41 TODAY", hud._daily_rank.text)
+	_check("... a new-best chip and the streak", chips == ["NEW BEST", "4-DAY STREAK"], str(chips))
+	_check("... and a countdown to the next circuit", hud._daily_next.text.begins_with("NEXT CIRCUIT IN 5:00:"),
+		hud._daily_next.text)
+	_check("its gold button is Leaderboard, not Next",
+		hud._results_board.visible and not hud._results_next.visible)
+	hud.show_daily_result({"accepted": false, "next_ms": 1000, "at_msec": Time.get_ticks_msec()})
+	await _frames(2)
+	_check("logged out, it asks the player to log in", hud._daily_rank.text == "LOG IN TO RANK"
+		and hud._daily_chips.get_child_count() == 0, hud._daily_rank.text)
+	hud.show_daily_result({})
+	_check("no answer from Reddit is said plainly", hud._daily_rank.text == "COULDN'T REACH REDDIT")
+	hud.ui_action.emit("leaderboard")
+	await _frames(4)
+	_check("Leaderboard opens on TODAY", current_scene.has_method("_board_title")
+		and current_scene._board_title(current_scene._board) == "TODAY")
+	# Put the player's save back exactly as it was.
+	if had_save:
+		var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+		f.store_string(save_before)
+		f.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+	game.load_progress()
+	_check("the save file was put back", (FileAccess.get_file_as_string(SAVE_PATH) if had_save else "") == save_before)
 
 	print("level select")
 	var diagram_script := load("res://scripts/track_diagram.gd")

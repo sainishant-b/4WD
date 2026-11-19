@@ -57,6 +57,8 @@ export type InitResponse = {
   top: Row[];
   /** How many levels the viewer has a time on; all of them = ranked overall. */
   mapsDone: number;
+  /** Milliseconds until the next Daily Circuit starts (00:00 UTC), as of the response. */
+  nextCircuitInMs: number;
 };
 
 /** POST /api/run — report a finished race. */
@@ -81,6 +83,8 @@ export type RunResponse = {
   level: Board;
   overall: Board;
   mapsDone: number;
+  /** Milliseconds until the next Daily Circuit starts (00:00 UTC), as of the response. */
+  nextCircuitInMs: number;
 };
 
 /** GET /api/leaderboard?board=overall|level|day[&level=<id>][&limit=<n>] */

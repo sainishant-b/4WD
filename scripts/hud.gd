@@ -14,7 +14,12 @@ extends CanvasLayer
 ## Styling follows the design system: gold next-gate arrow, Palette medal colors,
 ## and design-system modal dialogs (scrim + PanelModal card) for Results/Pause.
 ## Buttons emit `ui_action(name)` -> game.gd
-## ("retry" | "next" | "menu" | "resume" | "pause").
+## ("retry" | "next" | "leaderboard" | "menu" | "resume" | "pause").
+##
+## Inside a Reddit post the results card also shows the server's answer to the
+## finish (`show_daily_pending` then `show_daily_result`): the place on the
+## day's board ("#12 OF 340 TODAY"), NEW BEST and streak chips, and a live
+## countdown to the next circuit; its gold button is Leaderboard, not Next.
 
 signal ui_action(action: String)
 
@@ -65,6 +70,14 @@ var _results_title: Label
 var _results_body: Label
 var _results_buttons: BoxContainer
 var _results_next: Button
+var _results_board: Button    # Reddit: the next step after a finish
+
+# Reddit's part of the results card: today's place, streak, next circuit.
+var _daily_box: VBoxContainer
+var _daily_rank: Label
+var _daily_chips: HBoxContainer
+var _daily_next: Label
+var _next_circuit_at: int = 0   # Time.get_ticks_msec() when the next circuit starts; 0 = unknown
 
 var _pause_overlay: Control
 
@@ -653,12 +666,39 @@ func _build_results_overlay(parent: Control) -> void:
 	_results_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(_results_body)
 
+	# Reddit only: an inset strip with today's place, the streak and a countdown.
+	var daily_panel := PanelContainer.new()
+	var inset := HudStyle.glass(12, 0.9)
+	inset.bg_color = Color(Palette.SURFACE_INSET, 0.9)
+	inset.set_content_margin_all(12)
+	daily_panel.add_theme_stylebox_override("panel", inset)
+	vb.add_child(daily_panel)
+	_daily_box = VBoxContainer.new()
+	_daily_box.add_theme_constant_override("separation", 8)
+	daily_panel.add_child(_daily_box)
+	_daily_rank = Label.new()
+	_daily_rank.add_theme_font_size_override("font_size", 28)
+	_daily_rank.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_daily_box.add_child(_daily_rank)
+	_daily_chips = HBoxContainer.new()
+	_daily_chips.alignment = BoxContainer.ALIGNMENT_CENTER
+	_daily_chips.add_theme_constant_override("separation", 8)
+	_daily_box.add_child(_daily_chips)
+	_daily_next = Label.new()
+	_daily_next.add_theme_font_size_override("font_size", 16)
+	_daily_next.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+	_daily_next.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_daily_box.add_child(_daily_next)
+	daily_panel.visible = false
+
 	_results_buttons = BoxContainer.new()
 	_results_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	_results_buttons.add_theme_constant_override("separation", 12)
 	vb.add_child(_results_buttons)
 	_add_action_button(_results_buttons, "Retry", "retry", "ButtonSecondary")
 	_results_next = _add_action_button(_results_buttons, "Next", "next")          # gold forward CTA
+	_results_board = _add_action_button(_results_buttons, "Leaderboard", "leaderboard")   # gold, Reddit
+	_results_board.visible = false
 	_add_action_button(_results_buttons, "Menu", "menu", "ButtonGhost")
 
 
@@ -714,8 +754,87 @@ func show_results(total: float, medal: String, best_total: float, best_lap: floa
 		Game.format_time(total), Game.format_time(best_total), Game.format_time(best_lap)
 	]
 	_results_next.visible = has_next
+	_results_board.visible = false
+	_daily_box.get_parent().visible = false
 	_arrow.visible = false   # it draws above the overlays
 	_results_overlay.visible = true
+
+
+## Reddit: the results card while the time is on its way to the server. The
+## gold button becomes Leaderboard, the one clear next step.
+func show_daily_pending() -> void:
+	_daily_rank.text = "POSTING YOUR TIME..."
+	_daily_rank.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+	_clear_daily_chips()
+	_daily_next.text = ""
+	_next_circuit_at = 0
+	_results_next.visible = false
+	_results_board.visible = true
+	_daily_box.get_parent().visible = true
+
+
+## Reddit: the server's answer (Leaderboard.run_recorded): today's place, the
+## streak, a new-best chip and the countdown to the next circuit.
+func show_daily_result(info: Dictionary) -> void:
+	_clear_daily_chips()
+	if info.is_empty():
+		_daily_rank.text = "COULDN'T REACH REDDIT"
+		_daily_rank.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+		_daily_next.text = "Your time is saved on this device."
+		return
+	if not bool(info.get("accepted", false)):
+		_daily_rank.text = "LOG IN TO RANK"
+		_daily_rank.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+	elif int(info.get("rank", 0)) > 0:
+		var where := "TODAY" if Reddit.is_today else "ON DAY %d" % Reddit.day
+		_daily_rank.text = "#%d OF %d %s" % [int(info["rank"]), int(info.get("players", 0)), where]
+		_daily_rank.add_theme_color_override("font_color", Palette.GOLD)
+	else:
+		_daily_rank.text = "TIME SAVED"
+		_daily_rank.add_theme_color_override("font_color", Palette.TEXT)
+	if bool(info.get("improved", false)) and bool(info.get("accepted", false)):
+		_daily_chips.add_child(_chip("NEW BEST", Palette.SUCCESS))
+	var streak := int(info.get("streak", 0))
+	if streak > 0:
+		_daily_chips.add_child(_chip("%d-DAY STREAK" % streak if streak > 1 else "STREAK STARTED", Palette.GOLD))
+	var next_ms := int(info.get("next_ms", 0))
+	_next_circuit_at = int(info.get("at_msec", Time.get_ticks_msec())) + next_ms if next_ms > 0 else 0
+	_update_countdown()
+
+
+func _clear_daily_chips() -> void:
+	for c in _daily_chips.get_children():
+		c.queue_free()
+
+
+## A small filled pill with dark text.
+func _chip(text: String, color: Color) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", Palette.TEXT_ON_GOLD)
+	var pill := HudStyle.pill(color)
+	pill.content_margin_left = 10.0
+	pill.content_margin_right = 10.0
+	pill.content_margin_top = 2.0
+	pill.content_margin_bottom = 2.0
+	l.add_theme_stylebox_override("normal", pill)
+	return l
+
+
+func _process(_delta: float) -> void:
+	if _next_circuit_at > 0 and _results_overlay.visible:
+		_update_countdown()
+
+
+func _update_countdown() -> void:
+	if _next_circuit_at <= 0:
+		return
+	var left := (_next_circuit_at - Time.get_ticks_msec()) / 1000
+	if left <= 0:
+		_daily_next.text = "A NEW CIRCUIT IS UP"
+		return
+	_daily_next.text = "NEXT CIRCUIT IN %d:%02d:%02d" % [left / 3600, (left / 60) % 60, left % 60]
 
 
 ## The race ended on the last allowed wall hit. It reuses the results card, but
@@ -725,6 +844,9 @@ func show_game_over(hits: int, lap: int, laps: int, elapsed: float) -> void:
 	_results_title.add_theme_color_override("font_color", Palette.DANGER)
 	_results_body.text = "%d wall hits\nLap %d of %d   %s" % [hits, lap, laps, Game.format_time(elapsed)]
 	_results_next.visible = false
+	_results_board.visible = false
+	_daily_box.get_parent().visible = false
+	_next_circuit_at = 0
 	_arrow.visible = false   # it draws above the overlays
 	_warn_label.visible = false
 	_flash()

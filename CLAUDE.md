@@ -117,6 +117,9 @@ entry. When in doubt, add one — short is fine.
   On Reddit the server ranks OVERALL = the sum of each player's bests on ALL levels, lowest first
   (the user's spec), plus a board per level and a daily board for the featured level
   (`levelOfDay` in `reddit/src/server/daily.ts`; its `LEVEL_IDS` must match `LEVELS[i].id`).
+  The screen's Reddit tabs are OVERALL (keep it first), TODAY (`Leaderboard.DAY`), then levels.
+  On Reddit the results card waits for `Leaderboard.run_recorded` and shows the day rank, streak
+  and a countdown (`nextCircuitInMs` from the server); its gold button is Leaderboard -> TODAY.
   Elsewhere the backend is **Appwrite** (IDs pasted into `leaderboard.gd`; name in `save.json`).
 - **Difficulty rises across levels** (the user asked): Levels 1-2 stay as they are; from Level 3
   on each level has a narrower road and a higher top speed than the one before. Keep that

@@ -17,6 +17,7 @@ var available: bool = false     ## Running inside the Reddit wrapper (or its loc
 var username: String = ""       ## The player's Reddit name; "" when logged out.
 var day: int = 0                ## Daily Circuit number of the post.
 var daily_level_id: int = -1    ## Permanent id of the level that is today's circuit.
+var is_today: bool = true       ## False on an older day's post (still playable, no streak).
 var start_screen: String = ""   ## "leaderboard" when the post asked to open there; read once.
 
 ## Test hook: when set, `request()` hands (method, path, body, done) to this
@@ -68,6 +69,7 @@ func apply_init(data: Variant) -> void:
 	username = name if name is String else ""
 	day = int(data.get("day", 0))
 	daily_level_id = int(data.get("levelId", -1))
+	is_today = bool(data.get("isToday", true))
 	init_loaded.emit()
 
 

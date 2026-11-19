@@ -32,8 +32,8 @@ Tick items off here as they land; the CHANGELOG has the details.
       (Half done: Play now opens Today's Circuit, one tap from DRIVE.)
 - [ ] Start screen (the post's splash): add the attribution ("by u/…"), today's level name and
       a small picture of the track.
-- [ ] Result card on Reddit: place on today's board ("#12 of 340"), streak, countdown to the
-      next circuit, one clear next step.
+- [x] Result card on Reddit: place on today's board ("#12 of 340"), streak, countdown to the
+      next circuit, one clear next step (Leaderboard -> the new TODAY board). 2026-11-20.
 - [x] Wording pass on How to Play: now pictures and key caps, no sentences.
 - [ ] Loading time on phones: if the engine is slow, consider a smaller custom web template.
 

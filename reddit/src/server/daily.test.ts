@@ -10,6 +10,7 @@ import {
   getInit,
   getLeaderboard,
   levelOfDay,
+  msUntilNextDay,
   seedOf,
   submitRun,
 } from './daily.ts';
@@ -30,6 +31,15 @@ test('days are numbered from launch and roll over at 00:00 UTC', () => {
   assert.equal(dayOf(Date.UTC(2026, 10, 17, 0, 0, 0)), 2);
   assert.equal(dateOf(1), '2026-11-16');
   assert.equal(dateOf(24), '2026-12-09');
+});
+
+test('the next circuit is counted down to 00:00 UTC', async () => {
+  assert.equal(msUntilNextDay(Date.UTC(2026, 10, 16, 12)), 12 * 3_600_000);
+  assert.equal(msUntilNextDay(Date.UTC(2026, 10, 16, 23, 59, 59)), 1_000);
+  assert.equal(msUntilNextDay(Date.UTC(2026, 10, 17, 0, 0, 0)), DAY_MS);
+  const store = new MemoryStore();
+  assert.equal((await getInit(store, 1, 'ana', DAY_1)).nextCircuitInMs, 12 * 3_600_000);
+  assert.equal((await dailyRun(store, 1, 'ana', 60_000, DAY_1)).nextCircuitInMs, 12 * 3_600_000);
 });
 
 test('every day has its own stable seed', () => {

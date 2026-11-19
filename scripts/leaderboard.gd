@@ -4,9 +4,11 @@ extends Node
 ## to whichever backend is present:
 ##
 ##  - **Reddit** (the game inside a Reddit post, via the `Reddit` autoload): the
-##    Devvit server keeps a board per level and an OVERALL board, which adds up
-##    each player's best time on every level and ranks the lowest total first.
-##    Players are their Reddit usernames.
+##    Devvit server keeps a board per level, an OVERALL board, which adds up
+##    each player's best time on every level and ranks the lowest total first,
+##    and a DAY board for the day's circuit. Players are their Reddit usernames.
+##    A finished race's answer (place today, streak, countdown) goes out on
+##    `run_recorded` for the results card.
 ##  - **Appwrite** (everywhere else, if its IDs below are filled in): a tiny REST
 ##    client, one board per level, names typed on the Leaderboard screen.
 ##
@@ -21,9 +23,21 @@ extends Node
 signal scores_loaded(level: int, rows: Array)
 signal request_failed(message: String)
 signal score_submitted()
+## Reddit only: the server's answer to a finished race, for the results card.
+## `info` is {} when no answer came, else { accepted, improved, rank, players,
+## streak, best_streak, next_ms, at_msec }: `rank` of `players` on the day's
+## board (0 = not on it), the player's streak in days, and `next_ms` until the
+## next circuit as of `at_msec` (Time.get_ticks_msec() when the answer arrived).
+signal run_recorded(info: Dictionary)
 
 ## Board id for "all maps combined". Only the Reddit backend has it.
 const OVERALL := -1
+## Board id for the day's circuit (fastest today). Only the Reddit backend has it.
+const DAY := -2
+
+## Set before opening the Leaderboard screen to start it on the DAY board
+## (the results card's Leaderboard button). The screen clears it.
+var open_on_day: bool = false
 
 # --- Appwrite config — FILL THESE IN ---------------------------------------
 const ENDPOINT := ""        # e.g. "https://nyc.cloud.appwrite.io/v1"  (no trailing slash)
@@ -100,12 +114,27 @@ func submit_score(player_name: String, level: int, time_ms: int) -> void:
 
 
 func _on_reddit_run(result: Variant) -> void:
-	if result is Dictionary and bool(result.get("accepted", false)):
-		score_submitted.emit()
-	elif result is Dictionary:
-		request_failed.emit("time not recorded: log in to Reddit to rank")
-	else:
+	if not (result is Dictionary):
 		request_failed.emit("no answer from Reddit")
+		run_recorded.emit({})
+		return
+	var me: Variant = result.get("me")
+	var streak: Variant = result.get("streak")
+	var accepted := bool(result.get("accepted", false))
+	run_recorded.emit({
+		"accepted": accepted,
+		"improved": bool(result.get("improved", false)),
+		"rank": int(me.get("rank", 0)) if me is Dictionary else 0,
+		"players": int(result.get("players", 0)),
+		"streak": int(streak.get("current", 0)) if streak is Dictionary else 0,
+		"best_streak": int(streak.get("best", 0)) if streak is Dictionary else 0,
+		"next_ms": int(result.get("nextCircuitInMs", 0)),
+		"at_msec": Time.get_ticks_msec(),
+	})
+	if accepted:
+		score_submitted.emit()
+	else:
+		request_failed.emit("time not recorded: log in to Reddit to rank")
 
 
 func _on_submit_done(_result: int, code: int, _h: PackedStringArray, _body: PackedByteArray) -> void:
@@ -117,19 +146,22 @@ func _on_submit_done(_result: int, code: int, _h: PackedStringArray, _body: Pack
 
 # --- Fetch -----------------------------------------------------------------
 
-## Loads the ranked top times for `level` (a permanent level id, or OVERALL);
-## emits scores_loaded(level, rows) where each row is { name, level, time_ms },
-## fastest first and trimmed to `limit`. For OVERALL, `time_ms` is the total.
+## Loads the ranked top times for `level` (a permanent level id, OVERALL or
+## DAY); emits scores_loaded(level, rows) where each row is { name, level,
+## time_ms }, fastest first and trimmed to `limit`. For OVERALL, `time_ms` is
+## the total.
 func fetch_top(level: int, limit: int = 25) -> void:
 	_last_level = level
 	last_info = {}
 	if Reddit.is_available():
 		var path := "/api/leaderboard?board=overall&limit=%d" % limit
-		if level != OVERALL:
+		if level == DAY:
+			path = "/api/leaderboard?board=day&limit=%d" % limit
+		elif level != OVERALL:
 			path = "/api/leaderboard?board=level&level=%d&limit=%d" % [level, limit]
 		Reddit.request("GET", path, {}, func(result: Variant) -> void: _on_reddit_board(level, result))
 		return
-	if not _appwrite_configured() or level == OVERALL:
+	if not _appwrite_configured() or level < 0:
 		scores_loaded.emit(level, [])
 		return
 	_http_fetch.cancel_request()  # drop any in-flight request (e.g. fast level toggling)

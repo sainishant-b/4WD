@@ -162,9 +162,13 @@ are their Reddit accounts:
   total on top**. A player appears once they have a time on every level; until then the screen
   says how many they have.
 - **One board per level**: best time ever on that level.
+- **TODAY** (the second board): fastest on the day's circuit.
 - **Daily Circuit**: each day one level is featured (they take turns). Its board and the streak
   shown on the post count only that level. The post's **Leaderboard** button opens the game
   straight onto the boards.
+- **The results card** after a finish shows your place on today's board ("#12 OF 340 TODAY"), a
+  NEW BEST chip, your streak in days, and a countdown to the next circuit. Its gold
+  **Leaderboard** button opens the TODAY board.
 
 **Everywhere else** (desktop, Android) it uses **[Appwrite](https://appwrite.io)**, one board per
 level, with a name you type on the screen. It runs over plain HTTPS — no

@@ -3,9 +3,10 @@ extends Control
 ## the ranked times.
 ##
 ## Inside a Reddit post the first board is OVERALL: every player's best time on
-## all the levels added up, lowest total on top; then one board per level. The
-## player is their Reddit account. Elsewhere (Appwrite) there is one board per
-## level and a box to type a display name.
+## all the levels added up, lowest total on top; then TODAY (fastest on the
+## day's circuit; the results card's Leaderboard button opens here); then one
+## board per level. The player is their Reddit account. Elsewhere (Appwrite)
+## there is one board per level and a box to type a display name.
 ##
 ## `_build()` runs again when `Layout` flips, narrowing the column and swapping
 ## the row of board buttons for a < Board > stepper on a portrait phone.
@@ -13,7 +14,9 @@ extends Control
 const WIDE_WIDTH := 560.0
 const ROWS := 25
 
-var _boards: Array[int] = []    # level slots; -1 stands for the OVERALL board
+const OVERALL_SLOT := -1
+const DAY_SLOT := -2
+var _boards: Array[int] = []    # level slots, or OVERALL_SLOT / DAY_SLOT
 var _board: int = 0             # index into _boards
 var _rows_box: VBoxContainer
 var _status: Label
@@ -26,6 +29,9 @@ func _ready() -> void:
 	Leaderboard.request_failed.connect(_on_request_failed)
 	Reddit.init_loaded.connect(_rebuild)   # the username can arrive after the screen opens
 	Layout.changed.connect(_rebuild)
+	if Leaderboard.open_on_day and Leaderboard.has_overall():
+		_board = 1   # TODAY sits right after OVERALL (see _build)
+	Leaderboard.open_on_day = false
 	_build()
 
 
@@ -42,7 +48,8 @@ func _build() -> void:
 
 	_boards.clear()
 	if Leaderboard.has_overall():
-		_boards.append(-1)
+		_boards.append(OVERALL_SLOT)
+		_boards.append(DAY_SLOT)
 	for i in Game.level_count():
 		_boards.append(i)
 	_board = clampi(_board, 0, _boards.size() - 1)
@@ -183,16 +190,28 @@ func _btn(parent: Node, text: String, variation := "") -> Button:
 
 
 func _is_overall(at: int) -> bool:
-	return _boards[at] < 0
+	return _boards[at] == OVERALL_SLOT
+
+
+func _is_day(at: int) -> bool:
+	return _boards[at] == DAY_SLOT
 
 
 func _board_title(at: int) -> String:
-	return "OVERALL" if _is_overall(at) else String(Game.get_level(_boards[at])["name"]).to_upper()
+	if _is_overall(at):
+		return "OVERALL"
+	if _is_day(at):
+		return "TODAY"
+	return String(Game.get_level(_boards[at])["name"]).to_upper()
 
 
 ## The id the Leaderboard autoload knows this board by.
 func _board_id(at: int) -> int:
-	return Leaderboard.OVERALL if _is_overall(at) else Game.level_id(_boards[at])
+	if _is_overall(at):
+		return Leaderboard.OVERALL
+	if _is_day(at):
+		return Leaderboard.DAY
+	return Game.level_id(_boards[at])
 
 
 func _select(at: int) -> void:
@@ -232,6 +251,10 @@ func _summary(shown: int) -> String:
 			text += "\nYou have %d of %d maps. Finish them all to rank." % [done, total]
 	elif shown == 0:
 		text = "No times yet — be the first to set one!"
+	elif _is_day(_board):
+		var idx := Game.daily_index()
+		var level_name := String(Game.get_level(idx)["name"]) if idx >= 0 else "today's circuit"
+		text = "Fastest on %s %s. Top %d shown." % [level_name, "today" if Reddit.is_today else "that day", shown]
 	else:
 		text = "Best time on this map. Top %d shown." % shown
 	if int(info.get("me_rank", 0)) > 0:
