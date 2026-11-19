@@ -1,7 +1,8 @@
 extends SceneTree
 # Regenerates docs/screenshots/*.png: the race HUD (countdown, a wall-hit
 # warning, game over, the hairpin levels) and every menu (main menu, settings,
-# How to Play, level select, the leaderboard as shown inside a Reddit post), at
+# How to Play, level select, and as shown inside a Reddit post today's circuit
+# and the leaderboard), at
 # phone size (860x1520, i.e. the 430x760 layout at 2x) and desktop size.
 #
 # It needs a real window to render, and a normal (even hidden) window takes the
@@ -116,7 +117,10 @@ func _menus(prefix: String) -> void:
 		await _shot("%s-%s" % [prefix, spec[1]])
 	var reddit = root.get_node("/root/Reddit")
 	reddit.transport = _fake_server
-	reddit.apply_init({"username": "local_driver", "day": 2, "levelId": _game.level_id(1)})
+	reddit.apply_init({"username": "local_driver", "day": 4, "levelId": _game.level_id(3)})
+	change_scene_to_file("res://scenes/LevelSelect.tscn")   # Reddit: today's circuit only
+	await _frames(6)
+	await _shot(prefix + "-todays-circuit")
 	change_scene_to_file("res://scenes/Leaderboard.tscn")
 	await _frames(6)
 	await _shot(prefix + "-leaderboard")

@@ -8,15 +8,16 @@ Tick items off here as they land; the CHANGELOG has the details.
 
 ## 1. Get it running on Reddit (blocker, do first)
 
-- [ ] `cd reddit`, `npx devvit login`, then `npm run dev` (playtest). It creates a private test
-      subreddit with a test post and prints its link.
+- [x] `cd reddit`, `npx devvit login`, then `npm run dev` (playtest). It runs on Reddit (2026-11-20).
 - [ ] Open that post on a phone in the Reddit app: does the 38 MB engine load, how long does it
       take, do the thumb pads work?
 - [ ] Check the `.wasm` is accepted: the Devvit docs list "HTML/CSS/JS only" as a requirement
       and say nothing about `.wasm`. If it is refused, we need another plan quickly.
 - [ ] Check logged-out play (it should still run, just not rank).
-- [ ] Confirm `four-wheel-steer` is free as an app name (3–20 chars, lowercase, hyphens). If it
-      is taken, change `name` in `reddit/devvit.json`.
+- [x] Register the app as **`fourwd`** (`npx devvit init --force` in `reddit/`), then playtest.
+- [x] First playtest fixes (2026-11-20): less drift, Today's Circuit screen (one map + diagram),
+      picture-only How to Play, thumb pads in the browser's mobile view.
+- [ ] Re-test on Reddit after `npm run export:godot`: does the car feel planted enough now?
 
 ## 2. Daily content
 
@@ -28,11 +29,12 @@ Tick items off here as they land; the CHANGELOG has the details.
 
 - [ ] One tap from the post to the race: on Reddit, **Drive** goes straight into today's
       circuit; How to Play moves behind a "?" (the in-race hints already teach the controls).
+      (Half done: Play now opens Today's Circuit, one tap from DRIVE.)
 - [ ] Start screen (the post's splash): add the attribution ("by u/…"), today's level name and
       a small picture of the track.
 - [ ] Result card on Reddit: place on today's board ("#12 of 340"), streak, countdown to the
       next circuit, one clear next step.
-- [ ] Wording pass (for example the "->" arrows on How to Play).
+- [x] Wording pass on How to Play: now pictures and key caps, no sentences.
 - [ ] Loading time on phones: if the engine is slow, consider a smaller custom web template.
 
 ## 4. Reddit-y features
@@ -68,3 +70,4 @@ Tick items off here as they land; the CHANGELOG has the details.
 - [x] Phone layout, twin thumb pads, key-cap control hints, mute button on every screen.
 - [x] Reddit server: per-level boards, OVERALL board (sum of best times, lowest first), daily
       board, streaks.
+- [x] Handling: grip up and a traction pull, so the car stops drifting into walls.

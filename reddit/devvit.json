@@ -1,6 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "four-wheel-steer",
+  "name": "fourwd",
   "post": {
     "dir": "public",
     "entrypoints": {
@@ -46,5 +46,8 @@
   "scripts": {
     "dev": "node tools/build.mjs --watch",
     "build": "node tools/build.mjs"
+  },
+  "dev": {
+    "subreddit": "fourwd_dev"
   }
 }

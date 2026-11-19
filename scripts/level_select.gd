@@ -1,10 +1,20 @@
 extends Control
-## Grid of level cards. Unlocked ones are playable and show best time + medal;
-## locked ones are dimmed and say what to finish first. `_build()` runs again when `Layout` flips: one row
-## on a desktop window, two columns on a portrait phone.
+## Picks the circuit to race.
+##
+## Inside a Reddit post it is "Today's circuit": the one featured level of the
+## day, drawn as a diagram, with its medal times and a DRIVE button. Nothing
+## else is offered there.
+##
+## Everywhere else it is a grid of level cards. Unlocked ones are playable and
+## show best time + medal; locked ones are dimmed and say what to finish first.
+## One row on a desktop window, two columns on a portrait phone.
+##
+## `_build()` runs again when `Layout` flips, and on Reddit when the day's data
+## arrives (it can land after the engine has started).
 
 func _ready() -> void:
 	Layout.changed.connect(_rebuild)
+	Reddit.init_loaded.connect(_rebuild)
 	_build()
 
 
@@ -14,6 +24,9 @@ func _rebuild() -> void:
 
 
 func _build() -> void:
+	if Reddit.is_available():
+		_build_daily()
+		return
 	var narrow := Layout.portrait
 
 	HudStyle.add_backdrop(self)
@@ -42,6 +55,10 @@ func _build() -> void:
 	for i in Game.level_count():
 		grid.add_child(_make_card(i, narrow))
 
+	_add_back()
+
+
+func _add_back() -> void:
 	var back := Button.new()
 	back.text = "Back"
 	back.theme_type_variation = "ButtonGhost"
@@ -53,6 +70,98 @@ func _build() -> void:
 	back.offset_bottom = -24.0
 	back.pressed.connect(func(): Game.goto_menu())
 	add_child(back)
+
+
+## Reddit: today's one circuit on a glass card, the diagram beside (desktop) or
+## above (phone) its name, your best, the medal times and DRIVE.
+func _build_daily() -> void:
+	var narrow := Layout.portrait
+	HudStyle.add_backdrop(self)
+
+	var title := Label.new()
+	title.text = "TODAY'S CIRCUIT"
+	title.add_theme_font_size_override("font_size", 34 if narrow else 44)
+	HudStyle.style_title(title)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	title.offset_top = 30.0 if narrow else 44.0
+	title.offset_bottom = title.offset_top + 56.0
+	add_child(title)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.offset_top = title.offset_bottom   # keep the card clear of the title
+	center.offset_bottom = -72.0              # ... and of the Back button
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(center)
+	_add_back()
+
+	var idx := Game.daily_index()
+	if idx < 0:
+		center.add_child(_line("Loading today's circuit...", 20, Palette.TEXT_MUTED))
+		return
+	var lv := Game.get_level(idx)
+
+	var card := PanelContainer.new()
+	var card_box := HudStyle.glass(20, 0.6)
+	card_box.set_content_margin_all(18 if narrow else 24)
+	card_box.shadow_size = 24
+	card_box.shadow_offset = Vector2(0, 10)
+	card.add_theme_stylebox_override("panel", card_box)
+	center.add_child(card)
+
+	var body: BoxContainer = VBoxContainer.new() if narrow else HBoxContainer.new()
+	body.add_theme_constant_override("separation", 10 if narrow else 28)
+	card.add_child(body)
+
+	var map := TrackDiagram.new()
+	map.custom_minimum_size = Vector2(Layout.PORTRAIT_CONTENT_WIDTH - 36.0, 230) if narrow else Vector2(470, 330)
+	map.track = lv["track"]
+	body.add_child(map)
+
+	var info := VBoxContainer.new()
+	info.alignment = BoxContainer.ALIGNMENT_CENTER
+	info.add_theme_constant_override("separation", 8 if narrow else 12)
+	info.custom_minimum_size = Vector2(0, 0) if narrow else Vector2(300, 0)
+	body.add_child(info)
+
+	if Reddit.day > 0:
+		info.add_child(_chip("DAY %d" % Reddit.day, Palette.BLUE))
+	info.add_child(_line(String(lv["name"]).to_upper(), 30 if narrow else 36, Palette.TEXT))
+	info.add_child(_line("3 LAPS  ·  TOP SPEED %d" % int(lv["max_speed"]), 13 if narrow else 15, Palette.TEXT_MUTED))
+
+	var best := Game.best_time(idx)
+	if best > 0.0:
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 10)
+		row.add_child(_line("YOUR BEST  " + Game.format_time(best), 18 if narrow else 22, Palette.TEXT))
+		var medal := Game.best_medal(idx)
+		if medal != Game.MEDAL_NONE:
+			row.add_child(_chip(medal.to_upper(), _medal_color(medal)))
+		info.add_child(row)
+
+	# The three medal targets as coloured chips: what to aim for.
+	var medals := HBoxContainer.new()
+	medals.alignment = BoxContainer.ALIGNMENT_CENTER
+	medals.add_theme_constant_override("separation", 8)
+	for m in [Game.MEDAL_GOLD, Game.MEDAL_SILVER, Game.MEDAL_BRONZE]:
+		medals.add_child(_chip("%s %s" % [m.to_upper(), _short_time(float(lv[m]))], _medal_color(m)))
+	info.add_child(medals)
+
+	var drive := Button.new()
+	drive.text = "DRIVE"   # gold primary CTA (theme default)
+	drive.custom_minimum_size = Vector2(260, 60)
+	drive.add_theme_font_size_override("font_size", 28)
+	drive.pressed.connect(func(): Game.start_level(idx))
+	var drive_wrap := CenterContainer.new()
+	drive_wrap.add_child(drive)
+	info.add_child(drive_wrap)
+
+
+## "1:20" (minutes:seconds), short enough for a chip.
+func _short_time(seconds: float) -> String:
+	return "%d:%02d" % [int(seconds) / 60, int(seconds) % 60]
 
 
 ## One level as a raised card: name, top speed, then the best time and a medal
@@ -82,9 +191,6 @@ func _make_card(idx: int, narrow: bool) -> Button:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(box)
 
-	# Inside a Reddit post, one level a day is the Daily Circuit.
-	if Reddit.daily_level_id == Game.level_id(idx):
-		box.add_child(_chip("TODAY", Palette.BLUE))
 	box.add_child(_line(String(lv["name"]).to_upper(), 20 if narrow else 22, Palette.TEXT if open else Palette.TEXT_DIM))
 	box.add_child(_line("TOP SPEED %d" % int(lv["max_speed"]), 11 if narrow else 12, Palette.TEXT_MUTED if open else Palette.TEXT_DIM))
 	if not open:

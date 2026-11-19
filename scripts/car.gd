@@ -5,6 +5,9 @@ extends CharacterBody2D
 ## steering that stiffens with speed, tyre grip you can overdrive into a slide or
 ## spin, and a handbrake that breaks the REAR loose. At very low speed it blends
 ## to a kinematic steer so parking stays stable (no spin-in-place / phantom slide).
+## A `traction` pull keeps the slide small: each frame the sideways speed is
+## eased toward what the wheel angles ask for, so the car goes where its wheels
+## point (the handbrake keeps most of its drift).
 ##
 ## Convention (unchanged): rotation = 0 means the car points UP.
 ##   forward = Vector2.from_angle(rotation - PI/2),  right = Vector2.from_angle(rotation)
@@ -40,9 +43,16 @@ signal wall_touched
 
 # --- Tyres (the heart of the feel) -----------------------------------------
 @export var cornering_stiffness_front: float = 3500.0
-@export var cornering_stiffness_rear: float = 3100.0  # < front => slightly tail-happy
-@export var grip_accel: float = 520.0          # max lateral accel before the tyre slides
+@export var cornering_stiffness_rear: float = 4200.0  # > front => the tail stays planted
+@export var grip_accel: float = 800.0          # max lateral accel before the tyre slides
 @export_range(0, 1) var handbrake_rear_grip: float = 0.15  # rear grip multiplier on handbrake
+# How fast a sideways slide is pulled back toward the line the wheels point
+# along (1/s). 0 = pure tyre model (slides a lot); higher = more planted.
+# 2026-11-20: grip 520 -> 800, rear 3100 -> 4200 and traction 0 -> 6 (the user
+# found the car drifted into the walls). A driver bot lapping all five levels
+# the same way hit walls 26 -> 9 times and lapped faster on every level.
+@export var traction: float = 6.0
+@export_range(0, 1) var handbrake_traction: float = 0.2    # share of traction kept on the handbrake
 
 # --- Steering --------------------------------------------------------------
 @export var steer_sensitivity: float = 6.0     # radians/sec the wheels turn (snappier turn-in)
@@ -266,6 +276,14 @@ func _physics_process(delta: float) -> void:
 	# --- Integrate body-frame velocity ---
 	vx += (ax_drive + vy * omega - rolling_resistance * vx - drag * vx * absf(vx)) * delta
 	vy += (ay_drive + ayf + ayr - vx * omega) * delta
+
+	# --- Traction: pull the sideways speed toward the no-slip value the wheel
+	#     angles ask for (zero when pivoting, vx*tan when crabbing), so the car
+	#     goes where its wheels point instead of sliding wide. Much weaker on the
+	#     handbrake, which keeps its drift. ---
+	var vy_track := vx * (lr * tan(front_steer) + lf * tan(rear_steer)) / wheelbase
+	var hold := traction * grip_scale * (handbrake_traction if handbrake else 1.0)
+	vy = lerpf(vy, vy_track, 1.0 - exp(-hold * delta))
 
 	# --- Yaw: dynamic tyre moment at speed, kinematic steer geometry when slow ---
 	var moment := lf * ayf - lr * ayr

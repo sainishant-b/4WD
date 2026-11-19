@@ -14,6 +14,8 @@ extends CanvasLayer
 ##
 ## Godot's own Controls follow a single pointer, which cannot steer two axles
 ## at once; hence the raw InputEventScreenTouch / ScreenDrag handling here.
+## A real mouse works too, as one more finger (one pad at a time), so the pads
+## can be tried in a desktop browser's mobile view.
 ## Shown only while `Layout.touch` is true. game.gd calls `set_enabled(false)`
 ## while the race is paused or finished.
 
@@ -26,6 +28,7 @@ const DOWN_AT := 0.5           # pull at least this far down to count as "down"
 const BOOST_AT := 0.85         # both pads at least this far up = boost
 const ZONE_TOP := 0.42         # the pads own the screen below this fraction of its height
 const EDGE_MARGIN := 18.0
+const MOUSE_FINGER := 1000     # finger index given to a real mouse (touch indices are small)
 
 
 class Pad:
@@ -93,6 +96,16 @@ func _input(event: InputEvent) -> void:
 			_release(event.index)
 	elif event is InputEventScreenDrag:
 		_drag(event.index, event.position)
+	# Mouse events copied from a touch carry DEVICE_ID_EMULATION; only a real
+	# mouse counts here, or every touch would press a pad twice.
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT \
+			and event.device != InputEvent.DEVICE_ID_EMULATION:
+		if event.pressed:
+			_press(MOUSE_FINGER, event.position)
+		else:
+			_release(MOUSE_FINGER)
+	elif event is InputEventMouseMotion and event.device != InputEvent.DEVICE_ID_EMULATION:
+		_drag(MOUSE_FINGER, event.position)
 
 
 func _press(finger: int, pos: Vector2) -> void:

@@ -24,3 +24,7 @@
 .DS_Store
 Thumbs.db
 *.tmp
+
+# Local environment files (Devvit can write one into reddit/)
+.env
+.env.*

@@ -253,8 +253,18 @@ func record_result(idx: int, total: float, lap: float) -> String:
 	return medal
 
 
+## Inside a Reddit post the game is one circuit a day, so there is no next level.
 func has_next_level(idx: int) -> bool:
-	return idx + 1 < LEVELS.size()
+	return idx + 1 < LEVELS.size() and not Reddit.is_available()
+
+
+## Slot of today's featured circuit inside a Reddit post, or -1 (not on Reddit,
+## or the day's data has not arrived yet).
+func daily_index() -> int:
+	for i in LEVELS.size():
+		if level_id(i) == Reddit.daily_level_id:
+			return i
+	return -1
 
 
 # --- Settings --------------------------------------------------------------

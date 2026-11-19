@@ -127,10 +127,20 @@ func _run() -> void:
 	_check("the phone layout keeps the same boards", current_scene._boards.size() == game.level_count() + 1)
 
 	print("level select")
-	root.size = Vector2i(1280, 720)
-	change_scene_to_file("res://scenes/LevelSelect.tscn")
-	await _frames(4)
-	_check("level select builds a card per level", current_scene.find_children("*", "Button", true, false).size() >= game.level_count())
+	var diagram_script := load("res://scripts/track_diagram.gd")
+	for size in [Vector2i(1280, 720), Vector2i(390, 760)]:
+		root.size = size
+		change_scene_to_file("res://scenes/LevelSelect.tscn")
+		await _frames(4)
+		var maps: Array = current_scene.find_children("*", "Control", true, false).filter(
+			func(n: Node) -> bool: return n.get_script() == diagram_script)
+		var buttons: Array = current_scene.find_children("*", "Button", true, false)
+		var texts: Array = buttons.map(func(b: Button) -> String: return b.text)
+		_check("on Reddit (%dx%d) it shows only today's circuit, as a diagram" % [size.x, size.y],
+			maps.size() == 1 and maps[0].track == game.get_level(1)["track"], "maps=%d" % maps.size())
+		_check("... with DRIVE and Back, and no other level", texts.size() == 2 and "DRIVE" in texts
+			and "Back" in texts, str(texts))
+	_check("a finished daily circuit offers no next level", not game.has_next_level(1))
 
 	print("mute")
 	var was_muted: bool = game.is_muted()
@@ -145,6 +155,13 @@ func _run() -> void:
 	_check("the setting was put back", game.is_muted() == was_muted and AudioServer.is_bus_mute(0) == bus_before)
 
 	reddit.transport = Callable()
+	reddit.daily_level_id = -1
+	root.size = Vector2i(1280, 720)
+	change_scene_to_file("res://scenes/LevelSelect.tscn")
+	await _frames(4)
+	_check("off Reddit, level select builds a card per level",
+		current_scene.find_children("*", "Button", true, false).size() >= game.level_count() + 1)
+	_check("... and a finished level offers the next one", game.has_next_level(0))
 	print("")
 	print("RESULT: ", "ALL PASSED" if _failures == 0 else "%d FAILED" % _failures)
 	quit(1 if _failures > 0 else 0)

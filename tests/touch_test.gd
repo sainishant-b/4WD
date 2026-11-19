@@ -52,6 +52,33 @@ func _drag(index: int, pos: Vector2) -> void:
 	Input.parse_input_event(e)
 
 
+## A real mouse (device 0), not one copied from a touch.
+func _mouse(pos: Vector2, pressed: bool) -> void:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.position = root.get_final_transform() * pos
+	e.global_position = e.position
+	e.pressed = pressed
+	Input.parse_input_event(e)
+
+
+func _mouse_move(pos: Vector2) -> void:
+	var e := InputEventMouseMotion.new()
+	e.position = root.get_final_transform() * pos
+	e.global_position = e.position
+	e.button_mask = MOUSE_BUTTON_MASK_LEFT
+	Input.parse_input_event(e)
+
+
+func _key(code: Key) -> void:
+	for down in [true, false]:
+		var e := InputEventKey.new()
+		e.keycode = code
+		e.physical_keycode = code
+		e.pressed = down
+		Input.parse_input_event(e)
+
+
 func _state() -> String:
 	return "front=%.2f rear=%.2f thr=%.2f boost=%s hb=%s" % [
 		_input_state.touch_front, _input_state.touch_rear, _input_state.touch_throttle,
@@ -210,9 +237,40 @@ func _run() -> void:
 	_check("a tall window switches to the portrait base", _layout.portrait
 		and root.content_scale_size == Vector2i(430, 760), "scale_size=%s" % root.content_scale_size)
 	_check("portrait logical size is at least 430 x 760", view.x >= 429.0 and view.y >= 759.0, "view=%s" % view)
+
+	print("mouse in a phone-shaped window (a desktop browser's mobile view)")
+	_key(KEY_X)
+	await _frames(2)
+	_check("a key press goes back to keyboard mode and hides the pads", not _layout.touch and not touch_layer.visible)
+	_mouse(Vector2(view.x * 0.5, 200), true)
+	_mouse(Vector2(view.x * 0.5, 200), false)
+	await _frames(2)
+	_check("a mouse click in a portrait window shows the pads", _layout.touch and touch_layer.visible)
+	var pad_at := Vector2(100, view.y - 120)
+	_mouse(pad_at, true)
+	_mouse_move(pad_at + Vector2(TRAVEL * 0.6, -TRAVEL * 1.2))
+	await _frames(2)
+	_check("the mouse drags a pad like a thumb", _near(_input_state.touch_front, (0.6 - 0.1) / 0.9)
+		and _near(_input_state.touch_throttle, 1.0), _state())
+	_mouse(pad_at, false)
+	await _frames(2)
+	_check("letting go of the mouse releases the pad", _near(_input_state.touch_front, 0)
+		and _near(_input_state.touch_throttle, 0), _state())
+	_touch(5, pad_at, true)
+	await _frames(2)
+	_check("a touch is not counted twice (its copied mouse event is ignored)",
+		touch_layer._pads[0].finger == 5, "finger=%d" % touch_layer._pads[0].finger)
+	_touch(5, pad_at, false)
+
 	root.size = Vector2i(1280, 720)
 	await _frames(4)
 	_check("a wide window switches back", not _layout.portrait and root.content_scale_size == Vector2i(1280, 720))
+	_key(KEY_X)
+	await _frames(2)
+	_mouse(Vector2(640, 600), true)
+	_mouse(Vector2(640, 600), false)
+	await _frames(2)
+	_check("a mouse click in a wide window stays in keyboard mode", not _layout.touch)
 
 	print("menus rebuild in both layouts")
 	for scene in ["MainMenu", "Instructions", "LevelSelect", "Leaderboard"]:

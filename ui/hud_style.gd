@@ -138,8 +138,12 @@ static func rim() -> Texture2D:
 ## The controls as rows of "cap + action" pairs, `per_row` pairs to a row, in
 ## the bold display face. Keyboard keys are drawn as key caps; touch gestures
 ## as little thumb pads (two = both pads, in the pads' own blue and gold).
-static func controls_legend(touch: bool, per_row: int, font_size: int) -> Control:
-	var entries: Array = TOUCH_LEGEND if touch else KEYBOARD_LEGEND
+## Actions named in `omit` (e.g. "FRONT") are left out.
+static func controls_legend(touch: bool, per_row: int, font_size: int, omit: Array = []) -> Control:
+	var entries: Array = []
+	for entry in (TOUCH_LEGEND if touch else KEYBOARD_LEGEND):
+		if not omit.has(entry[1]):
+			entries.append(entry)
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 8)
 	rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -159,7 +163,7 @@ static func controls_legend(touch: bool, per_row: int, font_size: int) -> Contro
 			var tint := Palette.TEXT_MUTED
 			if touch and caps.size() > 1:
 				tint = Palette.BLUE if k == 0 else Palette.GOLD
-			pair.add_child(_cap(String(caps[k]), font_size, touch, tint))
+			pair.add_child(cap(String(caps[k]), font_size, touch, tint))
 		var action := Label.new()
 		action.text = String(entries[i][1])
 		action.add_theme_font_size_override("font_size", font_size)
@@ -172,10 +176,11 @@ static func controls_legend(touch: bool, per_row: int, font_size: int) -> Contro
 
 
 ## One cap of the legend: a key cap with its front face (keyboard) or a round
-## thumb pad ringed in `tint` (touch), holding a letter or a drawn arrow.
-static func _cap(token: String, font_size: int, round_pad: bool, tint: Color) -> Control:
-	var cap := PanelContainer.new()
-	cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+## thumb pad ringed in `tint` (touch), holding a letter or a drawn arrow
+## ("<" ">" "^" "v", or "<>" for a pad slid either way).
+static func cap(token: String, font_size: int, round_pad: bool, tint: Color) -> Control:
+	var key := PanelContainer.new()
+	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()
 	sb.anti_aliasing = true
 	if round_pad:
@@ -194,27 +199,32 @@ static func _cap(token: String, font_size: int, round_pad: bool, tint: Color) ->
 		sb.content_margin_right = 7.0
 		sb.content_margin_top = 1.0
 		sb.content_margin_bottom = 3.0
-	cap.add_theme_stylebox_override("panel", sb)
+	key.add_theme_stylebox_override("panel", sb)
 
-	var arrows := {"<": Vector2.LEFT, ">": Vector2.RIGHT, "^": Vector2.UP, "v": Vector2.DOWN}
+	var arrows := {
+		"<": [Vector2.LEFT], ">": [Vector2.RIGHT], "^": [Vector2.UP], "v": [Vector2.DOWN],
+		"<>": [Vector2.LEFT, Vector2.RIGHT],
+	}
 	if arrows.has(token):
-		var dir: Vector2 = arrows[token]
+		var dirs: Array = arrows[token]
 		var icon := Control.new()
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var side := font_size + 10.0
 		icon.custom_minimum_size = Vector2(side, side) if round_pad else Vector2(font_size, font_size * 1.3)
 		icon.draw.connect(func() -> void:
-			var c := icon.size * 0.5
-			var r := font_size * 0.32
-			var across := Vector2(-dir.y, dir.x)
-			var pts := PackedVector2Array([
-				c + dir * r, c - dir * r * 0.8 + across * r, c - dir * r * 0.8 - across * r,
-			])
-			icon.draw_colored_polygon(pts, Palette.TEXT)
-			pts.append(pts[0])
-			icon.draw_polyline(pts, Palette.TEXT, 1.0, true)
+			var r := font_size * (0.22 if dirs.size() > 1 else 0.32)
+			for dir: Vector2 in dirs:
+				# A pair of arrows sits apart, one either side of the middle.
+				var c := icon.size * 0.5 + (dir * font_size * 0.36 if dirs.size() > 1 else Vector2.ZERO)
+				var across := Vector2(-dir.y, dir.x)
+				var pts := PackedVector2Array([
+					c + dir * r, c - dir * r * 0.8 + across * r, c - dir * r * 0.8 - across * r,
+				])
+				icon.draw_colored_polygon(pts, Palette.TEXT)
+				pts.append(pts[0])
+				icon.draw_polyline(pts, Palette.TEXT, 1.0, true)
 		)
-		cap.add_child(icon)
+		key.add_child(icon)
 	else:
 		var letter := Label.new()
 		letter.text = token
@@ -223,8 +233,8 @@ static func _cap(token: String, font_size: int, round_pad: bool, tint: Color) ->
 		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		style_panel_label(letter, Palette.TEXT)
-		cap.add_child(letter)
-	return cap
+		key.add_child(letter)
+	return key
 
 
 ## Draws a soft round glow (or, with a dark colour, a soft shadow) on `item`.

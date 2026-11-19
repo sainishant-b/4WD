@@ -22,8 +22,11 @@ const PORTRAIT_CONTENT_WIDTH := 398.0
 
 ## True when the window is taller than it is wide.
 var portrait: bool = false
-## True while the player is on a touchscreen. Fixed on phones; on other devices
-## it follows whichever of touch or keyboard was used last.
+## True while the thumb pads are in use (shown, and named in the hints). Fixed
+## on phones. Elsewhere it starts on in a browser that reports a touchscreen,
+## turns on with a touch, or with a mouse click in a phone-shaped window (a
+## desktop browser's mobile view, where the mouse then drives the pads), and
+## turns off again when a key is pressed.
 var touch: bool = false
 
 var _touch_only: bool = false
@@ -33,7 +36,7 @@ func _ready() -> void:
 	_touch_only = (
 		OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
 	)
-	touch = _touch_only
+	touch = _touch_only or (OS.has_feature("web") and DisplayServer.is_touchscreen_available())
 	get_tree().root.size_changed.connect(_fit)
 	_fit()
 
@@ -42,11 +45,19 @@ func _input(event: InputEvent) -> void:
 	if _touch_only:
 		return
 	if event is InputEventScreenTouch and not touch:
-		touch = true
-		changed.emit()
+		_set_touch(true)
+	elif (
+		event is InputEventMouseButton and event.pressed and portrait and not touch
+		and event.device != InputEvent.DEVICE_ID_EMULATION   # a real mouse, not a touch
+	):
+		_set_touch(true)
 	elif event is InputEventKey and event.pressed and touch:
-		touch = false
-		changed.emit()
+		_set_touch(false)
+
+
+func _set_touch(on: bool) -> void:
+	touch = on
+	changed.emit()
 
 
 ## Logical size of the screen right now.

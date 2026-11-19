@@ -2,6 +2,46 @@
 
 Running history of major changes. Newest on top. See `CLAUDE.md` for when to add an entry.
 
+## 2026-11-20
+
+- **Less drift, one circuit a day on Reddit, a picture-only How to Play, pads in mobile view.**
+  *Why:* the user's first playtest on Reddit: the car drifted into the walls, the level screen
+  offered Level 1 and Level 4 instead of just today's map, How to Play had too many words, and
+  the thumb pads never appeared in the browser's mobile view.
+  - **Handling** (`scripts/car.gd`): tyre grip 520 -> 800, rear cornering stiffness 3100 -> 4200
+    (now stiffer than the front, so the tail stays planted), and a new `traction` pull (6/s) that
+    eases the sideways speed toward what the wheel angles ask for, so the car goes where its
+    wheels point. Crab-walk and the pivot still work (the pull aims at their own no-slip motion),
+    and the handbrake keeps 20% of the pull (`handbrake_traction`), so its drift stays. Measured
+    with a scratch probe at top speed: steering front and rear opposite ways slid 42% sideways
+    on average before, 28% after. A driver bot lapping all five levels the same careful way
+    touched the walls 26 times before and 9 after, and lapped 0.7-5 s faster on every level.
+  - **Reddit: Today's Circuit.** Inside a Reddit post, Play now opens one screen with only the
+    day's level: a diagram of the circuit (new `TrackDiagram` control, `scripts/track_diagram.gd`),
+    "DAY n", its name, top speed, your best, the three medal times as chips, and DRIVE. The grid of
+    five levels is shown only outside Reddit. `Game.has_next_level()` is false on Reddit, so the
+    results card offers no "Next"; `Game.daily_index()` finds today's slot. The screen rebuilds
+    when the day's data arrives (`Reddit.init_loaded`).
+  - **How to Play** (`scripts/instructions.gd`): the three sentences are gone. Four glass tiles
+    (FRONT, REAR, SPIN TURN, SIDEWAYS), each a car with the steered wheels lit, its key caps (or
+    blue/gold thumb pads on touch) and a one- or two-word name; then three red pips with
+    "3 WALL HITS = OUT"; then the other controls as caps. `HudStyle.cap()` (was `_cap`) draws one
+    cap and knows a new "<>" token (a pad slid either way); `controls_legend()` takes an `omit`
+    list.
+  - **Thumb pads in mobile view** (`scripts/layout.gd`, `scripts/touch_controls.gd`): the pads
+    used to appear only after a real touch, and a desktop browser's mobile view sends mouse
+    clicks, so they never came up. Now touch mode also starts on in a browser that reports a
+    touchscreen, and turns on when a phone-shaped window is clicked with a real mouse; the mouse
+    then drags a pad like a thumb (one pad at a time). Mouse events Godot copies from a touch are
+    ignored, so a touch never counts twice.
+  - **Tests:** `touch_test.gd` +6 (mouse in a portrait window, a wide window stays keyboard, no
+    double-counted touch), `leaderboard_test.gd` now checks the Reddit screen (one diagram of
+    today's level, only DRIVE and Back, no next level) and the five-card grid off Reddit.
+    `capture_screens.gd` also shoots Today's Circuit. All pass. Not verified: how the new grip
+    feels to a person, or the pads on a real phone inside Reddit.
+  - Also: the app is registered as **`fourwd`** (`reddit/devvit.json`, `package.json`; `devvit
+    init` added `"license"` and the `dev.subreddit` playtest setting).
+
 ## 2026-11-17
 
 - **Mute button, shaded menus, a Reddit leaderboard, harder Levels 3-5.** *Why:* the user's

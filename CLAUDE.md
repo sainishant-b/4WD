@@ -60,9 +60,11 @@ entry. When in doubt, add one — short is fine.
   hidden multiplayer), `lobby.gd` (hidden host/join UI), `track_builder.gd` (waypoints → smooth
   centre line → road ribbon mesh/walls/gates, plus optional obstacles), `cone.gd`/`ramp.gd`
   (obstacles; unused since no level has any), `hud.gd` (HUD + results/game over/pause),
-  `minimap.gd` (HUD mini map `_draw()`),
+  `minimap.gd` (HUD mini map `_draw()`), `track_diagram.gd` (`TrackDiagram`: a whole circuit
+  drawn for menus, used by Reddit's Today's Circuit screen),
   `speedometer.gd` (radial speed gauge `_draw()`), `checkpoint.gd`, `main_menu.gd`, `instructions.gd`,
-  `level_select.gd`, `engine_audio.gd`, `touch_controls.gd` (multi-touch twin thumb pads),
+  `level_select.gd` (on Reddit: Today's Circuit, the one daily level; elsewhere the level grid),
+  `engine_audio.gd`, `touch_controls.gd` (multi-touch twin thumb pads; a real mouse works too),
   `layout.gd` (`Layout` autoload).
 - `tests/` — `.gdignore`d (never exported). `touch_test.gd` feeds real multi-touch events into the
   race scene headlessly: `godot --headless --fixed-fps 60 --path . -s tests/touch_test.gd`. Run it
@@ -101,6 +103,9 @@ entry. When in doubt, add one — short is fine.
 - **Three strikes** (the user's rule): each new wall touch in a race is counted; touches 1-2 warn,
   touch 3 (`game.gd` `MAX_WALL_TOUCHES`) is GAME OVER with nothing saved. `car.gd` merges a scrape
   or bounce into one touch. Single-player only.
+- **Reddit = one circuit a day** (the user asked): inside a Reddit post the level screen shows
+  only today's level (`Game.daily_index()`, from `Reddit.daily_level_id`) with its diagram and
+  DRIVE, and `Game.has_next_level()` is false. The five-level progression is for desktop/Android.
 - **Levels have permanent ids** (`LEVELS[i]["id"]`, `Game.level_id()`): `save.json` records and the
   leaderboard are keyed by id, not slot, so reordering levels never moves a time to another track.
   A new track takes the next unused id; never renumber. A level is unlocked when the level before
@@ -135,6 +140,13 @@ the user's own design; don't change the gestures without asking.
 
 - Godot 4.x, GDScript with tabs for indentation; type hints where practical.
 - Car convention: `rotation = 0` points **up**; forward = `Vector2.from_angle(rotation - PI/2)`.
+- **Keep the car planted** (the user found it drifted into walls): `car.gd` `traction` pulls the
+  sideways slide toward the wheels' no-slip motion; grip 800, rear stiffer than front. Don't
+  loosen these without asking. The handbrake is the drift button.
+- **Touch mode** (`Layout.touch`, shows the pads): phones always; elsewhere a touchscreen browser
+  at start, any touch, or a real-mouse click in a portrait window turns it on, a key press turns
+  it off. Ignore mouse events with `device == InputEvent.DEVICE_ID_EMULATION` (copied from
+  touches) anywhere a mouse is handled, or a touch counts twice.
 - Tunable feel lives in `@export` vars on the Car node (mirrors the original physics constants).
 - **Track waypoints are a guide, not the exact road.** `TrackBuilder.centerline()` splines them
   (centripetal Catmull-Rom), resamples to 10 px, and relaxes any bend tighter than half the road
@@ -151,8 +163,9 @@ the user's own design; don't change the gestures without asking.
   from `Palette.*` and let the project theme style Controls. For button intent use
   `theme_type_variation`: `""`/gold = primary, `ButtonSecondary` = blue, `ButtonGhost` = outline,
   `ButtonDanger` = red. Dialogs use the scrim + centered `PanelContainer` (`PanelModal`) pattern.
-- **Instructions are bold and visual** (the user asked): controls are shown as key caps / pad
-  icons in the display face, not as a sentence. Body copy (`LabelBody`) uses the emboldened Barlow
+- **Instructions are bold and visual** (the user asked twice): How to Play is pictures + key caps
+  / pad icons + one or two words each, no sentences. Controls are shown as key caps / pad icons
+  in the display face (`HudStyle.cap()`, `controls_legend()`), not as a sentence. Body copy (`LabelBody`) uses the emboldened Barlow
   from the theme; don't set thin body text on the dark background.
 - **In-race HUD = glass.** Readouts go on `HudStyle.glass()` panels with
   `HudStyle.style_panel_label` (no outline); text straight over the track uses

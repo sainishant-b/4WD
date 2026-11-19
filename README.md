@@ -54,14 +54,18 @@ smooth edges come from anti-aliased lines and circles, not a project setting. Sc
 | **Esc / P** | pause (Resume / Restart / Menu) |
 
 Restart and "next level" are on the pause and results screens. During a race the same list sits
-under the top row as a strip of **key caps** (thumb-pad icons on touch); on How to Play too. It is
-built by `HudStyle.controls_legend()` in `ui/hud_style.gd`.
+under the top row as a strip of **key caps** (thumb-pad icons on touch). It is built by
+`HudStyle.controls_legend()` in `ui/hud_style.gd`. **How to Play** is pictures, not sentences: four
+tiles (FRONT, REAR, SPIN TURN, SIDEWAYS), each a little car with its wheels turned, the keys or
+pads that do it and its name, then "3 WALL HITS = OUT" and the rest of the controls as key caps.
 
 ### Controls (touch)
 
-Two thumb pads appear at the bottom of the screen on a phone (or on any device the moment you
-touch the screen; pressing a key hides them again). A pad re-centres under your thumb wherever it
-lands in its half of the lower screen, so every gesture is relative to where you touched.
+Two thumb pads appear at the bottom of the screen on a phone, in a browser that reports a
+touchscreen, on any device the moment you touch the screen, or when you click a phone-shaped window
+with the mouse (a desktop browser's mobile view; the mouse then drags one pad at a time). Pressing
+a key hides them again. A pad re-centres under your thumb wherever it lands in its half of the
+lower screen, so every gesture is relative to where you touched.
 
 | Gesture | Action |
 |---------|--------|
@@ -91,7 +95,8 @@ the window is resized across the two.
   small circle.
 - **Handbrake slide:** carry speed into a corner and tap **Space** → the rear breaks loose for
   a drift; overcook the entry and it'll spin. The handling is **sim-ish** — momentum, weight,
-  and grip you can overdrive. Drifts lay **skid marks** and kick up **dust**; wall hits **shake**
+  and grip you can overdrive, though without the handbrake the car stays planted and goes where
+  its wheels point. Drifts lay **skid marks** and kick up **dust**; wall hits **shake**
   the screen.
 - **Boost:** hold **Shift** (or push both thumb pads fully up) on a straight to burst past your normal top
   speed; it drains the boost meter, refills when you let off, and the camera pulls out as you surge.
@@ -110,8 +115,12 @@ the window is resized across the two.
   close together two waypoints are. `godot --headless --path . -s tests/track_test.gd` checks it
   on every track.
 - **5 levels**, each a **3-lap race**, unlocked in order (a level opens once the one before it
-  has been finished; inside a Reddit post the day's featured level is always open). Difficulty
-  rises level by level: the road narrows and the top speed climbs from Level 3 on.
+  has been finished). Difficulty rises level by level: the road narrows and the top speed climbs
+  from Level 3 on.
+- **Inside a Reddit post it is one circuit a day.** Play opens **Today's Circuit**: that day's
+  level drawn as a diagram (`scripts/track_diagram.gd`: the road at true proportions, the
+  chequered start line, a gold arrow for the direction), its medal times and a **DRIVE** button.
+  No other level is offered there, and the results card has no "Next".
 
   | Level | Road | Top speed | Character |
   |---|---|---|---|
@@ -242,8 +251,9 @@ npm run dev            # devvit playtest: uploads and installs to your test subr
 ```
 
 The touch controls have their own headless test, run from the project root:
-`godot --headless --fixed-fps 60 --path . -s tests/touch_test.gd` (31 checks: steering, throttle,
-boost, drift, brake, pause, and the portrait/landscape switch). The track geometry has one too:
+`godot --headless --fixed-fps 60 --path . -s tests/touch_test.gd` (37 checks: steering, throttle,
+boost, drift, brake, pause, the portrait/landscape switch, and the mouse driving the pads in a
+phone-shaped window). The track geometry has one too:
 `godot --headless --path . -s tests/track_test.gd` (no folded edges, no over-tight bends, the
 road never running into itself, and gates and start slot on the road, for all 5 levels and the
 multiplayer track). And the rules:
@@ -271,6 +281,8 @@ The handling is a **sim-ish slip-angle (bicycle) model** in `scripts/car.gd`. Se
 
 - **Grip / slide:** `grip_accel` (cornering grip before the tyre slides),
   `cornering_stiffness_front` / `cornering_stiffness_rear` (lower rear = more oversteer),
+  `traction` (how fast a sideways slide is pulled back toward where the wheels point; 0 = slides
+  freely), `handbrake_traction` (the share of that kept on the handbrake),
   `handbrake_rear_grip` (how far the handbrake frees the rear).
 - **Weight:** `yaw_inertia` (higher = heavier, slower rotation), `rolling_resistance` / `drag`
   (coast-down).

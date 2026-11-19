@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "four-wheel-steer",
+  "name": "fourwd",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
@@ -24,5 +24,6 @@
     "@types/node": "22.20.5",
     "esbuild": "0.28.2",
     "typescript": "7.0.2"
-  }
+  },
+  "license": "BSD-3-Clause"
 }
