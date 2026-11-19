@@ -86,7 +86,11 @@ entry. When in doubt, add one — short is fine.
   script/style, so never ship Godot's stock `index.html`, and never call `JavaScriptBridge.eval`;
   talk to the page through `JavaScriptBridge.get_interface("FWS")`. After changing the Godot
   project, re-run `npm run export:godot` in `reddit/`. See README "Run it on Reddit".
-- `docs/CHANGELOG.md` — running history of changes.
+- `docs/CHANGELOG.md` — running history of changes. `docs/TODO.md` — the hackathon to-do list
+  (tick items off as they land; the user's own direction for the daily maps is still to come).
+- **Git**: tracked at https://github.com/sainishant-b/4WD (public, branch `main`). Old exported
+  builds in the root (`Four Wheel Steer.*`), `.godot/`, `.claude/`, `node_modules` and the
+  generated web build in `reddit/public` are git-ignored; commit source, docs and tests only.
 - Flow: `MainMenu → LevelSelect → Main (race) → Results`. Each race is a **3-lap circuit** built
   from the level's own `track` (`game_data.gd` `TRACK_1`..`TRACK_5`). **5 levels**: L1 flowing,
   L2 tight/twisty, L3 narrow esses, **L4-5 hairpin circuits** (the hardest). The user removed the
