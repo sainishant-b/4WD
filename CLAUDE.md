@@ -90,6 +90,7 @@ entry. When in doubt, add one — short is fine.
   project, re-run `npm run export:godot` in `reddit/`. See README "Run it on Reddit".
 - `docs/CHANGELOG.md` — running history of changes. `docs/TODO.md` — the hackathon to-do list
   (tick items off as they land; the user's own direction for the daily maps is still to come).
+  `docs/DEVPOST.md` — the draft submission text. `reddit/README.md` — player-facing first.
 - **Git**: tracked at https://github.com/sainishant-b/4WD (public, branch `main`). Old exported
   builds in the root (`Four Wheel Steer.*`), `.godot/`, `.claude/`, `node_modules` and the
   generated web build in `reddit/public` are git-ignored; commit source, docs and tests only.
@@ -106,6 +107,10 @@ entry. When in doubt, add one — short is fine.
 - **Reddit = one circuit a day** (the user asked): inside a Reddit post the level screen shows
   only today's level (`Game.daily_index()`, from `Reddit.daily_level_id`) with its diagram and
   DRIVE, and `Game.has_next_level()` is false. The five-level progression is for desktop/Android.
+  The game opens straight on Today's Circuit there (`main_menu.gd`, once per load via
+  `Reddit.start_handled`); How to Play is behind its button, never forced. The post's splash
+  draws today's track from `reddit/src/client/tracks.ts`, generated from the game by
+  `reddit/tools/track-shapes.gd` (run by `npm run export:godot`); never edit it by hand.
 - **Levels have permanent ids** (`LEVELS[i]["id"]`, `Game.level_id()`): `save.json` records and the
   leaderboard are keyed by id, not slot, so reordering levels never moves a time to another track.
   A new track takes the next unused id; never renumber. A level is unlocked when the level before

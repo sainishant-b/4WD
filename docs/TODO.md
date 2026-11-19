@@ -11,8 +11,8 @@ Tick items off here as they land; the CHANGELOG has the details.
 - [x] `cd reddit`, `npx devvit login`, then `npm run dev` (playtest). It runs on Reddit (2026-11-20).
 - [ ] Open that post on a phone in the Reddit app: does the 38 MB engine load, how long does it
       take, do the thumb pads work?
-- [ ] Check the `.wasm` is accepted: the Devvit docs list "HTML/CSS/JS only" as a requirement
-      and say nothing about `.wasm`. If it is refused, we need another plan quickly.
+- [x] Check the `.wasm` is accepted: the playtest runs the engine on Reddit (2026-11-20).
+      Re-check after `npm run upload` in case review treats it differently.
 - [ ] Check logged-out play (it should still run, just not rank).
 - [x] Register the app as **`fourwd`** (`npx devvit init --force` in `reddit/`), then playtest.
 - [x] First playtest fixes (2026-11-20): less drift, Today's Circuit screen (one map + diagram),
@@ -27,11 +27,11 @@ Tick items off here as they land; the CHANGELOG has the details.
 
 ## 3. UX and polish
 
-- [ ] One tap from the post to the race: on Reddit, **Drive** goes straight into today's
-      circuit; How to Play moves behind a "?" (the in-race hints already teach the controls).
-      (Half done: Play now opens Today's Circuit, one tap from DRIVE.)
-- [ ] Start screen (the post's splash): add the attribution ("by u/…"), today's level name and
-      a small picture of the track.
+- [x] One tap from the post to the race: on Reddit the game opens on Today's Circuit (DRIVE
+      is one tap); How to Play sits behind its "?" button and is never forced there.
+- [x] Start screen (the post's splash): today's level name and a picture of the track (from
+      the game's own shapes, `src/client/tracks.ts`). Fits a 512 px post.
+- [ ] Attribution on the splash ("by u/…"): needs Nishant's Reddit username.
 - [x] Result card on Reddit: place on today's board ("#12 of 340"), streak, countdown to the
       next circuit, one clear next step (Leaderboard -> the new TODAY board). 2026-11-20.
 - [x] Wording pass on How to Play: now pictures and key caps, no sentences.
@@ -39,25 +39,29 @@ Tick items off here as they land; the CHANGELOG has the details.
 
 ## 4. Reddit-y features
 
-- [ ] Devvit Journeys events: post viewed, game started, race started, lap, wall hit, game
-      over, finish, leaderboard opened. (Read the Journeys docs first.)
-- [ ] "Post my time" as a comment on the day's post, or a "join the subreddit" prompt. Check
-      what Devvit allows an app to do on the player's behalf.
-- [ ] User flair for medals or streak.
+- [ ] **Blocked:** Devvit Journeys events. The protocol exists, but no SDK release (0.15.3,
+      0.15.4) exposes it to apps yet, and it refuses playtest versions and apps Reddit has not
+      allowlisted. Revisit if a newer `@devvit/web` adds it.
+- [ ] "Post my time" as a comment on the day's post, or a "join the subreddit" prompt.
+      Possible: `reddit.submitComment` (as the app, or as the user with
+      `permissions.reddit.scope: "user"`) and `subscribeToCurrentSubreddit` (asUser
+      `SUBSCRIBE_TO_SUBREDDIT`). Needs Nishant's call: opt-in button, and as whom.
+- [ ] User flair for medals or streak. Possible: `reddit.setUserFlair` (the app sets it in the
+      subreddit). Needs Nishant's call: it would replace a player's own flair, so opt-in only.
 - [ ] Reddit avatars on the leaderboard, if the web view's content rules allow loading them.
 
 ## 5. Submission (Devpost + Reddit)
 
-- [ ] **Player-facing `README.md` in `reddit/`** (the app root): what the game is and how to
-      play. Required by Devpost, and app review rejects missing or template READMEs.
+- [x] **Player-facing `README.md` in `reddit/`** (the app root): what the game is, how to
+      play, controls, daily rules, boards; developer notes below. 2026-11-20.
 - [ ] `npx devvit upload` (stays private), then note the app link
       `developers.reddit.com/apps/<app-name>`.
 - [ ] A **public** subreddit with fewer than 200 members, the app installed
       (`npx devvit install r/<sub>`), and a public demo post. If the subreddit stays private,
       install `developers.reddit.com/apps/dr-admin-approve` so admins can join.
-- [ ] Devpost text: features, how to play, and **what changed since 11 Nov** (the project
-      existed before): phone layout, thumb pads, Reddit integration, new tracks, three-strike
-      rule, leaderboards, visuals. Say it is a port.
+- [ ] Devpost text: **drafted in `docs/DEVPOST.md`** (features, how to play, how it was
+      built, what changed since 11 Nov, port note). Fill in the links, "What I learned", and the
+      checks at the bottom, then paste it into Devpost.
 - [ ] Demo video under 1 minute (optional but recommended), uploaded publicly to YouTube.
 - [ ] Repo link: https://github.com/sainishant-b/4WD (optional field).
 - [ ] Developer feedback survey (optional, separate $200 prize).

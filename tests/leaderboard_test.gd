@@ -202,9 +202,28 @@ func _run() -> void:
 		var texts: Array = buttons.map(func(b: Button) -> String: return b.text)
 		_check("on Reddit (%dx%d) it shows only today's circuit, as a diagram" % [size.x, size.y],
 			maps.size() == 1 and maps[0].track == game.get_level(1)["track"], "maps=%d" % maps.size())
-		_check("... with DRIVE and Back, and no other level", texts.size() == 2 and "DRIVE" in texts
-			and "Back" in texts, str(texts))
+		_check("... with DRIVE, How to Play and Back, and no other level", texts.size() == 3
+			and "DRIVE" in texts and "?  HOW TO PLAY" in texts and "Back" in texts, str(texts))
 	_check("a finished daily circuit offers no next level", not game.has_next_level(1))
+
+	print("opening a Reddit post")
+	reddit.start_handled = false
+	reddit.start_screen = ""
+	change_scene_to_file("res://scenes/MainMenu.tscn")
+	await _frames(4)
+	_check("the game opens straight on Today's Circuit", current_scene.scene_file_path == "res://scenes/LevelSelect.tscn",
+		current_scene.scene_file_path)
+	change_scene_to_file("res://scenes/MainMenu.tscn")
+	await _frames(4)
+	_check("Back from there shows the menu (no bounce, no forced How to Play)",
+		current_scene.scene_file_path == "res://scenes/MainMenu.tscn", current_scene.scene_file_path)
+	reddit.start_handled = false
+	reddit.start_screen = "leaderboard"
+	change_scene_to_file("res://scenes/MainMenu.tscn")
+	await _frames(4)
+	_check("the post's Leaderboard button opens the boards", current_scene.scene_file_path == "res://scenes/Leaderboard.tscn",
+		current_scene.scene_file_path)
+	reddit.start_screen = ""
 
 	print("mute")
 	var was_muted: bool = game.is_muted()

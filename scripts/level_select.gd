@@ -2,8 +2,9 @@ extends Control
 ## Picks the circuit to race.
 ##
 ## Inside a Reddit post it is "Today's circuit": the one featured level of the
-## day, drawn as a diagram, with its medal times and a DRIVE button. Nothing
-## else is offered there.
+## day, drawn as a diagram, with its medal times, a DRIVE button and a How to
+## Play button. Nothing else is offered there. It is the first screen a Reddit
+## player sees (main_menu.gd sends them here), so the race is one tap away.
 ##
 ## Everywhere else it is a grid of level cards. Unlocked ones are playable and
 ## show best time + medal; locked ones are dimmed and say what to finish first.
@@ -157,6 +158,17 @@ func _build_daily() -> void:
 	var drive_wrap := CenterContainer.new()
 	drive_wrap.add_child(drive)
 	info.add_child(drive_wrap)
+
+	# On Reddit the game opens here, so How to Play waits behind this button.
+	var help := Button.new()
+	help.text = "?  HOW TO PLAY"
+	help.theme_type_variation = "ButtonGhost"
+	help.custom_minimum_size = Vector2(200, 40)
+	help.add_theme_font_size_override("font_size", 15)
+	help.pressed.connect(func(): Game.goto_instructions())
+	var help_wrap := CenterContainer.new()
+	help_wrap.add_child(help)
+	info.add_child(help_wrap)
 
 
 ## "1:20" (minutes:seconds), short enough for a chip.

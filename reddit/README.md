@@ -1,28 +1,72 @@
 # Four Wheel Steer — Daily Circuit
 
-A top-down time-trial racer for Reddit where the **front and rear wheels steer independently**:
-turn them opposite ways for a tight pivot, the same way to crab sideways. Every UTC day there is one
-circuit, one leaderboard, and a streak for showing up.
+A top-down time-trial racer where you steer the **front and rear wheels separately**. Every day
+one circuit is featured: race it, climb today's board, and keep your streak going.
+
+## How to play
+
+1. Open today's post and tap **Drive**. The game opens on **Today's Circuit**: a map of the
+   track, its medal times and a **DRIVE** button.
+2. Race **3 laps** through the gates as fast as you can. The gold arrow points to the next gate
+   and the mini map shows the whole circuit.
+3. **Stay off the walls.** Hits one and two are warnings; the **third wall hit ends the race**.
+4. Finish to see your place on today's board, your streak and when the next circuit starts.
+
+### Controls
+
+| | Phone (two thumb pads) | Keyboard |
+| --- | --- | --- |
+| Front wheels | left pad, slide left / right | **A / D** |
+| Rear wheels | right pad, slide left / right | **← / →** |
+| Accelerate | push either pad up | **W** |
+| Boost | push both pads up | **Shift** |
+| Drift (handbrake) | pull one pad down | **Space** |
+| Brake / reverse | pull both pads down | **S** |
+| Pause | **II** button | **Esc** |
+
+### The trick
+
+- Steer front and rear **opposite ways** and the car spins in a very tight circle (a pivot).
+- Steer them **the same way** and it slides sideways (a crab walk).
+- Use both to get through hairpins that a normal car would have to brake for.
+
+### Daily circuit, boards and streaks
+
+- A new circuit starts every day at **00:00 UTC**; the five circuits take turns.
+- **TODAY**: fastest on today's circuit. **OVERALL**: your best times on all five circuits added
+  up, lowest total first. There is also a board for each circuit.
+- Finishing today's circuit on consecutive days builds your **streak**.
+- You can play logged out; log in to Reddit to appear on the boards.
+- Older posts stay playable on their own circuit, but only today's counts for streaks.
+
+Times are kept by the app in this subreddit (by Reddit username) and nowhere else.
+
+---
+
+## For developers
 
 This folder is the [Devvit Web](https://developers.reddit.com/docs/capabilities/devvit-web/devvit_web_overview)
-app. The game itself is the Godot 4 project in the parent folder; its Web export is copied into
+app. The game is the Godot 4 project in the parent folder; its Web export is copied into
 `public/` and booted by a loader that satisfies Reddit's content-security policy.
 
-## How a post works
+### How a post works
 
-1. The post renders `public/splash.html` inline: circuit number, your best time, rank and streak.
-2. **Drive** opens `public/game.html` in expanded mode, which downloads and starts the Godot engine.
-3. The page exposes `window.FWS` to the game: `init` holds the day's data, and
-   `request('POST', '/api/run', …)` reports a finished race. **The Godot side does not call it yet**;
-   the game still boots into its normal menu.
+1. The post renders `public/splash.html` inline: the day, today's circuit (name and a picture,
+   from `src/client/tracks.ts`), the viewer's best time, rank and streak.
+2. **Drive** opens `public/game.html` in expanded mode, which downloads and starts the engine.
+3. The page exposes `window.FWS` to the game (`src/client/game.ts`): `init` holds the day's data,
+   and `request(method, path, body, done)` calls the server. The game reaches it through
+   `JavaScriptBridge.get_interface("FWS")` (`scripts/reddit.gd`), opens on Today's Circuit,
+   posts finished races and reads the leaderboards.
 
-## Commands
+### Commands
 
 ```bash
 npm install
-npm run export:godot   # export the Godot project (parent folder) into public/
+npm run export:godot   # export the Godot project into public/, and write src/client/tracks.ts
 npm run build          # bundle src/client -> public/, src/server -> dist/server/
 npm test               # unit tests for the daily rules
+npm run typecheck
 npm run local          # local preview with a strict CSP and an in-memory API
 npm run dev            # devvit playtest on your test subreddit
 npm run upload         # build + devvit upload (private; do not publish during the hackathon)
@@ -30,24 +74,24 @@ npm run upload         # build + devvit upload (private; do not publish during t
 
 `npm run export:godot` finds a Godot 4 editor in `~/Downloads`; set `GODOT=<path>` to use another.
 
-## Layout
+### Layout
 
 | Path | What it is |
 | --- | --- |
 | `devvit.json` | App config: post entrypoints, server, permissions, menu item, daily cron |
-| `public/` | Everything uploaded to the web view. Hand-written: `splash.html`, `game.html`, `styles/`, `fonts/`. Generated: `splash.js`, `game.js`, `godot-config.js`, `index.*` |
-| `src/client/` | Web view scripts (`splash.ts`, `game.ts`) |
+| `public/` | Uploaded to the web view. Hand-written: `splash.html`, `game.html`, `styles/`, `fonts/`. Generated: `splash.js`, `game.js`, `godot-config.js`, `index.*` |
+| `src/client/` | Web view scripts (`splash.ts`, `game.ts`); `tracks.ts` is generated by `tools/track-shapes.gd` |
 | `src/server/` | `daily.ts` (rules, no Devvit imports), `index.ts` (Hono routes), tests |
 | `src/shared/api.ts` | Request/response types shared by both sides |
-| `tools/` | `export-godot.mjs`, `build.mjs`, `serve-local.ts` |
+| `tools/` | `export-godot.mjs`, `track-shapes.gd`, `build.mjs`, `serve-local.ts` |
 
-## Server API
+### Server API
 
 | Route | Purpose |
 | --- | --- |
-| `GET /api/init` | Day number, seed, date, your best/rank/streak, top 10 |
-| `POST /api/run` `{ timeMs }` | Record a finished race; returns the updated board and streak |
-| `GET /api/leaderboard` | Top 10 and your row |
+| `GET /api/init` | Day, today's level, your best/rank/streak, top 10, time to the next circuit |
+| `POST /api/run` `{ levelId, timeMs }` | Record a finished race; returns your place today, streak, boards, time to the next circuit |
+| `GET /api/leaderboard?board=overall\|day\|level&level=<id>&limit=<n>` | One board and your row |
 | `POST /internal/scheduler/daily-post` | 00:00 UTC cron: create the day's post |
 | `POST /internal/menu/post-create` | Moderator menu: create (or jump to) today's post |
 | `POST /internal/triggers/on-app-install` | Create today's post when the app is installed |
@@ -55,11 +99,12 @@ npm run upload         # build + devvit upload (private; do not publish during t
 A post stores its day in `postData`, so older posts stay playable on their own circuit and board.
 Only a finish on the current UTC day extends a streak.
 
-## Data
+### Data
 
-Stored in Devvit redis, per subreddit install: each day's best times keyed by Reddit username, and
-each player's streak. Keys expire 90 days after their last write. Nothing is sent off Reddit.
+Stored in Devvit redis, per subreddit install: best times per level, the overall totals, each
+day's board, and each player's streak, keyed by Reddit username. Day boards and streaks expire 90
+days after their last write. Nothing is sent off Reddit.
 
-## Fonts
+### Fonts
 
 Chakra Petch and Barlow, SIL Open Font License (`public/fonts/*-OFL.txt`).

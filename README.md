@@ -270,13 +270,17 @@ and the three-wall-hits rule: what counts as one hit, the warnings, and game ove
   `src/client/game.ts` boot the engine instead. The Web preset must keep **thread support off**.
 - **Re-run `npm run export:godot` after any change to the Godot project** — the web view ships
   the last export, not the live project.
-- **Post flow:** the post shows `splash.html` inline (tiny, instant); tapping Drive opens
-  `game.html` expanded, and only then is the ~38 MB engine downloaded.
+- **Post flow:** the post shows `splash.html` inline (tiny, instant): the day, today's circuit
+  drawn from `src/client/tracks.ts` (written from the game by `tools/track-shapes.gd` during
+  `npm run export:godot`), and your best, rank and streak. Tapping Drive opens `game.html`
+  expanded, and only then is the ~38 MB engine downloaded. The game opens on Today's Circuit.
 - **Server** (`src/server`): `GET /api/init`, `POST /api/run`, `GET /api/leaderboard`, a daily cron
   (00:00 UTC) and a moderator menu item that create the day's post. Data lives in Devvit's redis.
 - **Game ↔ server bridge:** `game.ts` exposes `window.FWS` (`init` JSON + `request(...)`); the Godot
-  side reaches it with `JavaScriptBridge.get_interface("FWS")`. *The game does not use it yet* — it
-  still boots into the normal menu.
+  side reaches it with `JavaScriptBridge.get_interface("FWS")` (`scripts/reddit.gd`) to read the
+  day, post finished races and load the boards.
+- **Player-facing README:** `reddit/README.md` (required for Devpost and app review). A draft of
+  the Devpost text is in `docs/DEVPOST.md`.
 
 ## Tuning
 

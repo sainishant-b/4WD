@@ -1,5 +1,6 @@
 // Exports the Godot project (the parent folder) with its "Web" preset and
-// installs the result into public/ for the Devvit web view.
+// installs the result into public/ for the Devvit web view. Then writes the
+// circuits' shapes into src/client/tracks.ts for the post's start screen.
 //
 // Godot's own index.html is thrown away: it boots the engine from an inline
 // <script>, which Reddit's CSP blocks. Only the engine settings are lifted out
@@ -83,3 +84,12 @@ for (const file of [...ENGINE_FILES, 'godot-config.js']) {
   const megabytes = statSync(join(publicDir, file)).size / 1_048_576;
   console.log(`  public/${file}  ${megabytes.toFixed(2)} MB`);
 }
+
+// The circuits' shapes for the post's start screen, straight from the game, so
+// the splash's track picture always matches the road (src/client/tracks.ts).
+execFileSync(
+  godot,
+  ['--headless', '--path', project, '-s', join(root, 'tools', 'track-shapes.gd'), '--',
+    join(root, 'src', 'client', 'tracks.ts')],
+  { stdio: 'inherit' },
+);

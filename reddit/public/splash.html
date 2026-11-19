@@ -14,6 +14,15 @@
         <p class="tagline">Front and rear wheels steer separately. A featured circuit every day.</p>
       </header>
 
+      <section class="today" id="today" hidden>
+        <svg class="track" id="track" aria-hidden="true"></svg>
+        <div>
+          <p class="today-label">Today's circuit</p>
+          <p class="today-name" id="today-name"></p>
+          <p class="today-detail" id="today-detail"></p>
+        </div>
+      </section>
+
       <figure class="demo" aria-label="The car turns its front and rear wheels independently">
         <svg class="car" viewBox="0 0 120 150" aria-hidden="true">
           <g class="wheel front" transform="translate(27 44)"><rect x="-7" y="-14" width="14" height="28" rx="4" /></g>

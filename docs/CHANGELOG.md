@@ -4,6 +4,30 @@ Running history of major changes. Newest on top. See `CLAUDE.md` for when to add
 
 ## 2026-11-20
 
+- **One tap from the post, today's track on the post, a player README, a Devpost draft.**
+  *Why:* the user asked to work through the rest of the to-do list.
+  - **Reddit opens on Today's Circuit** (`scripts/main_menu.gd`): inside a Reddit post the game
+    skips the menu once, on the way in, and lands on Today's Circuit (or the Leaderboard when the
+    post's Leaderboard button was used; `Reddit.start_handled`). How to Play is no longer forced
+    on first launch there: Today's Circuit has a "? HOW TO PLAY" button, and How to Play's GOT IT
+    returns to Today's Circuit. Back still reaches the menu. Off Reddit nothing changes.
+  - **The post shows today's track** (`reddit/public/splash.html`, `src/client/splash.ts`): a
+    card with a picture of the circuit (green road, white edges, gold start line), its name, laps
+    and top speed. The shapes come from the game itself: `reddit/tools/track-shapes.gd` writes
+    `src/client/tracks.ts`, and `npm run export:godot` now runs it. The generic tagline hides once
+    the card shows, and the steering-demo car shrinks to fit, so the screen fits a 512 px tall
+    post (checked at 390x512 in a browser under the local strict CSP: no overflow, no errors).
+  - **`reddit/README.md`** now starts with a player section (how to play, controls, the trick,
+    daily rules, boards, streaks, data) for Devpost and app review; the developer notes below it
+    are brought up to date (the bridge is in use, the API routes, `tracks.ts`).
+  - **`docs/DEVPOST.md`**: a draft of the Devpost text (pitch, what it does, how to play, how it
+    was built, what changed since 11 Nov), with the links and checks still to fill in.
+  - Looked into Devvit Journeys: the protocol exists, but no SDK release (checked 0.15.3 and the
+    newest 0.15.4) exposes it to apps, and it refuses events from playtest versions and from
+    apps Reddit has not allowlisted. Left on the to-do list as blocked.
+  - Tests: `leaderboard_test.gd` +3 (Reddit opens on Today's Circuit, Back shows the menu with
+    no bounce, the post's Leaderboard button opens the boards). All suites pass.
+
 - **Reddit results card: today's place, streak, countdown, and a TODAY board.** *Why:* the
   user picked the to-do item "result card on Reddit" next (Delightful UX / Daily Content).
   - After a finish inside a Reddit post the results card shows an inset strip under the times:

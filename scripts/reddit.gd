@@ -18,7 +18,8 @@ var username: String = ""       ## The player's Reddit name; "" when logged out.
 var day: int = 0                ## Daily Circuit number of the post.
 var daily_level_id: int = -1    ## Permanent id of the level that is today's circuit.
 var is_today: bool = true       ## False on an older day's post (still playable, no streak).
-var start_screen: String = ""   ## "leaderboard" when the post asked to open there; read once.
+var start_screen: String = ""   ## "leaderboard" when the post asked to open there.
+var start_handled: bool = false ## Set once the main menu has sent the player to their first screen.
 
 ## Test hook: when set, `request()` hands (method, path, body, done) to this
 ## instead of the page, and `is_available()` reads true.

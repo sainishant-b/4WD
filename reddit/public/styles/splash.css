@@ -29,6 +29,7 @@
   --on-gold: #0b0f17;
   --wheel: #3c4a63;
   --wheel-edge: #93a0b4;
+  --track: #1f8f4e;
 }
 
 * {
@@ -86,6 +87,81 @@ h1 {
   color: var(--text-muted);
 }
 
+/* ---- Today's circuit: its name and a picture of the track ---- */
+
+/* The circuit card says what the tagline says, more concretely; a tall post is
+   only 512 px, so the tagline gives way to it. */
+.has-today .tagline {
+  display: none;
+}
+
+.today {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 14px;
+  background: var(--surface);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  text-align: left;
+}
+
+/* display: flex above would otherwise beat the hidden attribute. */
+.today[hidden] {
+  display: none;
+}
+
+.today p {
+  margin: 0;
+}
+
+.track {
+  flex: none;
+  width: 104px;
+  height: 64px;
+}
+
+.track polyline {
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.track .casing {
+  stroke: #07090f;
+}
+
+.track .edge {
+  stroke: var(--text);
+}
+
+.track .road {
+  stroke: var(--track);
+}
+
+.track .start {
+  stroke: var(--gold);
+  stroke-linecap: butt;
+}
+
+.today-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.today-name {
+  font-family: 'Chakra Petch', system-ui, sans-serif;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.today-detail {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
 /* ---- Steering demo: the only "tutorial" on this screen ---- */
 
 .demo {
@@ -100,10 +176,12 @@ h1 {
   gap: clamp(6px, 2vh, 14px);
 }
 
+/* Takes whatever height the post leaves (the viewBox keeps its shape). */
 .car {
-  flex: none;
-  height: clamp(84px, 30vh, 190px);
-  width: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  max-height: 190px;
   overflow: visible;
   animation: drift 7s ease-in-out infinite;
 }
@@ -316,6 +394,13 @@ dd {
 
 @media (max-height: 420px) {
   .tagline {
+    display: none;
+  }
+}
+
+/* Too short for the car to read: leave the space to the circuit and stats. */
+@media (max-height: 380px) {
+  .demo {
     display: none;
   }
 }

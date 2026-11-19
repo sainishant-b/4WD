@@ -10,13 +10,19 @@ var _settings_overlay: Control
 
 
 func _ready() -> void:
-	# The Reddit post's "Leaderboard" button opens the game straight onto it.
-	if Reddit.start_screen == "leaderboard":
-		Reddit.start_screen = ""   # only the first time; Back returns here
-		Game.goto_leaderboard.call_deferred()
+	# Inside a Reddit post the game opens straight on Today's Circuit (one tap
+	# from the race), or on the Leaderboard when the post's button asked for it.
+	# Only on the way in: Back from either screen lands here as usual.
+	if Reddit.is_available() and not Reddit.start_handled:
+		Reddit.start_handled = true
+		if Reddit.start_screen == "leaderboard":
+			Game.goto_leaderboard.call_deferred()
+		else:
+			Game.goto_level_select.call_deferred()
 		return
-	# First launch: show the how-to-play slide before the menu.
-	if not Game.has_seen_instructions():
+	# First launch elsewhere: show the how-to-play slide before the menu. (On
+	# Reddit it waits behind Today's Circuit's How to Play button instead.)
+	if not Game.has_seen_instructions() and not Reddit.is_available():
 		Game.goto_instructions.call_deferred()
 		return
 	Layout.changed.connect(_rebuild)

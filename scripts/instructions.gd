@@ -5,6 +5,8 @@ extends Control
 ## REAR, SPIN TURN (opposite ways), SIDEWAYS (same way). Under them the one rule
 ## (three red pips: 3 hits = out) and the rest of the controls as key caps.
 ## Shown once on first launch (and from the menu's "How to Play"). GOT IT -> menu.
+## On Reddit it is never forced: Today's Circuit has a How to Play button, and
+## GOT IT goes back to Today's Circuit.
 ##
 ## `_build()` runs again when `Layout` flips: the tiles go 2 x 2 on a portrait
 ## phone, and touch shows the thumb pads instead of keys.
@@ -87,7 +89,11 @@ func _build() -> void:
 
 func _dismiss() -> void:
 	Game.mark_instructions_seen()
-	Game.goto_menu()
+	# "Let's drive": on Reddit that means Today's Circuit, one tap from the race.
+	if Reddit.is_available():
+		Game.goto_level_select()
+	else:
+		Game.goto_menu()
 
 
 func _label(text: String, size: int) -> Label:
