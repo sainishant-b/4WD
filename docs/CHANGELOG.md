@@ -4,6 +4,9 @@ Running history of major changes. Newest on top. See `CLAUDE.md` for when to add
 
 ## 2026-11-20
 
+- **Credit on the post.** The splash shows "by u/donomadoit" under the title (the user's
+  Reddit name, given for the credit line). Still fits a 512 px post.
+
 - **One tap from the post, today's track on the post, a player README, a Devpost draft.**
   *Why:* the user asked to work through the rest of the to-do list.
   - **Reddit opens on Today's Circuit** (`scripts/main_menu.gd`): inside a Reddit post the game

@@ -31,7 +31,7 @@ Tick items off here as they land; the CHANGELOG has the details.
       is one tap); How to Play sits behind its "?" button and is never forced there.
 - [x] Start screen (the post's splash): today's level name and a picture of the track (from
       the game's own shapes, `src/client/tracks.ts`). Fits a 512 px post.
-- [ ] Attribution on the splash ("by u/…"): needs Nishant's Reddit username.
+- [x] Attribution on the splash: "by u/donomadoit" under the title.
 - [x] Result card on Reddit: place on today's board ("#12 of 340"), streak, countdown to the
       next circuit, one clear next step (Leaderboard -> the new TODAY board). 2026-11-20.
 - [x] Wording pass on How to Play: now pictures and key caps, no sentences.
