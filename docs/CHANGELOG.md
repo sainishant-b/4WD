@@ -4,6 +4,28 @@ Running history of major changes. Newest on top. See `CLAUDE.md` for when to add
 
 ## 2026-11-20
 
+- **A tyre on the white line is a wall hit; a clearer race HUD; key caps on the loading screen.**
+  *Why:* playtesting on Reddit, the user saw the tyres ride over the track edge without a hit,
+  found the top of the desktop HUD crowded, and wanted the loading screen's controls to match the
+  rest of the game. Road and car sizes are unchanged.
+  - `Car.tscn`: the collision box grew from 30 x 58 to 42 x 63 so it covers the drawn tyres
+    (they reach 21 px either side). The car now stops, and the hit counts, the moment a tyre
+    reaches the wall; before, the tyres could cross the line and 3-4 px of kerb first. Fully
+    steered front wheels can still poke ~4 px past the box. A lap bot still finishes every
+    level, with about 2 more hits a lap than before (tyre touches now count).
+  - `track_builder.gd`: the white limit line (`LIMIT_WIDTH` 5 px) now sits wholly outside the
+    road, so the green-to-white edge is exactly the wall; the kerb and casing move out by the
+    same 5 px (still inside `BEND_MARGIN`). The track test checks the new outer edge.
+  - Race HUD, wide keyboard window: the mini map moves to the bottom-left corner and the
+    controls legend to the bottom-right (two pairs a row), so the top row is only lap, timer
+    and best. **H** hides the legend, leaving an "H CONTROLS" chip, and the choice is saved
+    (`Game.is_controls_hidden()`, `settings.controls_hidden` in `save.json`). Touch layouts keep
+    the old places: the bottom corners belong to the thumb pads.
+  - Reddit loading screen (`game.html`, `game.ts`, `game.css`): the one-line sentence is now the
+    game's own legend on a cream card: key caps (W S DRIVE, A D FRONT, arrows REAR, SHIFT
+    BOOST, SPACE DRIFT, ESC PAUSE) or, on a phone, thumb-pad icons (FRONT, REAR, DRIVE, BOOST,
+    DRIFT, BRAKE).
+
 - **The sample layouts too: Today's Circuit, the results card, the pad names.** *Why:* the user
   wants the layout ideas from the Cobalt & Sun samples as well ("I did not mean no other UI
   changes").

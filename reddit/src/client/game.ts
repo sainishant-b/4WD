@@ -95,10 +95,75 @@ void requestText('GET', '/api/init', '').then((text) => {
   }
 });
 
-// The wait is the tutorial: one line about the controls the player will use.
-el('loader-hint').textContent = matchMedia('(pointer: coarse)').matches
-  ? 'Left thumb steers the front wheels, right thumb the rear. Push up to drive.'
-  : 'A / D turn the front wheels. Left / Right arrows turn the rear wheels. W to drive.';
+// The wait is the tutorial: the controls as the same key caps / thumb pads the
+// game's own legend shows (ui/hud_style.gd KEYBOARD_LEGEND / TOUCH_LEGEND).
+// A cap is a key ("W", "SHIFT", "<", ">") or, on touch, a pad: "F" (front, red)
+// or "R" (rear, gold) or nothing (either pad), then an arrow ("<>", "^", "v").
+const KEYBOARD_LEGEND: [string[], string][] = [
+  [['W', 'S'], 'Drive'],
+  [['A', 'D'], 'Front'],
+  [['<', '>'], 'Rear'],
+  [['SHIFT'], 'Boost'],
+  [['SPACE'], 'Drift'],
+  [['ESC'], 'Pause'],
+];
+const TOUCH_LEGEND: [string[], string][] = [
+  [['F<>'], 'Front'],
+  [['R<>'], 'Rear'],
+  [['^'], 'Drive'],
+  [['F^', 'R^'], 'Boost'],
+  [['v'], 'Drift'],
+  [['Fv', 'Rv'], 'Brake'],
+];
+const ARROWS: Record<string, string[]> = {
+  '<': ['8,2 3,6 8,10'],
+  '>': ['4,2 9,6 4,10'],
+  '^': ['2,8 6,3 10,8'],
+  v: ['2,4 6,9 10,4'],
+  '<>': ['5,3 1,6 5,9', '7,3 11,6 7,9'],
+};
+
+function arrow(token: string): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 12 12');
+  svg.setAttribute('aria-hidden', 'true');
+  for (const points of ARROWS[token] ?? []) {
+    const shape = document.createElementNS(ns, 'polygon');
+    shape.setAttribute('points', points);
+    svg.append(shape);
+  }
+  return svg;
+}
+
+function cap(token: string, touch: boolean): HTMLElement {
+  const node = document.createElement('span');
+  if (touch) {
+    const side = token[0] === 'F' ? 'front' : token[0] === 'R' ? 'rear' : 'any';
+    node.className = `pad ${side}`;
+    node.append(arrow(side === 'any' ? token : token.slice(1)));
+  } else {
+    node.className = 'key';
+    if (token in ARROWS) node.append(arrow(token));
+    else node.textContent = token;
+  }
+  return node;
+}
+
+function buildLegend(box: HTMLElement, touch: boolean): void {
+  for (const [caps, action] of touch ? TOUCH_LEGEND : KEYBOARD_LEGEND) {
+    const pair = document.createElement('span');
+    pair.className = 'pair';
+    for (const token of caps) pair.append(cap(token, touch));
+    const word = document.createElement('span');
+    word.className = 'word';
+    word.textContent = action;
+    pair.append(word);
+    box.append(pair);
+  }
+}
+
+buildLegend(el('loader-hint'), matchMedia('(pointer: coarse)').matches);
 
 function fail(error: unknown): void {
   console.error(error);

@@ -21,8 +21,12 @@
   --bg-stripe: #203fca;
   --field: #0f1f63;
   --ink: #0d1b55;
+  --surface: #fff4dc;
   --surface-inset: #ede3cd;
+  --screen: #122370;
+  --ink-text: #0c184c;
   --gold: #ffc400;
+  --pop: #d9301a;
   --danger-light: #ffd0d0;
   --text: #ffffff;
   --text-muted: #d6defc;
@@ -107,12 +111,77 @@ body {
   transition: width 0.2s linear;
 }
 
-.hint {
-  max-width: 320px;
-  margin: 12px 0 0;
+/* The controls, as the game's own legend draws them (ui/hud_style.gd): key
+   caps or thumb pads plus one word, two to a row, on a raised cream card. */
+.legend {
+  margin-top: 18px;
+  padding: 14px 18px 16px;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 12px 22px;
+  justify-content: center;
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 0 0 3px var(--ink), 0 5px 0 3px var(--ink), 0 12px 20px 3px rgba(10, 20, 63, 0.45);
+}
+
+.pair {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'Chakra Petch', system-ui, sans-serif;
   font-size: 15px;
-  line-height: 1.4;
-  color: var(--text);
+  text-transform: uppercase;
+  color: var(--ink-text);
+}
+
+.word {
+  margin-left: 3px;
+}
+
+.key {
+  min-width: 26px;
+  height: 28px;
+  padding: 0 7px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-bottom-width: 5px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--ink-text);
+}
+
+.pad {
+  width: 30px;
+  height: 30px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--screen);
+  border: 3px solid var(--text-muted);
+  border-radius: 50%;
+  box-shadow: 0 2px 0 var(--ink);
+  color: #ffffff;
+}
+
+.pad.front {
+  border-color: var(--pop);
+}
+
+.pad.rear {
+  border-color: var(--gold);
+}
+
+.key svg,
+.pad svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
 }
 
 #loader.failed #loader-text {

@@ -23,8 +23,9 @@ const RELAX_SPREAD := 3      # neighbours either side of a tight point that also
 const GATE_DEPTH := 28.0
 const START_BACK := 60.0     # px behind the start line where the car spawns
 
-const KERB_WIDTH := 9.0      # red/white kerb outside each wall ...
-const CASING_WIDTH := 4.0    # ... then an INK casing (kerb + casing must stay under BEND_MARGIN)
+const LIMIT_WIDTH := 5.0     # solid white limit line just outside each wall: its inner edge IS the wall ...
+const KERB_WIDTH := 9.0      # ... then a red/white kerb ...
+const CASING_WIDTH := 4.0    # ... then an INK casing (all three must stay under BEND_MARGIN)
 const KERB_BLOCK := 2        # centre-line points per kerb block (so ~20 px blocks)
 const SHADOW_DROP := Vector2(0, 14)   # how far the road's shadow falls on the field
 const SHADE_WIDTH := 16.0    # darkened strip of road beside each wall
@@ -189,15 +190,18 @@ static func build(track: Dictionary, road_parent: Node2D, cp_parent: Node2D, cp_
 	# Limit lines + wall colliders on both edges.
 	var walls := StaticBody2D.new()
 	road_parent.add_child(walls)
-	for edge in [left, right]:
-		var kerb := Line2D.new()
-		kerb.points = edge
-		kerb.closed = true
-		kerb.width = 5.0
-		kerb.antialiased = true
-		# Bright limit line so the wall edge stays readable against the green road.
-		kerb.default_color = Palette.TEXT_LIGHT
-		road_parent.add_child(kerb)
+	for side in [1.0, -1.0]:
+		var edge: PackedVector2Array = left if side > 0.0 else right
+		# The hard limit line: solid white, wholly outside the road, so where the
+		# green meets it is exactly the wall. The car's collision box covers its
+		# tyres, so a tyre touching this line is a wall hit.
+		var limit := Line2D.new()
+		limit.points = offset(line, side * (hw + LIMIT_WIDTH * 0.5))
+		limit.closed = true
+		limit.width = LIMIT_WIDTH
+		limit.antialiased = true
+		limit.default_color = Palette.TEXT_LIGHT
+		road_parent.add_child(limit)
 
 		var col := CollisionPolygon2D.new()
 		col.polygon = edge
@@ -279,10 +283,11 @@ static func _build_ground(parent: Node2D, line: PackedVector2Array) -> void:
 static func _build_surface(parent: Node2D, line: PackedVector2Array, hw: float) -> void:
 	var shade := minf(SHADE_WIDTH, hw * 0.45)
 	var crown := Palette.TRACK.lightened(0.07)
-	var kerb := hw + KERB_WIDTH
+	var inner := hw + LIMIT_WIDTH   # the kerb starts where the limit line ends
+	var kerb := inner + KERB_WIDTH
 	var outer := kerb + CASING_WIDTH
 	var rails := {}   # offset -> PackedVector2Array, so shared rails are computed once
-	for d in [outer, kerb, hw, hw - shade, 0.0, -(hw - shade), -hw, -kerb, -outer]:
+	for d in [outer, kerb, inner, hw, hw - shade, 0.0, -(hw - shade), -hw, -inner, -kerb, -outer]:
 		rails[d] = offset(line, d)
 
 	# The shadow: the whole road's footprint in translucent black, dropped.
@@ -299,8 +304,8 @@ static func _build_surface(parent: Node2D, line: PackedVector2Array, hw: float) 
 	var edges := ArrayMesh.new()
 	_add_ribbon(edges, rails[outer], rails[kerb], Palette.INK, Palette.INK)
 	_add_ribbon(edges, rails[-kerb], rails[-outer], Palette.INK, Palette.INK)
-	_add_kerb(edges, rails[kerb], rails[hw])
-	_add_kerb(edges, rails[-hw], rails[-kerb])
+	_add_kerb(edges, rails[kerb], rails[inner])
+	_add_kerb(edges, rails[-inner], rails[-kerb])
 	var edge_node := MeshInstance2D.new()
 	edge_node.mesh = edges
 	parent.add_child(edge_node)

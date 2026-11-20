@@ -75,7 +75,7 @@ func _run() -> void:
 		_check("no bend tighter than the road can follow", tightest >= hw + builder.BEND_MARGIN - 4.0,
 			"tightest radius %.1f, road half width %.1f" % [tightest, hw])
 
-		var rim: float = hw + builder.KERB_WIDTH + builder.CASING_WIDTH
+		var rim: float = hw + builder.LIMIT_WIDTH + builder.KERB_WIDTH + builder.CASING_WIDTH
 		for side in [["left edge", hw], ["right edge", -hw],
 				["left kerb", rim], ["right kerb", -rim]]:
 			var folds := _folds(builder.offset(line, side[1]))

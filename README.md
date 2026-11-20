@@ -55,6 +55,7 @@ smooth edges come from anti-aliased lines and circles, not a project setting. Sc
 | **Shift** *(or **C**)* | boost (burns the boost meter) |
 | **Space** | handbrake (drift) |
 | **Esc / P** | pause (Resume / Restart / Menu) |
+| **H** | hide / show the controls legend (remembered) |
 
 Restart and "next level" are on the pause and results screens. During a race the same list sits
 under the top row as a strip of **key caps** (thumb-pad icons on touch). It is built by
@@ -146,7 +147,8 @@ the window is resized across the two.
 - A **3-2-1-GO** countdown starts each race; the HUD shows **Lap x/3**, a lap timer, total time,
   **best lap** (flashes on a new best), a **radial speedometer** gauge, a **boost meter**, a live
   **+/- split delta** vs your best lap (green = ahead, red = behind), and an **arrow to the next gate** (handy since
-  the camera rotates with the car). The camera is zoomed in, so a **mini map** (top right) shows
+  the camera rotates with the car). The camera is zoomed in, so a **mini map** (bottom left on a
+  desktop, top right on a phone) shows
   the whole circuit: north stays up, your car is the red arrow, the next gate pulses gold, and the
   dark bar is the start/finish line.
 - On finish you get a **medal** by total time; **best time + best lap** are saved, and **Next**

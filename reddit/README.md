@@ -23,6 +23,7 @@ one circuit is featured: race it, climb today's board, and keep your streak goin
 | Drift (handbrake) | pull one pad down | **Space** |
 | Brake / reverse | pull both pads down | **S** |
 | Pause | **II** button | **Esc** |
+| Hide the controls legend | | **H** |
 
 ### The trick
 

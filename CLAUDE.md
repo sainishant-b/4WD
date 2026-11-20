@@ -142,7 +142,10 @@ entry. When in doubt, add one — short is fine.
 
 ## Controls
 
-Desktop: **W/S** drive · **A/D** front wheels · **←/→** rear wheels · **Shift/C** boost · **Space** handbrake · **Esc/P** pause.
+Desktop: **W/S** drive · **A/D** front wheels · **←/→** rear wheels · **Shift/C** boost · **Space** handbrake · **Esc/P** pause · **H** hide/show the race HUD's controls legend (saved).
+Wide keyboard HUD: mini map bottom-left, legend bottom-right; touch layouts keep them up top
+(the bottom corners are the pads'). The Reddit loading screen draws the same legend in HTML
+(`reddit/src/client/game.ts`); keep it in step with `KEYBOARD_LEGEND` / `TOUCH_LEGEND`.
 The in-race controls strip and the How to Play legend both come from `HudStyle.controls_legend()`
 (`KEYBOARD_LEGEND` / `TOUCH_LEGEND`); change the controls there too.
 Touch (phones, incl. the Reddit web view): two thumb pads — **left** = front wheels, **right** =
@@ -154,6 +157,9 @@ the user's own design; don't change the gestures without asking.
 
 - Godot 4.x, GDScript with tabs for indentation; type hints where practical.
 - Car convention: `rotation = 0` points **up**; forward = `Vector2.from_angle(rotation - PI/2)`.
+- **A tyre touching the white limit line is a wall hit** (the user asked): the car's collision
+  box (`Car.tscn`, 42 x 63) covers the drawn tyres, and the limit line sits wholly outside the
+  road so its inner edge is the wall. Keep the box matched to the car's drawing.
 - **Keep the car planted** (the user found it drifted into walls): `car.gd` `traction` pulls the
   sideways slide toward the wheels' no-slip motion; grip 800, rear stiffer than front. Don't
   loosen these without asking. The handbrake is the drift button.

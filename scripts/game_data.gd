@@ -159,7 +159,11 @@ func is_unlocked(idx: int) -> bool:
 # --- Progress / save -------------------------------------------------------
 
 func _default_progress() -> Dictionary:
-	return {"levels": {}, "settings": {"volume": 0.8, "muted": false, "name": "Player"}, "seen_instructions": false}
+	return {
+		"levels": {},
+		"settings": {"volume": 0.8, "muted": false, "name": "Player", "controls_hidden": false},
+		"seen_instructions": false,
+	}
 
 
 func load_progress() -> void:
@@ -180,6 +184,7 @@ func load_progress() -> void:
 		progress["settings"]["volume"] = float(data["settings"].get("volume", 0.8))
 		progress["settings"]["muted"] = bool(data["settings"].get("muted", false))
 		progress["settings"]["name"] = String(data["settings"].get("name", "Player"))
+		progress["settings"]["controls_hidden"] = bool(data["settings"].get("controls_hidden", false))
 	progress["seen_instructions"] = bool(data.get("seen_instructions", false))
 
 
@@ -294,6 +299,16 @@ func is_muted() -> bool:
 func set_muted(muted: bool) -> void:
 	progress["settings"]["muted"] = muted
 	apply_volume()
+	save_progress()
+
+
+## Whether the player hid the race HUD's controls legend (H toggles it).
+func is_controls_hidden() -> bool:
+	return bool(progress["settings"].get("controls_hidden", false))
+
+
+func set_controls_hidden(hidden: bool) -> void:
+	progress["settings"]["controls_hidden"] = hidden
 	save_progress()
 
 

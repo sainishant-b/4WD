@@ -271,13 +271,16 @@ static func rim() -> Texture2D:
 ## The controls as rows of "cap + action" pairs, `per_row` pairs to a row, in
 ## the bold display face. Keyboard keys are drawn as key caps; touch gestures
 ## as little thumb pads (two = both pads, in the pads' own red and gold).
-## Actions named in `omit` (e.g. "FRONT") are left out. `text_color` is the
-## action words' colour: ink on a cream panel, TEXT_LIGHT on the backdrop.
-static func controls_legend(touch: bool, per_row: int, font_size: int, omit: Array = [], text_color: Color = Palette.TEXT) -> Control:
+## Actions named in `omit` (e.g. "FRONT") are left out; `extra` entries (same
+## shape as the legends, e.g. [["H"], "HIDE"]) are added at the end.
+## `text_color` is the action words' colour: ink on a cream panel, TEXT_LIGHT
+## on the backdrop.
+static func controls_legend(touch: bool, per_row: int, font_size: int, omit: Array = [], text_color: Color = Palette.TEXT, extra: Array = []) -> Control:
 	var entries: Array = []
 	for entry in (TOUCH_LEGEND if touch else KEYBOARD_LEGEND):
 		if not omit.has(entry[1]):
 			entries.append(entry)
+	entries.append_array(extra)
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 8)
 	rows.mouse_filter = Control.MOUSE_FILTER_IGNORE

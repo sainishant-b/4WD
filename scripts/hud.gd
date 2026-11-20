@@ -2,8 +2,10 @@ extends CanvasLayer
 ## Race HUD (built in code): level + lap, total time, current lap time, best
 ## time + best lap, the wall-hit pips, a mini map, speedometer, boost meter, a
 ## 3-2-1-GO countdown, an off-screen arrow to the next gate, a controls legend
-## (key caps, or thumb-pad icons on touch), and the Results / Game Over + Pause
-## overlays. On touch it also shows a pause button.
+## (key caps, or thumb-pad icons on touch; H hides it, remembered in the
+## settings), and the Results / Game Over + Pause overlays. On touch it also
+## shows a pause button. In a wide keyboard window the mini map sits bottom-left
+## and the legend bottom-right, so the top row is only lap, timer and best.
 ##
 ## Readouts sit on solid cream panels (`HudStyle.panel()`: INK outline and a hard
 ## lip) in dark ink, so their text needs no outline; a faint vignette darkens
@@ -312,7 +314,11 @@ func _layout() -> void:
 		panel.custom_minimum_size.x = Layout.PORTRAIT_CONTENT_WIDTH if narrow else MODAL_WIDTH
 
 
-## Desktop / wide window: three cards along the top, the map under the right one.
+## Desktop / wide window: lap + wall hits top-left, the timer top-centre, best
+## times top-right. With a keyboard the mini map sits bottom-left and the
+## controls legend bottom-right (H hides it), keeping the top clear; on a
+## touchscreen the bottom corners belong to the thumb pads, so the map goes under
+## the best times and the legend under the timer (it fades once racing).
 func _layout_landscape(touch: bool) -> void:
 	_p_lap.visible = true
 	_box(_p_lap, 0.0, 0.0, 16, 12, 190, 66)
@@ -342,7 +348,10 @@ func _layout_landscape(touch: bool) -> void:
 	_font(_bestlap_label, 18)
 	_box(_bestlap_label, 1.0, 0.0, right - 126, 45, 110, 24)
 
-	_box(_minimap, 1.0, 0.0, -230, 90, 214, 136)
+	if touch:
+		_box(_minimap, 1.0, 0.0, -230, 90, 214, 136)
+	else:
+		_box(_minimap, 0.0, 1.0, 16, -158, 214, 136)
 
 	_box(_p_walls, 0.0, 0.0, 16, 86, 190, 40)
 	_font(_walls_cap, 12)
@@ -350,7 +359,10 @@ func _layout_landscape(touch: bool) -> void:
 	_box(_walls_cap, 0.0, 0.0, 32, 96, 84, 20)
 	_box(_walls_pips, 0.0, 0.0, 114, 94, 78, 24)
 
-	_place_hint(106)
+	if touch:
+		_place_hint(0.5, 0.0, 0, 106)
+	else:
+		_place_hint(1.0, 1.0, -16, -22)
 	_font(_warn_label, 32)
 
 	_box(_speedo, 0.5, 1.0, -62, -160, 124, 124)
@@ -398,7 +410,7 @@ func _layout_portrait() -> void:
 	_box(_walls_cap, 0.0, 0.0, 174, 84, 98, 16)
 	_box(_walls_pips, 0.0, 0.0, 174, 102, 98, 24)
 
-	_place_hint(184)
+	_place_hint(0.5, 0.0, 0, 184)
 	_font(_warn_label, 26)
 
 	_box(_speedo, 0.5, 1.0, -48, -128, 96, 96)
@@ -410,26 +422,50 @@ func _layout_portrait() -> void:
 
 
 ## Rebuilds the controls legend for the current device and layout: key caps for
-## the keyboard, little thumb pads for touch. A phone gets shorter rows.
+## the keyboard, little thumb pads for touch. A phone gets shorter rows; a wide
+## keyboard window stacks it in the bottom-right corner. With a keyboard it ends
+## in "H HIDE", and once hidden (saved with the settings) only a small
+## "H CONTROLS" chip is left to bring it back.
 func _rebuild_hint(touch: bool) -> void:
 	for child in _p_hint.get_children():
 		_p_hint.remove_child(child)
 		child.queue_free()
 	var narrow := Layout.portrait
-	var per_row := (2 if touch else 3) if narrow else 6
-	_p_hint.add_child(HudStyle.controls_legend(touch, per_row, 13 if narrow else 14))
+	var fs := 13 if narrow else 14
+	if not touch and Game.is_controls_hidden():
+		_p_hint.add_child(HudStyle.controls_legend(false, 1, fs, [
+			"DRIVE", "FRONT", "REAR", "BOOST", "DRIFT", "PAUSE"
+		], Palette.TEXT, [[["H"], "CONTROLS"]]))
+		return
+	var per_row := (2 if touch else 3) if narrow else (6 if touch else 2)
+	var extra := [] if touch else [[["H"], "HIDE"]]
+	_p_hint.add_child(HudStyle.controls_legend(touch, per_row, fs, [], Palette.TEXT, extra))
 
 
-## Centres the legend `y` px from the top; it grows to whatever its rows need.
-func _place_hint(y: float) -> void:
-	_p_hint.anchor_left = 0.5
-	_p_hint.anchor_right = 0.5
-	_p_hint.anchor_top = 0.0
-	_p_hint.anchor_bottom = 0.0
-	_p_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_p_hint.grow_vertical = Control.GROW_DIRECTION_END
-	_p_hint.offset_left = 0.0
-	_p_hint.offset_right = 0.0
+## H (keyboard only) hides or shows the controls legend, and remembers it.
+func _unhandled_key_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo or key.physical_keycode != KEY_H or Layout.touch:
+		return
+	Game.set_controls_hidden(not Game.is_controls_hidden())
+	_p_hint.modulate.a = 1.0
+	_layout()
+	get_viewport().set_input_as_handled()
+
+
+## Pins the legend at screen point (ax, ay) (each 0 = left/top, 0.5 = centre,
+## 1 = right/bottom), offset by (x, y); it grows away from that point to
+## whatever its rows need.
+func _place_hint(ax: float, ay: float, x: float, y: float) -> void:
+	_p_hint.anchor_left = ax
+	_p_hint.anchor_right = ax
+	_p_hint.anchor_top = ay
+	_p_hint.anchor_bottom = ay
+	_p_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH if ax == 0.5 else (
+		Control.GROW_DIRECTION_BEGIN if ax == 1.0 else Control.GROW_DIRECTION_END)
+	_p_hint.grow_vertical = Control.GROW_DIRECTION_BEGIN if ay == 1.0 else Control.GROW_DIRECTION_END
+	_p_hint.offset_left = x
+	_p_hint.offset_right = x
 	_p_hint.offset_top = y
 	_p_hint.offset_bottom = y
 	_p_hint.reset_size()

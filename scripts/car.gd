@@ -23,7 +23,9 @@ extends CharacterBody2D
 ## car, darker flanks round a lighter deck, and a glass cockpit.
 ##
 ## It also reports wall contact: `wall_touched` fires once per NEW touch (one
-## scrape or bounce is one touch), which game.gd counts toward game over.
+## scrape or bounce is one touch), which game.gd counts toward game over. The
+## collision box (Car.tscn, 42 x 63) covers the drawn tyres, so a hit happens
+## the moment a tyre reaches the white limit line, never after it rides over.
 
 ## A new contact with a track wall. See `_note_wall_contact` for what "new" means.
 signal wall_touched
