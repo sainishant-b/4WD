@@ -36,6 +36,7 @@ one circuit is featured: race it, climb today's board, and keep your streak goin
 - A new circuit starts every day at **00:00 UTC**; the five circuits take turns.
 - **TODAY**: fastest on today's circuit. **OVERALL**: your best times on all five circuits added
   up, lowest total first. There is also a board for each circuit.
+- Every row shows the player's Reddit avatar (or their initial if they have none).
 - Finishing today's circuit on consecutive days builds your **streak**.
 - **Streak flair (optional):** after a race, tap **SHOW MY STREAK AS FLAIR** to show
   "🔥 4-day streak" as your flair in this subreddit. Tap again to turn it off; your own flair
@@ -111,7 +112,8 @@ Only a finish on the current UTC day extends a streak.
 Stored in Devvit redis, per subreddit install: best times per level, the overall totals, each
 day's board, each player's streak, and (only for players who turn on streak flair) the flair they
 had before, keyed by Reddit username. Day boards and streaks expire 90
-days after their last write. Nothing is sent off Reddit.
+days after their last write; each player's avatar URL is kept for a day. Nothing is sent off
+Reddit.
 
 ### Fonts
 

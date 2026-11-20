@@ -34,7 +34,8 @@ puzzle of when to pivot and when to crab.
 - **Reddit-native competition:** players are their Reddit accounts. After a finish the results
   card shows your place on today's board ("#12 of 340 today"), a new-best chip, your streak and
   a countdown to the next circuit. The leaderboard has TODAY, OVERALL (best times on all five
-  circuits added up, lowest total first) and a board per circuit. Players can opt in to show
+  circuits added up, lowest total first) and a board per circuit, each row with the player's
+  Reddit avatar. Players can opt in to show
   their streak as their user flair in the subreddit ("🔥 4-day streak").
 - **Three strikes:** the third wall hit ends the race, so every corner matters.
 - **Made for phones:** a portrait layout and two thumb pads (left pad = front wheels, right pad

@@ -58,7 +58,8 @@ entry. When in doubt, add one — short is fine.
 - `scripts/` — `car.gd` (physics; emits `wall_touched` once per new wall contact; also the unused
   `hit_cone()` + `jump()`/airborne hop), `game.gd` (race controller: countdown, lap logic,
   splits/delta, wall-hit count + game over, finish, pause), `leaderboard.gd` (`Leaderboard`
-  autoload: Appwrite client), `leaderboard_ui.gd` (leaderboard screen), `net.gd` (`Net` autoload:
+  autoload: Appwrite client), `leaderboard_ui.gd` (leaderboard screen), `avatar_badge.gd`
+  (`AvatarBadge`: a player's round avatar or initial on board rows), `net.gd` (`Net` autoload:
   hidden multiplayer), `lobby.gd` (hidden host/join UI), `track_builder.gd` (waypoints → smooth
   centre line → road ribbon mesh/walls/gates, plus optional obstacles), `cone.gd`/`ramp.gd`
   (obstacles; unused since no level has any), `hud.gd` (HUD + results/game over/pause),
@@ -131,6 +132,10 @@ entry. When in doubt, add one — short is fine.
   and a countdown (`nextCircuitInMs` from the server); its gold button is Leaderboard -> TODAY.
   **Streak flair is opt-in only** (`reddit/src/server/flair.ts`, the card's toggle): never set a
   player's flair without their tap, and always put their own flair back when it goes off.
+  **Avatars**: board rows carry the player's snoovatar URL (`reddit/src/server/avatars.ts`,
+  cached a day; Reddit-hosted https only). The page crops it to a 96 px PNG for Godot
+  (`FWS.avatar`, `src/client/avatar-image.ts`); a test script must not name `AvatarBadge`
+  (it uses the `Reddit` autoload, unknown at a `-s` script's compile time).
   Elsewhere the backend is **Appwrite** (IDs pasted into `leaderboard.gd`; name in `save.json`).
 - **Difficulty rises across levels** (the user asked): Levels 1-2 stay as they are; from Level 3
   on each level has a narrower road and a higher top speed than the one before. Keep that

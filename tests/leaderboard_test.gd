@@ -15,6 +15,8 @@ var _failures := 0
 var _calls: Array = []      # [method, path, body] of every request the game made
 var _logged_in := true
 var _flair_refuse := false
+var _avatar_asks: Array = []   # every URL the game asked the page to load
+const SNOO := "https://i.redd.it/snoovatar/avatars/apex.png"
 
 
 func _initialize() -> void:
@@ -63,7 +65,7 @@ func _server(method: String, path: String, body: Dictionary, done: Callable) -> 
 		done.call({
 			"kind": "overall", "levelId": null, "players": 2, "mapsDone": 3, "mapsTotal": 5,
 			"top": [
-				{"rank": 1, "name": "apex_hunter", "timeMs": 301000},
+				{"rank": 1, "name": "apex_hunter", "timeMs": 301000, "avatar": SNOO},
 				{"rank": 2, "name": "local_driver", "timeMs": 322500},
 			],
 			"me": {"rank": 2, "name": "local_driver", "timeMs": 322500},
@@ -75,6 +77,30 @@ func _server(method: String, path: String, body: Dictionary, done: Callable) -> 
 		})
 	else:
 		done.call(null)
+
+
+## Answers like the page's FWS.avatar (reddit/src/client/avatar-image.ts): a
+## small PNG in base64 for the one picture it can load, "" for anything else.
+func _page_avatar(url: String, done: Callable) -> void:
+	_avatar_asks.append(url)
+	if url != SNOO:
+		done.call("")
+		return
+	var image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	image.fill(Color.ORANGE_RED)
+	done.call(Marshalls.raw_to_base64(image.save_png_to_buffer()))
+
+
+## The avatar badge (scripts/avatar_badge.gd) in each row of the Leaderboard
+## screen, top to bottom. Found by its method: naming the class here would
+## compile it before the autoloads it uses exist.
+func _row_badges(screen: Node) -> Array:
+	var badges: Array = []
+	for line in screen._rows_box.get_children():
+		for node in line.find_children("*", "Control", true, false):
+			if node.has_method("has_picture"):
+				badges.append(node)
+	return badges
 
 
 func _run() -> void:
@@ -89,6 +115,7 @@ func _run() -> void:
 
 	print("inside a Reddit post")
 	reddit.transport = _server
+	reddit.avatar_transport = _page_avatar
 	reddit.apply_init({"username": "local_driver", "day": 2, "levelId": game.level_id(1)})
 	_check("the link reads as available", reddit.is_available() and board.configured() and board.has_overall())
 	_check("it knows the player and today's level",
@@ -110,6 +137,8 @@ func _run() -> void:
 	_check("lowest total is first", loaded.size() == 1 and loaded[0][0] == board.OVERALL
 		and loaded[0][1].size() == 2 and loaded[0][1][0]["name"] == "apex_hunter"
 		and loaded[0][1][0]["time_ms"] == 301000, str(loaded))
+	_check("rows carry the avatar URL, or \"\" for none",
+		loaded[0][1][0]["avatar"] == SNOO and loaded[0][1][1]["avatar"] == "", str(loaded))
 	_check("it reports the player's own place and maps done",
 		board.last_info.get("me_rank") == 2 and board.last_info.get("maps_done") == 3
 		and board.last_info.get("maps_total") == 5, str(board.last_info))
@@ -142,6 +171,18 @@ func _run() -> void:
 		"rows=%d" % screen._rows_box.get_child_count())
 	_check("the summary explains the ranking and the player's place",
 		"added up" in screen._status.text and "#2" in screen._status.text, screen._status.text)
+	var badges := _row_badges(screen)
+	_check("every row has an avatar badge", badges.size() == 2, "badges=%d" % badges.size())
+	_check("a player with a snoovatar shows the picture; one without shows their initial",
+		badges.size() == 2 and badges[0].has_picture() and not badges[1].has_picture())
+	_check("the page was asked for that one picture only", _avatar_asks == [SNOO], str(_avatar_asks))
+	screen._select(0)
+	await _frames(2)
+	_check("a picture already loaded is not asked for again",
+		_avatar_asks == [SNOO] and _row_badges(screen)[0].has_picture(), str(_avatar_asks))
+	var badge_script: GDScript = load("res://scripts/avatar_badge.gd")
+	_check("the badge colour is the same for the same name",
+		badge_script.color_for("crabwalk") == badge_script.color_for("crabwalk"))
 	screen._select(1)
 	await _frames(2)
 	_check("TODAY asks for the day board and shows its rows",
@@ -265,6 +306,7 @@ func _run() -> void:
 	_check("the setting was put back", game.is_muted() == was_muted and AudioServer.is_bus_mute(0) == bus_before)
 
 	reddit.transport = Callable()
+	reddit.avatar_transport = Callable()
 	reddit.daily_level_id = -1
 	root.size = Vector2i(1280, 720)
 	change_scene_to_file("res://scenes/LevelSelect.tscn")

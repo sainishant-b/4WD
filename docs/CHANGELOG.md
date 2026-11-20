@@ -4,6 +4,27 @@ Running history of major changes. Newest on top. See `CLAUDE.md` for when to add
 
 ## 2026-11-20
 
+- **Reddit avatars on the leaderboard.** *Why:* the user picked it from the to-do list; it makes
+  the boards feel like Reddit.
+  - Server (`reddit/src/server/avatars.ts`): `GET /api/leaderboard` rows carry `avatar`, the
+    player's snoovatar URL (`reddit.getSnoovatarUrl`), and `GET /api/init` carries the viewer's
+    own. Each name is looked up once a day (redis `avatar:<name>`, 24 h expiry, "has none"
+    cached too; a failed lookup is retried next time). Only Reddit-hosted https images are passed
+    on, since a web view may only show media hosted on Reddit.
+  - Page (`reddit/src/client/avatar-image.ts`, `FWS.avatar(url, done)`): loads the picture,
+    keeps the top square (a snoovatar is a tall full-body image, so that is the head) and hands
+    Godot a 96 px PNG in base64. Only Reddit's image hosts and the page's own host are loaded.
+  - Game: `AvatarBadge` (`scripts/avatar_badge.gd`) draws the round avatar with an INK ring on
+    every leaderboard row and beside "Racing as". A player without a snoovatar, or a picture the
+    web view refuses, shows their initial on a colour picked from their name (Appwrite boards
+    are initials only). `Reddit.avatar()` loads each URL once.
+  - **Not yet seen on Reddit:** the docs do not say whether the web view may fetch from
+    `i.redd.it`. If it may not, every row shows initials and nothing breaks; the next step would
+    be the server fetching the picture itself (needs `permissions.http.domains` and Reddit's
+    review). The local server (`npm run local`) gives two pretend players a drawn avatar served
+    from its own host, so the whole path runs under the strict local policy.
+  - Tests: `avatars.test.ts`, `avatar-image.test.ts`, and the leaderboard test checks the badges.
+
 - **A tyre on the white line is a wall hit; a clearer race HUD; key caps on the loading screen.**
   *Why:* playtesting on Reddit, the user saw the tyres ride over the track edge without a hit,
   found the top of the desktop HUD crowded, and wanted the loading screen's controls to match the

@@ -211,6 +211,7 @@ export async function getInit(
     levelId: levelOfDay(day),
     levelIds: [...LEVEL_IDS],
     username,
+    avatar: null,   // filled in by the caller (avatars.ts needs Reddit's lookup)
     me: board.me,
     streak,
     players: board.players,

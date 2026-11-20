@@ -3,8 +3,9 @@
 //   /api/*       called by the web view (splash page and the Godot game)
 //   /internal/*  called by Reddit: menu action, install trigger, daily cron
 //
-// The rules live in daily.ts (boards, streaks) and flair.ts (the opt-in streak
-// flair); this file only wires them to Devvit.
+// The rules live in daily.ts (boards, streaks), flair.ts (the opt-in streak
+// flair) and avatars.ts (snoovatars on the boards); this file only wires them
+// to Devvit.
 
 import { serve } from '@hono/node-server';
 import { context, createServer, getServerPort, reddit, redis } from '@devvit/web/server';
@@ -12,6 +13,7 @@ import type { TaskResponse } from '@devvit/web/server';
 import type { TriggerResponse, UiResponse } from '@devvit/web/shared';
 import { Hono } from 'hono';
 import type { FlairRequest, FlairResponse, RunRequest } from '../shared/api.ts';
+import { type AvatarLookup, avatarsFor, withAvatars } from './avatars.ts';
 import {
   dateOf,
   dayFromPostData,
@@ -52,10 +54,18 @@ function flairSink(subredditName: string): FlairSink {
   };
 }
 
+/** A player's snoovatar URL (free for the viewer: Devvit has it in the context). */
+const snoovatar: AvatarLookup = (username) => reddit.getSnoovatarUrl(username);
+
 app.get('/api/init', async (c) => {
   const now = Date.now();
   const day = dayFromPostData(context.postData, now);
-  return c.json(await getInit(redis, day, context.username ?? null, now));
+  const username = context.username ?? null;
+  const [init, avatars] = await Promise.all([
+    getInit(redis, day, username, now),
+    username ? avatarsFor(redis, snoovatar, [username]) : Promise.resolve({} as Record<string, string>),
+  ]);
+  return c.json({ ...init, avatar: username ? (avatars[username] ?? null) : null });
 });
 
 // ?board=overall|level|day  &level=<permanent level id>  &limit=<rows, up to 50>
@@ -63,9 +73,10 @@ app.get('/api/leaderboard', async (c) => {
   const day = dayFromPostData(context.postData, Date.now());
   const level = Number(c.req.query('level'));
   const limit = Number(c.req.query('limit')) || undefined;
-  return c.json(
-    await getLeaderboard(redis, day, context.username ?? null, c.req.query('board') ?? 'day', level, limit),
+  const board = await getLeaderboard(
+    redis, day, context.username ?? null, c.req.query('board') ?? 'day', level, limit,
   );
+  return c.json(await withAvatars(redis, snoovatar, board));
 });
 
 app.post('/api/run', async (c) => {

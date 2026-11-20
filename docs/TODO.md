@@ -53,7 +53,10 @@ Tick items off here as they land; the CHANGELOG has the details.
       comes back when they turn it off. 2026-11-20.
 - [ ] Check streak flair on real Reddit: the subreddit may need user flair enabled
       (mod tools > User flair), and the app account must be allowed to set it.
-- [ ] Reddit avatars on the leaderboard, if the web view's content rules allow loading them.
+- [x] Reddit avatars on the leaderboard (2026-11-20): snoovatars on every row, initials for
+      players without one.
+- [ ] Check avatars on real Reddit: if the web view refuses `i.redd.it`, rows show initials.
+      Then the server would have to fetch the pictures (`permissions.http.domains`, reviewed).
 
 ## 5. Submission (Devpost + Reddit)
 

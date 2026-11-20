@@ -7,6 +7,8 @@ export class MemoryStore implements Store {
   strings = new Map<string, string>();
   hashes = new Map<string, Record<string, string>>();
   boards = new Map<string, Map<string, number>>();
+  /** The last expiry set on each key, in seconds (never enforced here). */
+  expiries = new Map<string, number>();
 
   async get(key: string) {
     return this.strings.get(key);
@@ -16,7 +18,13 @@ export class MemoryStore implements Store {
     this.strings.set(key, value);
   }
 
-  async expire() {}
+  async expire(key: string, seconds: number) {
+    this.expiries.set(key, seconds);
+  }
+
+  ttl(key: string) {
+    return this.expiries.get(key);
+  }
 
   async hGetAll(key: string) {
     return { ...this.hashes.get(key) };

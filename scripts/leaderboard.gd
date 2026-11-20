@@ -6,7 +6,8 @@ extends Node
 ##  - **Reddit** (the game inside a Reddit post, via the `Reddit` autoload): the
 ##    Devvit server keeps a board per level, an OVERALL board, which adds up
 ##    each player's best time on every level and ranks the lowest total first,
-##    and a DAY board for the day's circuit. Players are their Reddit usernames.
+##    and a DAY board for the day's circuit. Players are their Reddit usernames,
+##    and rows carry their snoovatar URL when they have one.
 ##    A finished race's answer (place today, streak, countdown) goes out on
 ##    `run_recorded` for the results card.
 ##  - **Appwrite** (everywhere else, if its IDs below are filled in): a tiny REST
@@ -170,8 +171,9 @@ func _on_submit_done(_result: int, code: int, _h: PackedStringArray, _body: Pack
 
 ## Loads the ranked top times for `level` (a permanent level id, OVERALL or
 ## DAY); emits scores_loaded(level, rows) where each row is { name, level,
-## time_ms }, fastest first and trimmed to `limit`. For OVERALL, `time_ms` is
-## the total.
+## time_ms, avatar }, fastest first and trimmed to `limit`. For OVERALL,
+## `time_ms` is the total. `avatar` is the player's snoovatar URL on Reddit
+## ("" when they have none, and always "" on Appwrite).
 func fetch_top(level: int, limit: int = 25) -> void:
 	_last_level = level
 	last_info = {}
@@ -209,10 +211,12 @@ func _on_reddit_board(level: int, result: Variant) -> void:
 		return
 	var rows: Array = []
 	for entry in result.get("top", []):
+		var avatar: Variant = entry.get("avatar")
 		rows.append({
 			"name": String(entry.get("name", "?")),
 			"level": level,
 			"time_ms": int(entry.get("timeMs", 0)),
+			"avatar": avatar if avatar is String else "",
 		})
 	var me: Variant = result.get("me")
 	last_info = {
@@ -242,6 +246,7 @@ func _on_fetch_done(_result: int, code: int, _h: PackedStringArray, body: Packed
 			"name": String(doc.get("name", "Player")),
 			"level": int(doc.get("level", 0)),
 			"time_ms": int(doc.get("time_ms", 0)),
+			"avatar": "",
 		})
 	rows.sort_custom(func(a, b): return a["time_ms"] < b["time_ms"])
 	if rows.size() > 25:

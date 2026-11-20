@@ -8,6 +8,7 @@
 // engine-files.ts.
 
 import type { InitResponse } from '../shared/api.ts';
+import { avatarPng } from './avatar-image.ts';
 import { serveEngineFiles } from './engine-files.ts';
 
 type GodotEngine = {
@@ -36,6 +37,11 @@ type Bridge = {
    * ("" on any failure). Godot passes a JavaScriptBridge callback as `done`.
    */
   request(method: string, path: string, body: string, done: (text: string) => void): void;
+  /**
+   * A player's avatar (a URL from the server's leaderboard rows) as a small
+   * square PNG in base64, or "" when it cannot be shown. See avatar-image.ts.
+   */
+  avatar(url: string, done: (png: string) => void): void;
 };
 
 declare global {
@@ -83,6 +89,9 @@ window.FWS = {
   screen: startScreen,
   request(method, path, body, done) {
     void requestText(method, path, body).then(done);
+  },
+  avatar(url, done) {
+    void avatarPng(url).then(done);
   },
 };
 

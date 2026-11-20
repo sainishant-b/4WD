@@ -6,6 +6,11 @@ export type Row = {
   rank: number;
   name: string;
   timeMs: number;
+  /**
+   * The player's Reddit avatar (snoovatar) image URL. Only on leaderboard
+   * rows (GET /api/leaderboard), and only when the player has one.
+   */
+  avatar?: string;
 };
 
 export type Streak = {
@@ -49,6 +54,8 @@ export type InitResponse = {
   levelIds: number[];
   /** Null when the viewer is logged out (can play, cannot rank). */
   username: string | null;
+  /** The viewer's Reddit avatar (snoovatar) image URL; null when logged out or they have none. */
+  avatar: string | null;
   /** The viewer's line on this day's board. */
   me: Row | null;
   streak: Streak;

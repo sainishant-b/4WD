@@ -96,11 +96,35 @@ func _fake_server(_method: String, path: String, _body: Dictionary, done: Callab
 	var top: Array = []
 	for i in names.size():
 		var base := 301000 if overall else 58420
-		top.append({"rank": i + 1, "name": names[i], "timeMs": base + i * (9130 if overall else 2470)})
+		var row := {"rank": i + 1, "name": names[i], "timeMs": base + i * (9130 if overall else 2470)}
+		if FAKE_AVATARS.has(names[i]):
+			row["avatar"] = "https://i.redd.it/snoovatar/avatars/%s.png" % names[i]
+		top.append(row)
 	done.call({
 		"players": 132, "mapsDone": 5, "mapsTotal": 5, "top": top,
 		"me": {"rank": 3, "name": "local_driver", "timeMs": int(top[2]["timeMs"])},
 	})
+
+
+## Pretend snoovatars (players without one show their initial).
+const FAKE_AVATARS := {"apex_hunter": "e15948", "local_driver": "1f9a4f", "pivot_king": "ffc400"}
+
+
+## A stand-in for the page's FWS.avatar: a tall full-body figure (like a
+## snoovatar, the same one tools/serve-local.ts draws), cut to its top square
+## and handed over as a base64 PNG, as reddit/src/client/avatar-image.ts does.
+func _fake_avatar(url: String, done: Callable) -> void:
+	var player := url.get_file().get_basename()
+	var color: String = FAKE_AVATARS.get(player, "2346e0")
+	var svg := ("<svg xmlns='http://www.w3.org/2000/svg' width='380' height='600' viewBox='0 0 380 600'>"
+		+ "<rect x='70' y='250' width='240' height='300' rx='60' fill='#%s'/>" % color
+		+ "<circle cx='190' cy='170' r='130' fill='#fff4dc' stroke='#0d1b55' stroke-width='12'/>"
+		+ "<rect x='70' y='120' width='240' height='70' rx='30' fill='#%s' stroke='#0d1b55' stroke-width='10'/>" % color
+		+ "<circle cx='150' cy='215' r='16' fill='#0d1b55'/><circle cx='230' cy='215' r='16' fill='#0d1b55'/></svg>")
+	var image := Image.new()
+	image.load_svg_from_string(svg, 96.0 / 380.0)
+	var head := image.get_region(Rect2i(0, 0, image.get_width(), image.get_width()))
+	done.call(Marshalls.raw_to_base64(head.save_png_to_buffer()))
 
 
 ## The menu screens: main menu, its settings card, level select, How to Play,
@@ -117,7 +141,9 @@ func _menus(prefix: String) -> void:
 		await _shot("%s-%s" % [prefix, spec[1]])
 	var reddit = root.get_node("/root/Reddit")
 	reddit.transport = _fake_server
-	reddit.apply_init({"username": "local_driver", "day": 4, "levelId": _game.level_id(3)})
+	reddit.avatar_transport = _fake_avatar
+	reddit.apply_init({"username": "local_driver", "day": 4, "levelId": _game.level_id(3),
+		"avatar": "https://i.redd.it/snoovatar/avatars/local_driver.png"})
 	change_scene_to_file("res://scenes/LevelSelect.tscn")   # Reddit: today's circuit only
 	await _frames(6)
 	await _shot(prefix + "-todays-circuit")
@@ -136,6 +162,7 @@ func _menus(prefix: String) -> void:
 	await _frames(6)
 	await _shot(prefix + "-leaderboard")
 	reddit.transport = Callable()
+	reddit.avatar_transport = Callable()
 	reddit.apply_init({"username": null, "day": 0, "levelId": -1})
 
 

@@ -179,6 +179,9 @@ are their Reddit accounts:
 - **Streak flair (opt-in):** the results card's **SHOW MY STREAK AS FLAIR** switch sets your user flair
   in the subreddit to "🔥 n-day streak"; press again to get your own flair back
   (`reddit/src/server/flair.ts`).
+- **Avatars:** each board row shows the player's Reddit avatar (snoovatar), or their initial
+  when they have none or the picture can't load (`reddit/src/server/avatars.ts`,
+  `reddit/src/client/avatar-image.ts`, `scripts/avatar_badge.gd`).
 
 **Everywhere else** (desktop, Android) it uses **[Appwrite](https://appwrite.io)**, one board per
 level, with a name you type on the screen. It runs over plain HTTPS — no

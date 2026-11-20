@@ -7,11 +7,16 @@
 // or style, same-origin only) and answers /api/* with the real rules from
 // src/server/daily.ts over an in-memory store. The policy is an approximation
 // of Reddit's, so a clean run here is necessary, not sufficient.
+//
+// Avatars: some pretend players get a drawn stand-in served from this host
+// (/local-avatar/<name>.svg), so the game's avatar path runs under the strict
+// policy; the others show the game's initial badge.
 
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { type AvatarLookup, avatarsFor, withAvatars } from '../src/server/avatars.ts';
 import { LEVEL_IDS, dayOf, getInit, getLeaderboard, levelOfDay, submitRun } from '../src/server/daily.ts';
 import { type Flair, type FlairSink, refreshStreakFlair, setStreakFlair } from '../src/server/flair.ts';
 import { MemoryStore } from '../src/server/memory-store.ts';
@@ -81,6 +86,22 @@ for (const [name, base, levels] of rivals) {
   }
 }
 
+/** Pretend players with an avatar, and its colour; everyone else has none. */
+const LOCAL_AVATARS: Record<string, string> = { apex_hunter: '#e15948', local_driver: '#1f9a4f' };
+const localAvatar: AvatarLookup = async (name) =>
+  LOCAL_AVATARS[name] ? `/local-avatar/${encodeURIComponent(name)}.svg` : undefined;
+const isLocalAvatar = (url: string) => url.startsWith('/local-avatar/');
+
+/** A tall full-body stand-in, shaped like a snoovatar image (380 x 600, head at the top). */
+function avatarSvg(color: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="380" height="600" viewBox="0 0 380 600">
+<rect x="70" y="250" width="240" height="300" rx="60" fill="${color}"/>
+<circle cx="190" cy="170" r="130" fill="#fff4dc" stroke="#0d1b55" stroke-width="12"/>
+<rect x="70" y="120" width="240" height="70" rx="30" fill="${color}" stroke="#0d1b55" stroke-width="10"/>
+<circle cx="150" cy="215" r="16" fill="#0d1b55"/><circle cx="230" cy="215" r="16" fill="#0d1b55"/>
+</svg>`;
+}
+
 async function readBody(request: import('node:http').IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
   for await (const chunk of request) chunks.push(chunk as Buffer);
@@ -98,12 +119,17 @@ async function api(
 ): Promise<unknown> {
   const now = Date.now();
   const day = dayOf(now);
-  if (path === '/api/init' && request.method === 'GET') return getInit(store, day, username, now);
+  if (path === '/api/init' && request.method === 'GET') {
+    const init = await getInit(store, day, username, now);
+    const avatars = username ? await avatarsFor(store, localAvatar, [username], isLocalAvatar) : {};
+    return { ...init, avatar: username ? (avatars[username] ?? null) : null };
+  }
   if (path === '/api/leaderboard' && request.method === 'GET') {
-    return getLeaderboard(
+    const board = await getLeaderboard(
       store, day, username, query.get('board') ?? 'day', Number(query.get('level')),
       Number(query.get('limit')) || undefined,
     );
+    return withAvatars(store, localAvatar, board, isLocalAvatar);
   }
   if (path === '/api/run' && request.method === 'POST') {
     const body = (await readBody(request)) as { levelId?: unknown; timeMs?: unknown };
@@ -126,6 +152,14 @@ createServer(async (request, response) => {
   const path = url.pathname;
   response.setHeader('Content-Security-Policy', CSP);
   response.setHeader('Cache-Control', 'no-store');
+
+  const avatarName = /^\/local-avatar\/([^/]+)\.svg$/.exec(path)?.[1];
+  if (avatarName !== undefined) {
+    const color = LOCAL_AVATARS[decodeURIComponent(avatarName)];
+    response.writeHead(color ? 200 : 404, { 'Content-Type': MIME['.svg'] });
+    response.end(color ? avatarSvg(color) : '');
+    return;
+  }
 
   if (path.startsWith('/api/')) {
     const result = await api(path, url.searchParams, request);

@@ -5,14 +5,17 @@ extends Control
 ## Inside a Reddit post the first board is OVERALL: every player's best time on
 ## all the levels added up, lowest total on top; then TODAY (fastest on the
 ## day's circuit; the results card's Leaderboard button opens here); then one
-## board per level. The player is their Reddit account. Elsewhere (Appwrite)
-## there is one board per level and a box to type a display name.
+## board per level. The player is their Reddit account, and each row shows the
+## player's snoovatar (`AvatarBadge`; their initial when they have none).
+## Elsewhere (Appwrite) there is one board per level, initials only, and a box
+## to type a display name.
 ##
 ## `_build()` runs again when `Layout` flips, narrowing the column and swapping
 ## the row of board buttons for a < Board > stepper on a portrait phone.
 
 const WIDE_WIDTH := 560.0
 const ROWS := 25
+const AVATAR_PX := 30.0
 
 const OVERALL_SLOT := -1
 const DAY_SLOT := -2
@@ -126,6 +129,9 @@ func _build_identity() -> Control:
 	if Reddit.is_available():
 		if Reddit.username != "":
 			label.text = "Racing as"
+			var avatar := AvatarBadge.new()
+			avatar.setup(Reddit.username, Reddit.avatar_url, AVATAR_PX)
+			row.add_child(avatar)
 			var who := Label.new()
 			who.text = "u/" + Reddit.username
 			who.add_theme_color_override("font_color", Palette.GOLD)
@@ -236,7 +242,7 @@ func _on_scores_loaded(level: int, rows: Array) -> void:
 	_status.text = _summary(rows.size())
 	var rank := 1
 	for r in rows:
-		_add_row(rank, String(r["name"]), int(r["time_ms"]))
+		_add_row(rank, String(r["name"]), int(r["time_ms"]), String(r.get("avatar", "")))
 		rank += 1
 
 
@@ -275,9 +281,9 @@ func _clear_rows() -> void:
 		c.queue_free()
 
 
-## One ranked line: a badge (medal colours for the top three), the name, the
-## time. The player's own line is picked out in red-orange.
-func _add_row(rank: int, who: String, time_ms: int) -> void:
+## One ranked line: a badge (medal colours for the top three), the player's
+## avatar, the name, the time. The player's own line is picked out in red-orange.
+func _add_row(rank: int, who: String, time_ms: int, avatar_url := "") -> void:
 	var mine := Reddit.username != "" and who == Reddit.username
 	var line := PanelContainer.new()
 	var back := HudStyle.pill(Color(Palette.SURFACE_INSET, 1.0 if rank % 2 == 1 else 0.0), 10)
@@ -310,6 +316,10 @@ func _add_row(rank: int, who: String, time_ms: int) -> void:
 		badge.add_theme_stylebox_override("normal", plain)
 		badge.add_theme_color_override("font_color", Palette.TEXT_MUTED)
 	row.add_child(badge)
+
+	var avatar := AvatarBadge.new()
+	avatar.setup(who, avatar_url, AVATAR_PX)
+	row.add_child(avatar)
 
 	var name_lbl := Label.new()
 	name_lbl.text = who
