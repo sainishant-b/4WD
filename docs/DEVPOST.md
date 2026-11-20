@@ -24,16 +24,19 @@ browser game.
 ### What it does
 
 Every day one circuit is featured in a Reddit post. You open the post, see today's track and
-your standing, tap **Drive** and race three laps. The twist is the car: the **front and rear
+your standing, tap **Drive** and race one flat-out lap. The twist is the car: the **front and rear
 axles steer independently**. Turn them opposite ways and the car pivots on the spot; turn them
 the same way and it slides sideways like a crab. Hairpins that would stop a normal car become a
 puzzle of when to pivot and when to crab.
 
-- **Daily content:** one featured circuit a day (five circuits rotate), a new post at 00:00 UTC
-  created by the app's own scheduler, and older posts stay playable on their own day.
+- **Daily content:** seven circuits, one for each day of the week (Monday the easiest, Sunday
+  the hardest), a new post at 00:00 UTC created by the app's own scheduler, and older posts stay
+  playable on their own day.
+- **Casual mode:** all seven circuits, three laps, no wall-hit limit, just the time, for players
+  who want to learn the tracks without pressure.
 - **Reddit-native competition:** players are their Reddit accounts. After a finish the results
   card shows your place on today's board ("#12 of 340 today"), a new-best chip, your streak and
-  a countdown to the next circuit. The leaderboard has TODAY, OVERALL (best times on all five
+  a countdown to the next circuit. The leaderboard has TODAY, OVERALL (best times on all seven
   circuits added up, lowest total first) and a board per circuit, each row with the player's
   Reddit avatar. Players can opt in to show
   their streak as their user flair in the subreddit ("🔥 4-day streak").
@@ -47,7 +50,7 @@ puzzle of when to pivot and when to crab.
 ### How to play
 
 1. Tap **Drive** on today's post, then **DRIVE** on Today's Circuit.
-2. Race 3 laps through the gates; the gold arrow points to the next one.
+2. Race one lap through the gates; the gold arrow points to the next one.
 3. Steer front and rear opposite ways to pivot, the same way to slide sideways.
 4. Don't hit the walls three times. Finish to see your place today and your streak.
 
@@ -94,9 +97,11 @@ levels, medals, an Appwrite leaderboard and a hidden multiplayer mode. New for t
 - **One circuit a day:** Today's Circuit screen with a map of the track, a TODAY board, and the
   results card with place, streak and countdown.
 - **Phones:** portrait layouts for every screen and the twin thumb-pad controls.
-- **Tracks:** a new track builder (smooth edges that cannot fold), five redesigned circuits with
-  rising difficulty and hairpins, and the obstacle levels removed.
-- **Rules:** three wall hits end the race; every race is three laps.
+- **Tracks:** a new track builder (smooth edges that cannot fold), seven circuits (five
+  redesigned and grown by half, two new) with rising difficulty and hairpins, one per weekday,
+  and the obstacle levels removed.
+- **Rules:** ranked races are one lap and three wall hits end them; casual races are three laps
+  with no limit.
 - **Look and feel:** a saturated "Cobalt & Sun" look (striped cobalt, cream cards with ink
   outlines and hard shadows, red-and-white kerbs), a mini map, a radial speedometer, key-cap control hints,
   a picture-only How to Play, a mute button on every screen, shaded menus, and more grip so the

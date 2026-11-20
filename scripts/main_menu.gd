@@ -1,6 +1,7 @@
 extends Control
-## Title screen: Play -> Level Select, Leaderboard, How to Play, Settings
-## (volume), Quit. UI is built in code by `_build()`, which runs again when
+## Title screen: Play -> Level Select (ranked: one lap, three wall hits; on
+## Reddit, Today's Circuit), Casual -> every map for three laps with no wall-hit
+## limit, Leaderboard, How to Play, Settings (volume), Quit. UI is built in code by `_build()`, which runs again when
 ## `Layout` flips, so the same screen fits a desktop window and a portrait phone.
 ## Styling comes from the design-system theme
 ## (res://ui/four_wheel_steer_theme.tres) + Palette tokens: gold primary CTA,
@@ -40,7 +41,7 @@ func _build() -> void:
 
 	HudStyle.add_backdrop(self)
 
-	var title_top := 110.0 if narrow else 90.0
+	var title_top := 70.0 if narrow else 60.0
 	var title := Label.new()
 	title.text = "FOUR WHEEL STEER"
 	title.add_theme_font_size_override("font_size", 38 if narrow else 56)
@@ -66,6 +67,7 @@ func _build() -> void:
 
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.offset_top = subtitle.offset_bottom   # the card centres in the space under the subtitle
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 
@@ -82,6 +84,7 @@ func _build() -> void:
 	vb.add_theme_constant_override("separation", 14)
 	card.add_child(vb)
 	_add_button(vb, "Play", _on_play)                       # gold primary
+	_add_button(vb, "Casual", _on_casual, "ButtonSecondary")
 	_add_button(vb, "Leaderboard", _on_leaderboard, "ButtonSecondary")
 	_add_button(vb, "How to Play", _on_howto, "ButtonGhost")
 	_add_button(vb, "Settings", _on_settings, "ButtonGhost")
@@ -166,6 +169,10 @@ func _build_settings_overlay() -> void:
 
 func _on_play() -> void:
 	Game.goto_level_select()
+
+
+func _on_casual() -> void:
+	Game.goto_casual()
 
 
 func _on_leaderboard() -> void:

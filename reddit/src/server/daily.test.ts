@@ -10,6 +10,7 @@ import {
   getInit,
   getLeaderboard,
   levelOfDay,
+  weekdayOf,
   msUntilNextDay,
   seedOf,
   submitRun,
@@ -51,6 +52,15 @@ test('every day has its own stable seed', () => {
 test('the levels take turns as the daily circuit', () => {
   const week = Array.from({ length: LEVEL_IDS.length * 2 }, (_, i) => levelOfDay(i + 1));
   assert.deepEqual(week, [...LEVEL_IDS, ...LEVEL_IDS]);
+  // Day 1 was Monday 16 Nov 2026: Monday gets the first (easiest) level,
+  // Friday 20 Nov the fifth, Sunday the last (hardest).
+  assert.equal(LEVEL_IDS.length, 7);
+  assert.equal(weekdayOf(1), 0);
+  assert.equal(levelOfDay(1), LEVEL_IDS[0]);
+  assert.equal(weekdayOf(5), 4);
+  assert.equal(levelOfDay(5), LEVEL_IDS[4]);
+  assert.equal(levelOfDay(7), LEVEL_IDS[6]);
+  assert.equal(levelOfDay(8), LEVEL_IDS[0]);
 });
 
 test('a post plays its own day; anything else plays today', () => {

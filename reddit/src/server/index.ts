@@ -128,7 +128,7 @@ async function ensureDailyPost(day: number): Promise<{ id: string; created: bool
     entry: 'default',
     postData: { day },
     textFallback: {
-      text: `Daily Circuit #${day} (${dateOf(day)}). Five circuits, one featured each day: steer the front and rear wheels separately and set your best time.`,
+      text: `Daily Circuit #${day} (${dateOf(day)}). Seven circuits, one for each day of the week (Monday the easiest): steer the front and rear wheels separately and set your best one-lap time.`,
     },
   });
   await redis.set(dayPostKey(day), post.id);

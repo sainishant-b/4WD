@@ -930,20 +930,30 @@ func _add_action_button(parent: Node, text: String, action: String, variation :=
 	return b
 
 
-func show_results(total: float, medal: String, best_total: float, best_lap: float, has_next: bool) -> void:
+## The finish card. `laps` is the race's lap count: a one-lap (ranked) race
+## shows TIME and BEST; a longer one TOTAL, BEST and BEST LAP. `new_best` (casual,
+## which has no medal) titles the card NEW BEST.
+func show_results(total: float, medal: String, best_total: float, best_lap: float, has_next: bool,
+		laps := 3, new_best := false) -> void:
 	if medal == "none":
-		_results_title.text = "FINISHED"
-		_badge_color = Palette.SURFACE
+		_results_title.text = "NEW BEST" if new_best else "FINISHED"
+		_badge_color = Palette.GOLD if new_best else Palette.SURFACE
 	else:
 		_results_title.text = medal.to_upper() + " MEDAL"
 		_badge_color = _medal_color(medal)
 	_badge_cross = false
 	_results_badge.queue_redraw()
-	_set_rows([
-		["TOTAL", Game.format_time(total)],
-		["BEST", Game.format_time(best_total)],
-		["BEST LAP", Game.format_time(best_lap)],
-	])
+	if laps <= 1:
+		_set_rows([
+			["TIME", Game.format_time(total)],
+			["BEST", Game.format_time(best_total)],
+		])
+	else:
+		_set_rows([
+			["TOTAL", Game.format_time(total)],
+			["BEST", Game.format_time(best_total)],
+			["BEST LAP", Game.format_time(best_lap)],
+		])
 	_results_next.visible = has_next
 	_results_board.visible = false
 	_daily_box.visible = false

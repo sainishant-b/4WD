@@ -1,6 +1,7 @@
 // Daily Circuit rules: which day a moment belongs to, which level is that
-// day's circuit, the three leaderboards (day, per level, overall) and each
-// player's streak.
+// day's circuit (one per weekday, Monday the easiest), the three leaderboards
+// (day, per level, overall) and each player's streak. Every time on them is a
+// ranked race: ONE lap (the game's casual 3-lap races are never sent).
 //
 // No Devvit imports here on purpose: everything takes a `Store`, which Devvit's
 // redis client satisfies in production and tools/serve-local.ts fakes in memory.
@@ -37,14 +38,15 @@ export interface Store {
 }
 
 const DAY_MS = 86_400_000;
-/** Daily Circuit #1 is this UTC date. Days roll over at 00:00 UTC. */
+/** Daily Circuit #1 is this UTC date (a Monday). Days roll over at 00:00 UTC. */
 const FIRST_DAY_UTC = Date.UTC(2026, 10, 16);
 
 /**
- * The game's levels by permanent id, in level order. Must match `LEVELS[i].id`
- * in scripts/game_data.gd: the game reports a finished race by this id.
+ * The game's levels by permanent id, in level order: Monday's circuit (the
+ * easiest) first, Sunday's (the hardest) last. Must match `LEVELS[i].id` in
+ * scripts/game_data.gd: the game reports a finished race by this id.
  */
-export const LEVEL_IDS: readonly number[] = [2, 1, 3, 8, 9];
+export const LEVEL_IDS: readonly number[] = [10, 11, 12, 13, 14, 15, 16];
 
 /** Rows returned when the caller does not ask for a number. */
 export const TOP_COUNT = 10;
@@ -80,10 +82,14 @@ export function seedOf(day: number): number {
   return (x ^ (x >>> 16)) >>> 0;
 }
 
-/** The level that is `day`'s circuit: the levels take turns, one a day. */
+/** 0 = Monday ... 6 = Sunday, for `day`'s UTC date. */
+export function weekdayOf(day: number): number {
+  return (new Date(FIRST_DAY_UTC + (day - 1) * DAY_MS).getUTCDay() + 6) % 7;
+}
+
+/** The level that is `day`'s circuit: one per weekday, Monday's the easiest. */
 export function levelOfDay(day: number): number {
-  const count = LEVEL_IDS.length;
-  return LEVEL_IDS[(((day - 1) % count) + count) % count] as number;
+  return LEVEL_IDS[weekdayOf(day) % LEVEL_IDS.length] as number;
 }
 
 export function isLevelId(value: unknown): value is number {
@@ -109,11 +115,14 @@ export function dayFromPostData(postData: unknown, nowMs: number): number {
 }
 
 // Sorted sets, member = username, score = time in ms (lowest ranks first).
-const dayKey = (day: number) => `board:${day}`;
+// The day and overall keys carry `1lap`: before 2026-11-20 races were three
+// laps on smaller tracks (ids 1, 2, 3, 8, 9), and those times must not mix
+// with these. Level boards need no tag: the new tracks have new ids.
+const dayKey = (day: number) => `1lap:board:${day}`;
 /** Best time ever on one level. */
 const levelKey = (levelId: number) => `level:${levelId}`;
 /** Sum of a player's bests over every level; present only once they have them all. */
-const OVERALL_KEY = 'overall';
+const OVERALL_KEY = '1lap:overall';
 /** A player's streak, and their streak-flair choice (see flair.ts). */
 export const playerKey = (name: string) => `player:${name}`;
 /** Holds the post id once a day's post exists, so it is only created once. */

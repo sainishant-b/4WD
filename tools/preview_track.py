@@ -4,7 +4,7 @@ Uses the same waypoints and the same centre-line math as track_builder.gd
 (centripetal Catmull-Rom -> even resample -> relax bends tighter than the road
 can follow), and renders the road, walls, checkpoint gates, obstacles and car
 start to a PNG so the track shape can be eyeballed.
-    python tools/preview_track.py [t1..t5|mp]   one track  -> track_preview.png
+    python tools/preview_track.py [t1..t7|mp]   one track  -> track_preview.png
     python tools/preview_track.py all           all levels -> docs/tracks_overview.png
 """
 import math
@@ -17,50 +17,80 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as MplPolygon
 
 # --- Track presets (keep in sync with game_data.gd) -------------------------
-# Select with: python tools/preview_track.py [t1..t5|mp|all]   (default t1)
+# Select with: python tools/preview_track.py [t1..t7|mp|all]   (default t1)
 TRACKS = {
-    # Level 1: medium-width, flowing with one tight right-hand pair.
+    # Level 1, Monday, the easiest: wide and flowing; a broad sweep into the infield, a long S up the left.
     "t1": {"waypoints": [
-        (720, 520), (1180, 440), (1620, 540), (2060, 450),
-        (2420, 640), (2500, 1000), (2300, 1240), (2460, 1480),
-        (2040, 1560), (1600, 1440), (1160, 1560), (780, 1400),
-        (600, 1040), (560, 720),
-    ], "road_width": 88.0, "checkpoints": 8},
-    # Level 2: the tight twisty circuit.
+        (936, 676), (1534, 572), (1880, 650), (2100, 1080),
+        (2450, 1180), (2720, 820), (3146, 832), (3250, 1300),
+        (2990, 1612), (3198, 1924), (2652, 2028), (2080, 1840),
+        (1508, 2028), (1014, 1820), (780, 1560), (1200, 1290),
+        (780, 1000),
+    ], "road_width": 88.0, "checkpoints": 9},
+    # Level 2, Tuesday: tight and twisty; a hairpin tongue down into the infield.
     "t2": {"waypoints": [
-        (881, 545), (1493, 524), (1925, 567),
-        (2249, 761), (2069, 941), (2285, 1121), (2105, 1301),
-        (2177, 1481), (1817, 1503), (1493, 1373), (1205, 1517),
-        (917, 1409), (665, 1229), (845, 1013), (650, 826), (816, 653),
-    ], "road_width": 75.0, "checkpoints": 9},
-    # Level 3: narrow, with deeper esses on both sides.
+        (1145, 708), (1700, 681), (2050, 700), (2100, 1150),
+        (2240, 1260), (2380, 1150), (2430, 760), (2700, 800),
+        (2924, 989), (2690, 1223), (2970, 1457), (2736, 1691),
+        (2830, 1925), (2362, 1954), (1941, 1785), (1566, 1972),
+        (1192, 1832), (864, 1598), (1098, 1317), (845, 1074),
+        (1061, 849),
+    ], "road_width": 75.0, "checkpoints": 10},
+    # Level 3, Wednesday: narrow esses; an S-shaped loop through the infield.
     "t3": {"waypoints": [
-        (820, 560), (1280, 500), (1700, 580), (2120, 520),
-        (2360, 820), (2080, 1020), (2380, 1260), (2080, 1480),
-        (1680, 1420), (1340, 1520), (1000, 1380), (760, 1480),
-        (620, 1120), (920, 940), (640, 720),
-    ], "road_width": 72.0, "checkpoints": 9},
-    # Level 4: esses along the top, a tight two-hairpin switchback, a chicane along the bottom, esses up the left.
+        (1066, 728), (1664, 650), (1950, 760), (1900, 1060),
+        (2120, 1260), (2380, 1060), (2330, 760), (2756, 676),
+        (3068, 1066), (2704, 1326), (3094, 1638), (2704, 1924),
+        (2184, 1846), (1742, 1976), (1300, 1794), (988, 1924),
+        (806, 1456), (1196, 1222), (832, 936),
+    ], "road_width": 72.0, "checkpoints": 10},
+    # Level 4, Thursday: esses along the top, a two-hairpin switchback, a hairpin tongue up from the bottom.
     "t4": {"waypoints": [
-        (700, 480), (950, 400), (1200, 530), (1450, 400),
-        (1700, 500), (2330, 560), (2460, 800), (2360, 990),
-        (2050, 1010), (1790, 1020), (1690, 1095), (1790, 1170),
-        (2100, 1180), (2380, 1210), (2480, 1320), (2380, 1430),
-        (2160, 1520), (1950, 1390), (1740, 1530), (1400, 1440),
-        (1000, 1520), (680, 1420), (540, 1150), (700, 900),
-        (540, 700),
-    ], "road_width": 68.0, "checkpoints": 10},
-    # Level 5: esses into a narrow inlet with a hairpin at its foot, esses along the bottom, a double switchback, a kink up the left.
+        (910, 624), (1235, 520), (1560, 689), (1885, 520),
+        (2210, 650), (3029, 728), (3198, 1040), (3068, 1287),
+        (2665, 1313), (2327, 1326), (2197, 1424), (2327, 1521),
+        (2730, 1534), (3094, 1573), (3224, 1716), (3094, 1859),
+        (2808, 1976), (2535, 1807), (2262, 1989), (1820, 1900),
+        (1720, 1300), (1560, 1130), (1400, 1300), (1350, 1900),
+        (884, 1846), (702, 1495), (910, 1170), (702, 910),
+    ], "road_width": 68.0, "checkpoints": 11},
+    # Level 5, Friday: two hairpin tongues off the top, esses along the bottom, a double switchback up the left.
     "t5": {"waypoints": [
-        (700, 520), (860, 450), (1040, 570), (1220, 460),
-        (1400, 640), (1400, 950), (1480, 1110), (1560, 950),
-        (1560, 640), (1700, 500), (2000, 460), (2300, 520),
-        (2470, 720), (2380, 960), (2480, 1200), (2360, 1430),
-        (2150, 1530), (1930, 1400), (1710, 1540), (1500, 1440),
-        (1250, 1500), (1070, 1400), (1040, 1050), (940, 900),
-        (840, 1050), (840, 1280), (740, 1410), (640, 1280),
-        (570, 1110), (680, 950), (590, 790),
-    ], "road_width": 64.0, "checkpoints": 12},
+        (910, 676), (1118, 585), (1352, 741), (1586, 598),
+        (1820, 832), (1820, 1235), (1924, 1443), (2028, 1235),
+        (2028, 832), (2210, 650), (2500, 620), (2600, 900),
+        (2620, 1300), (2760, 1450), (2900, 1300), (2900, 760),
+        (3100, 760), (3211, 1000), (3094, 1248), (3224, 1560),
+        (3068, 1859), (2795, 1989), (2509, 1820), (2223, 2002),
+        (1950, 1872), (1625, 1950), (1391, 1820), (1352, 1365),
+        (1222, 1170), (1092, 1365), (1092, 1664), (962, 1833),
+        (832, 1664), (741, 1443), (884, 1235), (767, 1027),
+    ], "road_width": 64.0, "checkpoints": 13},
+    # Level 6, Saturday: a chicane, kinked hairpin rows across the middle, bottom esses, a switchback up the left.
+    "t6": {"waypoints": [
+        (1150, 575), (1600, 660), (1850, 540), (2250, 600),
+        (2700, 560), (3150, 700), (3300, 1000), (3100, 1250),
+        (2780, 1170), (2480, 1290), (2220, 1160), (2050, 1300),
+        (2180, 1520), (2480, 1580), (2780, 1480), (3100, 1560),
+        (3350, 1800), (3150, 2100), (2700, 2150), (2400, 1900),
+        (2100, 2150), (1750, 1950), (1450, 2150), (1050, 2100),
+        (800, 1850), (850, 1650), (1150, 1570), (1480, 1660),
+        (1640, 1500), (1500, 1380), (1200, 1430), (950, 1340),
+        (800, 1150), (900, 900), (840, 680),
+    ], "road_width": 62.0, "checkpoints": 13},
+    # Level 7, Sunday, the hardest: deep top esses, kinked hairpin rows, two tongues along the bottom, a switchback up the left.
+    "t7": {"waypoints": [
+        (900, 600), (1250, 500), (1500, 700), (1750, 500),
+        (2000, 700), (2400, 560), (2800, 600), (3200, 700),
+        (3350, 1000), (3200, 1250), (2950, 1140), (2700, 1250),
+        (2500, 1060), (2300, 1180), (2400, 1420), (2700, 1500),
+        (2950, 1400), (3200, 1520), (3400, 1750), (3250, 2050),
+        (2900, 2100), (2700, 1850), (2500, 1650), (2300, 1850),
+        (2250, 2150), (1900, 2200), (1600, 2050), (1650, 1700),
+        (1500, 1450), (1300, 1600), (1250, 1950), (1000, 2150),
+        (750, 1950), (760, 1700), (1050, 1500), (1120, 1250),
+        (850, 1150), (760, 900),
+    ], "road_width": 60.0, "checkpoints": 14},
     # Multiplayer (hidden): a wide flowing loop so cars race side-by-side and bump.
     "mp": {"waypoints": [
         (700, 400), (1500, 360), (2200, 460),
@@ -69,7 +99,7 @@ TRACKS = {
     ], "road_width": 180.0, "checkpoints": 6},
 }
 # Level order for the `all` sheet ("mp" is the hidden multiplayer track, left out).
-LEVELS = ["t1", "t2", "t3", "t4", "t5"]
+LEVELS = ["t1", "t2", "t3", "t4", "t5", "t6", "t7"]
 LEGEND = "red line = start/finish    green = gates (numbered in order)    blue arrow = car start"
 # Keep these in step with the constants in scripts/track_builder.gd.
 SPLINE_STEPS = 48     # spline evaluations per waypoint segment
@@ -251,7 +281,7 @@ def main():
     root = os.path.join(os.path.dirname(__file__), "..")
 
     if sel == "all":
-        fig, axes = plt.subplots(2, 3, figsize=(27, 13.5))
+        fig, axes = plt.subplots(3, 3, figsize=(27, 20))
         fig.patch.set_facecolor("#0b0f17")
         for ax, (number, key) in zip(axes.flat, enumerate(LEVELS, start=1)):
             track = TRACKS[key]

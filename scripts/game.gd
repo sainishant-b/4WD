@@ -1,9 +1,14 @@
 extends Node2D
 ## Race controller. Builds the circuit for the selected level, runs the countdown
-## and a multi-lap race (checkpoints in order, crossing the start/finish gate = a
-## lap), awards a medal on finish, tracks best lap, and provides a manual pause.
+## and the race (checkpoints in order, crossing the start/finish gate = a lap),
+## awards a medal on finish, tracks best lap, and provides a manual pause.
 ##
-## Three strikes: every new touch of a track wall is counted across the whole
+## The mode comes from `Game.casual` (see game_data.gd): a ranked race is ONE
+## lap with the three-strikes rule, and its time is recorded, medalled and sent
+## to the leaderboard; a casual race is THREE laps with no wall-hit limit, and
+## only its time is kept, as a casual personal best.
+##
+## Three strikes (ranked): every new touch of a track wall is counted across the
 ## race. The first two get a warning; the third (`MAX_WALL_TOUCHES`) ends the
 ## race as GAME OVER, with nothing saved and the next level not unlocked.
 ## Single-player only (the hidden multiplayer has no fail flow).
@@ -36,6 +41,7 @@ var _sfx_go: AudioStreamPlayer
 var _sfx_warn: AudioStreamPlayer
 var _last_count: int = -1
 var _wall_touches: int = 0
+var _casual: bool = false          # this race is casual (see the header)
 
 var _laps: int = 3
 var _lap: int = 1
@@ -56,6 +62,7 @@ func _ready() -> void:
 	_level_idx = Game.current_level
 	_lv = Game.active_race()   # MP -> the wide shared track; else the chosen level
 	_laps = int(_lv.get("laps", 3))
+	_casual = Game.casual and not Net.is_multiplayer
 
 	_built = TrackBuilder.build(_lv["track"], $Track, $Checkpoints, CheckpointScene, $Obstacles)
 	_checkpoints = _built["checkpoints"]
@@ -65,12 +72,12 @@ func _ready() -> void:
 	_hud.set_track(_built["centerline"], _built["gate_points"])   # the mini map
 	_set_active(_next_index)
 	_hud.ui_action.connect(_on_ui_action)
-	_hud.set_level_name(_lv["name"])
+	_hud.set_level_name(String(_lv["name"]) + (" · CASUAL" if _casual else ""))
 	_hud.set_lap(1, _laps)
-	_hud.set_best(Game.best_time(_level_idx))
-	_hud.set_best_lap(Game.best_lap(_level_idx))
+	_hud.set_best(Game.casual_best(_level_idx) if _casual else Game.best_time(_level_idx))
+	_hud.set_best_lap(Game.casual_best_lap(_level_idx) if _casual else Game.best_lap(_level_idx))
 	_hud.set_speed_max(_lv["max_speed"])
-	_hud.set_wall_touches(0, 0 if Net.is_multiplayer else MAX_WALL_TOUCHES)
+	_hud.set_wall_touches(0, 0 if Net.is_multiplayer or _casual else MAX_WALL_TOUCHES)
 	_hud.show_countdown("3")
 
 	_sfx_checkpoint = _make_sfx("res://audio/checkpoint.wav")
@@ -292,9 +299,9 @@ func _complete_lap() -> void:
 
 
 ## A new wall touch from the local car (car.gd has already merged scrapes and
-## bounces into single touches).
+## bounces into single touches). Casual races have no limit, so it is ignored.
 func _on_wall_touched() -> void:
-	if _state != State.RACING or Net.is_multiplayer:
+	if _state != State.RACING or Net.is_multiplayer or _casual:
 		return
 	_wall_touches += 1
 	_hud.set_wall_touches(_wall_touches, MAX_WALL_TOUCHES)
@@ -332,12 +339,21 @@ func _finish() -> void:
 		_sfx_finish.play()
 	if Net.is_multiplayer:
 		# No medals/unlocks online — just show the time (race-flow polish is later).
-		_hud.show_results(_elapsed, "none", 0.0, _best_lap_run, false)
+		_hud.show_results(_elapsed, "none", 0.0, _best_lap_run, false, _laps)
+		return
+	if _casual:
+		# Casual: just the time. A personal best per map; no medal, no unlock,
+		# nothing sent to the leaderboard.
+		var improved := Game.record_casual(_level_idx, _elapsed, _best_lap_run)
+		_hud.show_results(
+			_elapsed, "none", Game.casual_best(_level_idx), Game.casual_best_lap(_level_idx),
+			Game.has_next_level(_level_idx), _laps, improved
+		)
 		return
 	var medal := Game.record_result(_level_idx, _elapsed, _best_lap_run)
 	_hud.show_results(
 		_elapsed, medal, Game.best_time(_level_idx), Game.best_lap(_level_idx),
-		Game.has_next_level(_level_idx)
+		Game.has_next_level(_level_idx), _laps
 	)
 	# On Reddit the card waits for the server's answer (place today, streak,
 	# countdown). Connected before submitting: the answer may come at once.

@@ -1,16 +1,18 @@
 extends Control
-## Picks the circuit to race.
+## Picks the circuit to race, in the mode `Game.casual` says.
 ##
-## Inside a Reddit post it is "Today's circuit": the one featured level of the
-## day, drawn as a diagram, with its top speed, your best, its medal times, a
-## big DRIVE button, and Back beside How to Play. Nothing else is offered there. It is the first screen a Reddit
+## Ranked inside a Reddit post it is "Today's circuit": the one featured level
+## of the day (Monday's is the easiest, Sunday's the hardest), drawn as a
+## diagram, with its top speed, your best, its medal times, a big DRIVE button,
+## and Back, How to Play and Casual under it. It is the first screen a Reddit
 ## player sees (main_menu.gd sends them here), so the race is one tap away.
 ##
-## Everywhere else it is a grid of level cards (raised cream tiles with a
-## colour bar along the top: the medal's colour, gold while unraced, grey while
-## locked). Unlocked ones are playable and show best time + medal; locked ones
-## are faded and say what to finish first. One row on a desktop window, two
-## columns on a portrait phone.
+## Everywhere else, and in casual on Reddit too, it is a grid of level cards
+## (raised cream tiles with a colour bar along the top). Ranked: the bar is the
+## medal's colour, gold while unraced, grey while locked; unlocked ones show best
+## time + medal, locked ones are faded and say what to finish first. Casual:
+## every map is open and shows its casual best. Four columns on a desktop
+## window, two on a portrait phone.
 ##
 ## `_build()` runs again when `Layout` flips, and on Reddit when the day's data
 ## arrives (it can land after the engine has started).
@@ -27,7 +29,7 @@ func _rebuild() -> void:
 
 
 func _build() -> void:
-	if Reddit.is_available():
+	if Reddit.is_available() and not Game.casual:
 		_build_daily()
 		return
 	var narrow := Layout.portrait
@@ -35,22 +37,33 @@ func _build() -> void:
 	HudStyle.add_backdrop(self)
 
 	var title := Label.new()
-	title.text = "SELECT LEVEL"
+	title.text = "CASUAL" if Game.casual else "SELECT LEVEL"
 	title.add_theme_font_size_override("font_size", 34 if narrow else 44)
 	HudStyle.style_title(title)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	title.offset_top = 36.0 if narrow else 60.0
+	title.offset_top = 28.0 if narrow else 48.0
 	title.offset_bottom = title.offset_top + 60.0
 	add_child(title)
 
+	# What this mode is, in a few words.
+	var rules := _line(
+		"3 LAPS  ·  NO WALL-HIT LIMIT  ·  JUST THE TIME" if Game.casual
+		else "1 LAP  ·  3 WALL HITS AND YOU'RE OUT", 14 if narrow else 16, Palette.TEXT_LIGHT)
+	rules.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	rules.offset_top = title.offset_bottom - 4.0
+	rules.offset_bottom = rules.offset_top + 24.0
+	add_child(rules)
+
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.offset_top = rules.offset_bottom
+	center.offset_bottom = -72.0   # clear of Back
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 
 	var grid := GridContainer.new()
-	grid.columns = 2 if narrow else mini(Game.level_count(), 5)
+	grid.columns = 2 if narrow else mini(Game.level_count(), 4)
 	grid.add_theme_constant_override("h_separation", 16)
 	grid.add_theme_constant_override("v_separation", 16)
 	center.add_child(grid)
@@ -76,9 +89,9 @@ func _add_back() -> void:
 
 
 ## Reddit: today's one circuit. A tilted DAY tag and the title, then a cream
-## card: the track on a deep-blue screen, CIRCUIT + the level's name with a
-## 3 LAPS tag, TOP SPEED and YOUR BEST tiles sunk into the card, and the medal
-## times. Under it a full-width DRIVE, then Back beside How to Play. On a phone
+## card: the track on a deep-blue screen, the weekday + the level's name with a
+## 1 LAP tag, TOP SPEED and YOUR BEST tiles sunk into the card, and the medal
+## times. Under it a full-width DRIVE, then Back, How to Play, Casual. On a phone
 ## all of that stacks; on a desktop the track sits beside the details and the
 ## buttons go under the details. A chequered strip runs along the bottom.
 func _build_daily() -> void:
@@ -167,8 +180,8 @@ func _build_daily() -> void:
 		side.add_child(buttons)
 
 
-## The circuit's name with a 3 LAPS tag, the TOP SPEED / YOUR BEST tiles and
-## the three medal targets.
+## The circuit's weekday and name with a 1 LAP tag, the TOP SPEED / YOUR BEST
+## tiles and the three medal targets.
 func _daily_details(idx: int, lv: Dictionary, narrow: bool) -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
@@ -180,13 +193,13 @@ func _daily_details(idx: int, lv: Dictionary, narrow: bool) -> VBoxContainer:
 	names.add_theme_constant_override("separation", 0)
 	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(names)
-	var kicker := _line("CIRCUIT", 12, Palette.TEXT_MUTED)
+	var kicker := _line("%s CIRCUIT" % Game.weekday_of(idx), 12, Palette.TEXT_MUTED)
 	kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	names.add_child(kicker)
 	var level_name := _line(String(lv["name"]).to_upper(), 32 if narrow else 36, Palette.TEXT)
 	level_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	names.add_child(level_name)
-	var laps := _line("3 LAPS", 13, Palette.TEXT)
+	var laps := _line("%d LAP%s" % [Game.RANKED_LAPS, "" if Game.RANKED_LAPS == 1 else "S"], 13, Palette.TEXT)
 	var laps_box := HudStyle.inset(10)
 	laps_box.content_margin_left = 10.0
 	laps_box.content_margin_right = 10.0
@@ -269,8 +282,9 @@ func _drive_button(idx: int, narrow: bool) -> Button:
 	return drive
 
 
-## Back (cream) beside How to Play (red-orange). On Reddit the game opens on
-## Today's Circuit, so How to Play waits behind its button here.
+## Back (cream), How to Play (red-orange) and Casual (cream: every map, three
+## laps, no wall-hit limit). On Reddit the game opens on Today's Circuit, so How
+## to Play waits behind its button here.
 func _daily_buttons(narrow: bool, with_help: bool) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
@@ -278,8 +292,8 @@ func _daily_buttons(narrow: bool, with_help: bool) -> HBoxContainer:
 	back.text = "Back"
 	back.theme_type_variation = "ButtonGhost"
 	back.icon = HudStyle.icon(HudStyle.ICON_BACK, Palette.TEXT, 20, 3.2)
-	back.custom_minimum_size = Vector2(0 if narrow else 120, 54 if narrow else 50)
-	back.add_theme_font_size_override("font_size", 18)
+	back.custom_minimum_size = Vector2(0 if narrow else 110, 54 if narrow else 50)
+	back.add_theme_font_size_override("font_size", 16 if narrow else 18)
 	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	back.size_flags_stretch_ratio = 1.0
 	back.pressed.connect(func(): Game.goto_menu())
@@ -289,11 +303,20 @@ func _daily_buttons(narrow: bool, with_help: bool) -> HBoxContainer:
 		help.text = "?  HOW TO PLAY"
 		help.theme_type_variation = "ButtonSecondary"
 		help.custom_minimum_size = Vector2(0, 54 if narrow else 50)
-		help.add_theme_font_size_override("font_size", 17)
+		help.add_theme_font_size_override("font_size", 15 if narrow else 17)
 		help.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		help.size_flags_stretch_ratio = 1.7
+		help.size_flags_stretch_ratio = 1.6
 		help.pressed.connect(func(): Game.goto_instructions())
 		row.add_child(help)
+		var casual := Button.new()
+		casual.text = "CASUAL"
+		casual.theme_type_variation = "ButtonGhost"
+		casual.custom_minimum_size = Vector2(0, 54 if narrow else 50)
+		casual.add_theme_font_size_override("font_size", 15 if narrow else 17)
+		casual.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		casual.size_flags_stretch_ratio = 1.1
+		casual.pressed.connect(func(): Game.goto_casual())
+		row.add_child(casual)
 	return row
 
 
@@ -302,20 +325,23 @@ func _short_time(seconds: float) -> String:
 	return "%d:%02d" % [int(seconds) / 60, int(seconds) % 60]
 
 
-## One level as a raised card: name, top speed, then the best time and a medal
+## One level as a raised card: name, weekday, then the best time and a medal
 ## chip, or what is still needed. The bar along the top takes the medal's
-## colour (gold while unraced, grey while locked).
+## colour (gold while unraced, grey while locked). Casual cards are all open,
+## show the casual best, and have a red-orange bar.
 func _make_card(idx: int, narrow: bool) -> Button:
 	var lv := Game.get_level(idx)
 	var open := Game.is_unlocked(idx)
-	var best := Game.best_time(idx)
-	var medal := Game.best_medal(idx)
+	var best := Game.casual_best(idx) if Game.casual else Game.best_time(idx)
+	var medal := Game.MEDAL_NONE if Game.casual else Game.best_medal(idx)
 	var accent := Palette.STROKE_STRONG
-	if open:
+	if Game.casual:
+		accent = Palette.POP
+	elif open:
 		accent = _medal_color(medal) if best > 0.0 and medal != Game.MEDAL_NONE else Palette.GOLD
 
 	var card := Button.new()
-	card.custom_minimum_size = Vector2(190, 124) if narrow else Vector2(204, 156)
+	card.custom_minimum_size = Vector2(190, 112) if narrow else Vector2(204, 150)
 	card.focus_mode = Control.FOCUS_NONE
 	card.disabled = not open
 	for state in ["normal", "hover", "pressed", "disabled"]:
@@ -344,7 +370,8 @@ func _make_card(idx: int, narrow: bool) -> Button:
 	card.add_child(box)
 
 	box.add_child(_line(String(lv["name"]).to_upper(), 20 if narrow else 22, Palette.TEXT if open else Palette.TEXT_DIM))
-	box.add_child(_line("TOP SPEED %d" % int(lv["max_speed"]), 11 if narrow else 12, Palette.TEXT_MUTED if open else Palette.TEXT_DIM))
+	box.add_child(_line("%s · TOP SPEED %d" % [Game.weekday_of(idx).left(3), int(lv["max_speed"])],
+		11 if narrow else 12, Palette.TEXT_MUTED if open else Palette.TEXT_DIM))
 	if not open:
 		box.add_child(_line("LOCKED", 13, Palette.TEXT_DIM))
 		box.add_child(_line("finish %s first" % String(Game.get_level(idx - 1)["name"]), 11, Palette.TEXT_DIM))

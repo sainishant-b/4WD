@@ -53,7 +53,9 @@ function renderToday(levelId: number): void {
   if (!track) return;
   drawTrack(el('track'), track);
   el('today-name').textContent = track.name;
-  el('today-detail').textContent = `${track.laps} laps · top speed ${track.topSpeed}`;
+  const weekday = track.weekday.charAt(0) + track.weekday.slice(1).toLowerCase();
+  const laps = `${track.laps} lap${track.laps === 1 ? '' : 's'}`;
+  el('today-detail').textContent = `${weekday} · ${laps} · top speed ${track.topSpeed}`;
   el('today').hidden = false;
   document.body.classList.add('has-today');
 }

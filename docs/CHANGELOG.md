@@ -4,6 +4,42 @@ Running history of major changes. Newest on top. See `CLAUDE.md` for when to add
 
 ## 2026-11-20
 
+- **Ranked = one lap, a new Casual mode, seven maps half as long again, one map per weekday.**
+  *Why:* the user found 3-lap races with three strikes too hard, and set the daily-maps direction:
+  ranked races (leaderboards and the Daily Circuit) are one lap; a separate casual mode plays
+  every map for three laps with no wall-hit limit, timed only; every map grows by about 50% with
+  new corners matched to its difficulty; and two new maps make seven, one for each weekday,
+  Monday the easiest.
+  - **Modes** (`Game.casual`, `RANKED_LAPS` 1, `CASUAL_LAPS` 3; `active_race()` sets the laps).
+    Ranked is the old flow with one lap: medals, unlocks, the leaderboard, three strikes. Casual
+    (`Game.goto_casual()`, the main menu's **Casual** button, and a **CASUAL** button on Today's
+    Circuit): every map open, three laps, wall hits ignored, no medal, nothing sent online; the
+    best 3-lap time and lap per map are kept apart in `save.json` (`casual_best`, `casual_lap`)
+    and the results card says NEW BEST when one falls. Casual offers Next, on Reddit too.
+  - **Maps** (`game_data.gd` `TRACK_1`..`TRACK_7`, `tools/preview_track.py`): Levels 1-5 keep
+    their character, scaled up and given new sections (Mon: a broad infield sweep and a long S;
+    Tue: a hairpin tongue; Wed: an S-loop through the infield; Thu: a hairpin tongue up from the
+    bottom; Fri: a second hairpin tongue). Laps are 7.4-10.8k px, about 1.5x. Two new maps:
+    Level 6 (Saturday, road 62, top speed 745: chicane, kinked hairpin rows, a two-row
+    switchback) and Level 7 (Sunday, road 60, top speed 765: deep esses, kinked rows, two
+    tongues, a switchback). From Level 3 on each is still narrower and faster than the last.
+  - **New permanent ids 10-16**: the shapes changed, so old records (ids 1, 2, 3, 8, 9) stay
+    retired rather than landing on different tracks. Old saves keep them, unused.
+  - **Medal targets** are now for one lap, from a simple bot's laps (gold ~ +10%, silver ~ +40%,
+    bronze ~ +80%); the bot finishes all seven. Still rough until real laps.
+  - **Reddit server** (`daily.ts`): `LEVEL_IDS` = 10..16 and `levelOfDay` follows the UTC weekday
+    (Daily Circuit #1, 16 Nov 2026, was a Monday). The day and overall boards moved to
+    `1lap:board:<day>` and `1lap:overall` so old 3-lap times never mix with 1-lap ones; level
+    boards are new by id. Streaks carry on. The post text says seven circuits.
+  - **Screens:** Today's Circuit says "THURSDAY CIRCUIT" and "1 LAP"; the level grid is four
+    columns (two on a phone) with the weekday on each card and a line saying the mode's rules;
+    the main menu's card starts below the subtitle so the extra button fits. The splash says
+    e.g. "Thursday · 1 lap · top speed 700" (`tracks.ts` now carries `weekday`).
+  - Tests: `rules_test.gd` checks seven levels, weekdays, new ids, difficulty order, medal order,
+    both modes and that casual ignores wall hits; `leaderboard_test.gd` the CASUAL button and the
+    casual grid on Reddit; `daily.test.ts` the weekday rotation. Screenshots regenerated (plus
+    `*-casual.png` and `mobile-level7-tongue.png`).
+
 - **Reddit avatars on the leaderboard.** *Why:* the user picked it from the to-do list; it makes
   the boards feel like Reddit.
   - Server (`reddit/src/server/avatars.ts`): `GET /api/leaderboard` rows carry `avatar`, the

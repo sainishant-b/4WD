@@ -21,9 +21,10 @@ Tick items off here as they land; the CHANGELOG has the details.
 
 ## 2. Daily content
 
-- [ ] **Daily maps: new direction from Nishant (to be specified).** It replaces the current
-      "the five levels take turns" rule in `reddit/src/server/daily.ts` (`levelOfDay`).
-- [ ] Medal times calibrated from real laps on every level (all are estimates today).
+- [x] **Daily maps** (2026-11-20, the user's direction): seven maps, one per weekday, Monday the
+      easiest; every map ~50% longer with new corners; ranked races are one lap; a casual mode
+      plays any map for three laps with no wall-hit limit.
+- [ ] Medal times calibrated from real laps on every level (one-lap targets come from a bot).
 
 ## 3. UX and polish
 
@@ -77,7 +78,8 @@ Tick items off here as they land; the CHANGELOG has the details.
 
 ## Done recently
 
-- [x] Five levels with difficulty rising from Level 3; esses and hairpins on Levels 4–5.
+- [x] Seven levels (one per weekday) with difficulty rising from Level 3; hairpins and
+      switchbacks on Levels 4–7.
 - [x] Three wall hits = game over.
 - [x] Phone layout, twin thumb pads, key-cap control hints, mute button on every screen.
 - [x] Reddit server: per-level boards, OVERALL board (sum of best times, lowest first), daily

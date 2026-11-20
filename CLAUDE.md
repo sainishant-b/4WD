@@ -99,9 +99,14 @@ entry. When in doubt, add one — short is fine.
 - **Git**: tracked at https://github.com/sainishant-b/4WD (public, branch `main`). Old exported
   builds in the root (`Four Wheel Steer.*`), `.godot/`, `.claude/`, `node_modules` and the
   generated web build in `reddit/public` are git-ignored; commit source, docs and tests only.
-- Flow: `MainMenu → LevelSelect → Main (race) → Results`. Each race is a **3-lap circuit** built
-  from the level's own `track` (`game_data.gd` `TRACK_1`..`TRACK_5`). **5 levels**: L1 flowing,
-  L2 tight/twisty, L3 narrow esses, **L4-5 hairpin circuits** (the hardest). The user removed the
+- Flow: `MainMenu → LevelSelect → Main (race) → Results`. Each race is a circuit built from the
+  level's own `track` (`game_data.gd` `TRACK_1`..`TRACK_7`). **7 levels, one per weekday**
+  (the user's design, 2026-11-20): L1 Monday (easiest, flowing) ... L7 Sunday (hardest); L4-7
+  are hairpin/switchback circuits. Laps are ~7-12k px (grown ~50% that day; keep new maps in
+  that range). **Two modes** (the user's design): **ranked** = ONE lap + three strikes, the only
+  times that get medals, unlock levels and go to any leaderboard; **casual** (`Game.casual`,
+  `Game.goto_casual()`) = THREE laps, every map open, no wall-hit limit, just the time, kept as
+  `casual_best` in `save.json`, never online (no casual board: the user chose that). The user removed the
   obstacle levels and all ramps/walls from the maps on 2026-11-17; **don't add obstacles back
   without asking**. The obstacle code is dormant: a track dict may still carry
   `"obstacles": [{type:"cone"|"wall"|"ramp", t, offset, …}]`, which `track_builder.gd` would build
@@ -111,14 +116,18 @@ entry. When in doubt, add one — short is fine.
   or bounce into one touch. Single-player only.
 - **Reddit = one circuit a day** (the user asked): inside a Reddit post the level screen shows
   only today's level (`Game.daily_index()`, from `Reddit.daily_level_id`) with its diagram and
-  DRIVE, and `Game.has_next_level()` is false. The five-level progression is for desktop/Android.
+  DRIVE (ranked), and `Game.has_next_level()` is false; its CASUAL button opens the casual grid
+  (all maps, Next works). The ranked level progression is for desktop/Android. The day's level
+  follows the UTC weekday (`levelOfDay` in `reddit/src/server/daily.ts`; day 1 was a Monday).
+  Its day/overall board keys carry `1lap:` so the old 3-lap times never mix in.
   The game opens straight on Today's Circuit there (`main_menu.gd`, once per load via
   `Reddit.start_handled`); How to Play is behind its button, never forced. The post's splash
   draws today's track from `reddit/src/client/tracks.ts`, generated from the game by
   `reddit/tools/track-shapes.gd` (run by `npm run export:godot`); never edit it by hand.
 - **Levels have permanent ids** (`LEVELS[i]["id"]`, `Game.level_id()`): `save.json` records and the
   leaderboard are keyed by id, not slot, so reordering levels never moves a time to another track.
-  A new track takes the next unused id; never renumber. A level is unlocked when the level before
+  A new track takes the next unused id; never renumber. A reshaped track gets a new id too (the
+  2026-11-20 maps are 10-16; 0-9 are retired). A level is unlocked when the level before
   it has a best time (`Game.is_unlocked`); nothing else is stored. Progress (best time + best lap
   + medal per id) saves to `user://save.json`. Mobile **portrait**, desktop **maximized**.
 - **Online leaderboard** (the way to compete now): `MainMenu → Leaderboard`. Finishing a race

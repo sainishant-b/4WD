@@ -75,14 +75,14 @@ const localFlair: FlairSink = {
 const now0 = Date.now();
 const today = dayOf(now0);
 const rivals: [string, number, number][] = [
-  ['apex_hunter', 58_420, LEVEL_IDS.length],
-  ['crabwalk', 61_930, LEVEL_IDS.length],
-  ['late_braker', 66_105, LEVEL_IDS.length - 1],
+  ['apex_hunter', 29_420, LEVEL_IDS.length],
+  ['crabwalk', 31_930, LEVEL_IDS.length],
+  ['late_braker', 34_105, LEVEL_IDS.length - 1],
 ];
 for (const [name, base, levels] of rivals) {
   for (const [i, levelId] of LEVEL_IDS.slice(0, levels).entries()) {
     const day = levelId === levelOfDay(today) ? today : today - 400;   // an old day: no day board entry
-    await submitRun(store, day, name, levelId, base + i * 4_870, now0);
+    await submitRun(store, day, name, levelId, base + i * 3_870, now0);
   }
 }
 

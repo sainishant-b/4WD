@@ -270,9 +270,19 @@ func _run() -> void:
 		var texts: Array = buttons.map(func(b: Button) -> String: return b.text)
 		_check("on Reddit (%dx%d) it shows only today's circuit, as a diagram" % [size.x, size.y],
 			maps.size() == 1 and maps[0].track == game.get_level(1)["track"], "maps=%d" % maps.size())
-		_check("... with DRIVE, How to Play and Back, and no other level", texts.size() == 3
-			and "DRIVE" in texts and "?  HOW TO PLAY" in texts and "Back" in texts, str(texts))
+		_check("... with DRIVE, Back, How to Play and Casual, and no other level", texts.size() == 4
+			and "DRIVE" in texts and "?  HOW TO PLAY" in texts and "Back" in texts and "CASUAL" in texts,
+			str(texts))
 	_check("a finished daily circuit offers no next level", not game.has_next_level(1))
+	game.casual = true
+	change_scene_to_file("res://scenes/LevelSelect.tscn")
+	await _frames(4)
+	var cards: Array = current_scene.find_children("*", "Button", true, false).filter(
+		func(b: Button) -> bool: return b.text == "" and not b.disabled)
+	_check("casual on Reddit shows every map, all open", cards.size() == game.level_count(),
+		"open cards=%d" % cards.size())
+	_check("... and a casual finish offers the next map", game.has_next_level(1))
+	game.casual = false
 
 	print("opening a Reddit post")
 	reddit.start_handled = false

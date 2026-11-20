@@ -139,6 +139,11 @@ func _menus(prefix: String) -> void:
 		change_scene_to_file("res://scenes/%s.tscn" % spec[0])
 		await _frames(6)
 		await _shot("%s-%s" % [prefix, spec[1]])
+	_game.casual = true   # the casual list: every map, three laps
+	change_scene_to_file("res://scenes/LevelSelect.tscn")
+	await _frames(6)
+	await _shot(prefix + "-casual")
+	_game.casual = false
 	var reddit = root.get_node("/root/Reddit")
 	reddit.transport = _fake_server
 	reddit.avatar_transport = _fake_avatar
@@ -151,7 +156,7 @@ func _menus(prefix: String) -> void:
 	await _race(3, 5)
 	var hud = current_scene.get_node("HUD")
 	current_scene._touch.set_enabled(false)   # as a real finish does
-	hud.show_results(78.42, "silver", 78.42, 25.61, false)
+	hud.show_results(42.18, "silver", 42.18, 42.18, false, 1)   # a ranked race: one lap
 	hud.show_daily_pending()
 	hud.show_daily_result({
 		"accepted": true, "improved": true, "rank": 12, "players": 340, "streak": 4,
@@ -202,7 +207,7 @@ func _run() -> void:
 	await _frames(20)
 	await _shot("mobile-game-over")
 
-	for spec in [[3, 0.405, "mobile-level4-hairpin"], [4, 0.80, "mobile-level5-switchback"]]:
+	for spec in [[3, 0.36, "mobile-level4-hairpin"], [4, 0.82, "mobile-level5-switchback"], [6, 0.575, "mobile-level7-tongue"]]:
 		await _race(spec[0], 200)
 		_place(spec[0], spec[1])
 		await _frames(40)

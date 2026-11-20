@@ -1,6 +1,8 @@
 extends SceneTree
-# Headless check of the level table and the three-wall-hits rule: drives the
-# real car into real walls in the race scene and watches what game.gd counts.
+# Headless check of the level table, the two modes (ranked: one lap, three wall
+# hits and out; casual: three laps, no limit) and the three-wall-hits rule:
+# drives the real car into real walls in the race scene and watches what
+# game.gd counts.
 # Run:
 #   godot --headless --fixed-fps 60 --path . -s tests/rules_test.gd
 #
@@ -63,27 +65,74 @@ func _run() -> void:
 	var save_before := _save_text()
 
 	print("level table")
-	_check("there are five levels", game.level_count() == 5, "%d" % game.level_count())
+	_check("there are seven levels, one per weekday", game.level_count() == 7 and game.WEEKDAYS.size() == 7,
+		"%d" % game.level_count())
+	_check("Level 1 is Monday's, Level 7 Sunday's",
+		game.weekday_of(0) == "MONDAY" and game.weekday_of(6) == "SUNDAY")
 	var ids := {}
 	var with_obstacles := 0
 	for i in game.level_count():
 		ids[game.level_id(i)] = true
 		if game.get_level(i)["track"].has("obstacles"):
 			with_obstacles += 1
-		_check("%s runs three laps" % game.get_level(i)["name"], int(game.get_level(i)["laps"]) == 3)
 	_check("every level has its own permanent id", ids.size() == game.level_count())
+	_check("the retired 3-lap ids are not reused", not (ids.has(1) or ids.has(2) or ids.has(3)
+		or ids.has(8) or ids.has(9)), str(ids.keys()))
 	_check("no level has obstacles (cones, walls, ramps)", with_obstacles == 0)
-	_check("level 1 is always unlocked", game.is_unlocked(0))
+	var harder := true
+	for i in range(3, game.level_count()):   # Level 4 on (slot 3) vs the one before
+		var a: Dictionary = game.get_level(i - 1)
+		var b: Dictionary = game.get_level(i)
+		harder = harder and float(b["track"]["road_width"]) < float(a["track"]["road_width"]) \
+			and float(b["max_speed"]) > float(a["max_speed"])
+	_check("from Level 3 on each level is narrower and faster than the last", harder)
+	var medals_ok := true
+	for i in game.level_count():
+		var lv: Dictionary = game.get_level(i)
+		medals_ok = medals_ok and float(lv["gold"]) < float(lv["silver"]) and float(lv["silver"]) < float(lv["bronze"])
+	_check("medal targets run gold < silver < bronze", medals_ok)
 
-	print("three wall hits")
+	print("modes")
+	game.casual = false
+	game.current_level = 2
+	_check("a ranked race is one lap", int(game.active_race()["laps"]) == 1)
+	_check("ranked: level 1 is always unlocked, a later one waits", game.is_unlocked(0))
+	game.casual = true
+	_check("a casual race is three laps", int(game.active_race()["laps"]) == 3)
+	var all_open := true
+	for i in game.level_count():
+		all_open = all_open and game.is_unlocked(i)
+	_check("casual: every map is open", all_open)
+	_check("casual: there is always a next map", game.has_next_level(0) and not game.has_next_level(6))
+	_check("the level table itself is untouched", not game.get_level(2).has("laps"))
+
+	print("casual has no wall-hit limit")
 	root.size = Vector2i(1280, 720)
+	game.current_level = 0
+	change_scene_to_file("res://scenes/Main.tscn")
+	await _frames(240)
+	_race = current_scene
+	_car = get_first_node_in_group("car")
+	_line = _builder.centerline(game.get_level(0)["track"])
+	var casual_hud = _race.get_node("HUD")
+	_check("the casual race runs three laps, no hit pips", _race._laps == 3 and casual_hud._wall_limit == 0,
+		"laps=%d limit=%d" % [_race._laps, casual_hud._wall_limit])
+	for fraction in [0.2, 0.4, 0.6, 0.8]:
+		await _frames(90)
+		await _ram(fraction, 1.0, 20)
+	_check("four wall hits and still racing", _race._state == 1 and _race._wall_touches == 0,
+		"hits=%d state=%d" % [_race._wall_touches, _race._state])
+	_check("no warning banner in casual", not casual_hud._warn_label.visible)
+	game.casual = false
+
+	print("three wall hits (ranked)")
 	game.current_level = 0
 	change_scene_to_file("res://scenes/Main.tscn")
 	await _frames(240)   # 3-2-1 countdown, then GO
 	_race = current_scene
 	_car = get_first_node_in_group("car")
 	var hud = _race.get_node("HUD")
-	_line = _builder.centerline(game.get_level(0)["track"])
+	_check("the ranked race is one lap", _race._laps == 1, "laps=%d" % _race._laps)
 	_check("the race is running with no hits", _race._wall_touches == 0 and _race._state == 1,
 		"hits=%d state=%d" % [_race._wall_touches, _race._state])
 

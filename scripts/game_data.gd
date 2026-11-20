@@ -1,9 +1,16 @@
 extends Node
 ## Autoload "Game": the spine that ties the scenes together.
-## Holds the level table, the currently selected level, saved progress
+## Holds the level table, the currently selected level and mode, saved progress
 ## (best times, medals; a level unlocks once the one before it has been
 ## finished), and settings (volume). Also owns the scene navigation helpers so
 ## menus and the race scene don't duplicate paths.
+##
+## Two ways to race (the user's design):
+##  - **Ranked** (`casual` false): ONE lap, three wall hits and out. Its times
+##    are the records: medals, unlocks, the online leaderboard and the Daily
+##    Circuit.
+##  - **Casual** (`casual` true): THREE laps on any map, no wall-hit limit, just
+##    the time. Kept apart as a personal best per map; never on a leaderboard.
 
 const SAVE_PATH := "user://save.json"
 
@@ -12,6 +19,11 @@ const MEDAL_BRONZE := "bronze"
 const MEDAL_SILVER := "silver"
 const MEDAL_GOLD := "gold"
 
+const RANKED_LAPS := 1
+const CASUAL_LAPS := 3
+## Level n is the Daily Circuit on weekday n (Monday easiest, Sunday hardest).
+const WEEKDAYS := ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+
 const SCENE_MENU := "res://scenes/MainMenu.tscn"
 const SCENE_LEVEL_SELECT := "res://scenes/LevelSelect.tscn"
 const SCENE_RACE := "res://scenes/Main.tscn"
@@ -19,71 +31,110 @@ const SCENE_INSTRUCTIONS := "res://scenes/Instructions.tscn"
 const SCENE_LOBBY := "res://scenes/Lobby.tscn"
 const SCENE_LEADERBOARD := "res://scenes/Leaderboard.tscn"
 
-## The circuits. Each is a closed loop of waypoints plus a road width; the
-## TrackBuilder turns it into the road (the waypoints guide a smoothed centre
-## line, they are not the exact road). Preview any of them, or all five on one
-## sheet, with `python tools/preview_track.py t1..t5|all`, and keep that tool's
-## presets in step with these.
-const TRACK_1 := {   # medium width, flowing, one tight right-hand pair
+## The circuits, one for each day of the week (Monday easiest, Sunday hardest).
+## Each is a closed loop of waypoints plus a road width; the TrackBuilder turns
+## it into the road (the waypoints guide a smoothed centre line, they are not
+## the exact road). Preview any of them, or all seven on one sheet, with
+## `python tools/preview_track.py t1..t7|all`, and keep that tool's presets in
+## step with these.
+const TRACK_1 := {   # Monday, the easiest: wide and flowing; a broad sweep into the infield, a long S up the left
 	"centerline": [
-		Vector2(720, 520), Vector2(1180, 440), Vector2(1620, 540), Vector2(2060, 450),
-		Vector2(2420, 640), Vector2(2500, 1000), Vector2(2300, 1240), Vector2(2460, 1480),
-		Vector2(2040, 1560), Vector2(1600, 1440), Vector2(1160, 1560), Vector2(780, 1400),
-		Vector2(600, 1040), Vector2(560, 720),
+		Vector2(936, 676), Vector2(1534, 572), Vector2(1880, 650), Vector2(2100, 1080),
+		Vector2(2450, 1180), Vector2(2720, 820), Vector2(3146, 832), Vector2(3250, 1300),
+		Vector2(2990, 1612), Vector2(3198, 1924), Vector2(2652, 2028), Vector2(2080, 1840),
+		Vector2(1508, 2028), Vector2(1014, 1820), Vector2(780, 1560), Vector2(1200, 1290),
+		Vector2(780, 1000),
 	],
 	"road_width": 88.0,
-	"checkpoint_count": 8,
+	"checkpoint_count": 9,
 }
 
-const TRACK_2 := {   # the tight twisty circuit
+const TRACK_2 := {   # Tuesday: tight and twisty; a hairpin tongue down into the infield
 	"centerline": [
-		Vector2(881, 545), Vector2(1493, 524), Vector2(1925, 567),
-		Vector2(2249, 761), Vector2(2069, 941), Vector2(2285, 1121), Vector2(2105, 1301),
-		Vector2(2177, 1481), Vector2(1817, 1503), Vector2(1493, 1373), Vector2(1205, 1517),
-		Vector2(917, 1409), Vector2(665, 1229), Vector2(845, 1013), Vector2(650, 826), Vector2(816, 653),
+		Vector2(1145, 708), Vector2(1700, 681), Vector2(2050, 700), Vector2(2100, 1150),
+		Vector2(2240, 1260), Vector2(2380, 1150), Vector2(2430, 760), Vector2(2700, 800),
+		Vector2(2924, 989), Vector2(2690, 1223), Vector2(2970, 1457), Vector2(2736, 1691),
+		Vector2(2830, 1925), Vector2(2362, 1954), Vector2(1941, 1785), Vector2(1566, 1972),
+		Vector2(1192, 1832), Vector2(864, 1598), Vector2(1098, 1317), Vector2(845, 1074),
+		Vector2(1061, 849),
 	],
 	"road_width": 75.0,
-	"checkpoint_count": 9,
-}
-
-const TRACK_3 := {   # narrow, with deeper esses on both sides
-	"centerline": [
-		Vector2(820, 560), Vector2(1280, 500), Vector2(1700, 580), Vector2(2120, 520),
-		Vector2(2360, 820), Vector2(2080, 1020), Vector2(2380, 1260), Vector2(2080, 1480),
-		Vector2(1680, 1420), Vector2(1340, 1520), Vector2(1000, 1380), Vector2(760, 1480),
-		Vector2(620, 1120), Vector2(920, 940), Vector2(640, 720),
-	],
-	"road_width": 72.0,
-	"checkpoint_count": 9,
-}
-
-const TRACK_4 := {   # esses along the top, a tight two-hairpin switchback, a chicane along the bottom, esses up the left
-	"centerline": [
-		Vector2(700, 480), Vector2(950, 400), Vector2(1200, 530), Vector2(1450, 400),
-		Vector2(1700, 500), Vector2(2330, 560), Vector2(2460, 800), Vector2(2360, 990),
-		Vector2(2050, 1010), Vector2(1790, 1020), Vector2(1690, 1095), Vector2(1790, 1170),
-		Vector2(2100, 1180), Vector2(2380, 1210), Vector2(2480, 1320), Vector2(2380, 1430),
-		Vector2(2160, 1520), Vector2(1950, 1390), Vector2(1740, 1530), Vector2(1400, 1440),
-		Vector2(1000, 1520), Vector2(680, 1420), Vector2(540, 1150), Vector2(700, 900),
-		Vector2(540, 700),
-	],
-	"road_width": 68.0,
 	"checkpoint_count": 10,
 }
 
-const TRACK_5 := {   # esses into a narrow inlet with a hairpin at its foot, esses along the bottom, a double switchback, a kink up the left
+const TRACK_3 := {   # Wednesday: narrow esses; an S-shaped loop through the infield
 	"centerline": [
-		Vector2(700, 520), Vector2(860, 450), Vector2(1040, 570), Vector2(1220, 460),
-		Vector2(1400, 640), Vector2(1400, 950), Vector2(1480, 1110), Vector2(1560, 950),
-		Vector2(1560, 640), Vector2(1700, 500), Vector2(2000, 460), Vector2(2300, 520),
-		Vector2(2470, 720), Vector2(2380, 960), Vector2(2480, 1200), Vector2(2360, 1430),
-		Vector2(2150, 1530), Vector2(1930, 1400), Vector2(1710, 1540), Vector2(1500, 1440),
-		Vector2(1250, 1500), Vector2(1070, 1400), Vector2(1040, 1050), Vector2(940, 900),
-		Vector2(840, 1050), Vector2(840, 1280), Vector2(740, 1410), Vector2(640, 1280),
-		Vector2(570, 1110), Vector2(680, 950), Vector2(590, 790),
+		Vector2(1066, 728), Vector2(1664, 650), Vector2(1950, 760), Vector2(1900, 1060),
+		Vector2(2120, 1260), Vector2(2380, 1060), Vector2(2330, 760), Vector2(2756, 676),
+		Vector2(3068, 1066), Vector2(2704, 1326), Vector2(3094, 1638), Vector2(2704, 1924),
+		Vector2(2184, 1846), Vector2(1742, 1976), Vector2(1300, 1794), Vector2(988, 1924),
+		Vector2(806, 1456), Vector2(1196, 1222), Vector2(832, 936),
+	],
+	"road_width": 72.0,
+	"checkpoint_count": 10,
+}
+
+const TRACK_4 := {   # Thursday: esses along the top, a two-hairpin switchback, a hairpin tongue up from the bottom
+	"centerline": [
+		Vector2(910, 624), Vector2(1235, 520), Vector2(1560, 689), Vector2(1885, 520),
+		Vector2(2210, 650), Vector2(3029, 728), Vector2(3198, 1040), Vector2(3068, 1287),
+		Vector2(2665, 1313), Vector2(2327, 1326), Vector2(2197, 1424), Vector2(2327, 1521),
+		Vector2(2730, 1534), Vector2(3094, 1573), Vector2(3224, 1716), Vector2(3094, 1859),
+		Vector2(2808, 1976), Vector2(2535, 1807), Vector2(2262, 1989), Vector2(1820, 1900),
+		Vector2(1720, 1300), Vector2(1560, 1130), Vector2(1400, 1300), Vector2(1350, 1900),
+		Vector2(884, 1846), Vector2(702, 1495), Vector2(910, 1170), Vector2(702, 910),
+	],
+	"road_width": 68.0,
+	"checkpoint_count": 11,
+}
+
+const TRACK_5 := {   # Friday: two hairpin tongues off the top, esses along the bottom, a double switchback up the left
+	"centerline": [
+		Vector2(910, 676), Vector2(1118, 585), Vector2(1352, 741), Vector2(1586, 598),
+		Vector2(1820, 832), Vector2(1820, 1235), Vector2(1924, 1443), Vector2(2028, 1235),
+		Vector2(2028, 832), Vector2(2210, 650), Vector2(2500, 620), Vector2(2600, 900),
+		Vector2(2620, 1300), Vector2(2760, 1450), Vector2(2900, 1300), Vector2(2900, 760),
+		Vector2(3100, 760), Vector2(3211, 1000), Vector2(3094, 1248), Vector2(3224, 1560),
+		Vector2(3068, 1859), Vector2(2795, 1989), Vector2(2509, 1820), Vector2(2223, 2002),
+		Vector2(1950, 1872), Vector2(1625, 1950), Vector2(1391, 1820), Vector2(1352, 1365),
+		Vector2(1222, 1170), Vector2(1092, 1365), Vector2(1092, 1664), Vector2(962, 1833),
+		Vector2(832, 1664), Vector2(741, 1443), Vector2(884, 1235), Vector2(767, 1027),
 	],
 	"road_width": 64.0,
-	"checkpoint_count": 12,
+	"checkpoint_count": 13,
+}
+
+const TRACK_6 := {   # Saturday: a chicane, kinked hairpin rows across the middle, bottom esses, a switchback up the left
+	"centerline": [
+		Vector2(1150, 575), Vector2(1600, 660), Vector2(1850, 540), Vector2(2250, 600),
+		Vector2(2700, 560), Vector2(3150, 700), Vector2(3300, 1000), Vector2(3100, 1250),
+		Vector2(2780, 1170), Vector2(2480, 1290), Vector2(2220, 1160), Vector2(2050, 1300),
+		Vector2(2180, 1520), Vector2(2480, 1580), Vector2(2780, 1480), Vector2(3100, 1560),
+		Vector2(3350, 1800), Vector2(3150, 2100), Vector2(2700, 2150), Vector2(2400, 1900),
+		Vector2(2100, 2150), Vector2(1750, 1950), Vector2(1450, 2150), Vector2(1050, 2100),
+		Vector2(800, 1850), Vector2(850, 1650), Vector2(1150, 1570), Vector2(1480, 1660),
+		Vector2(1640, 1500), Vector2(1500, 1380), Vector2(1200, 1430), Vector2(950, 1340),
+		Vector2(800, 1150), Vector2(900, 900), Vector2(840, 680),
+	],
+	"road_width": 62.0,
+	"checkpoint_count": 13,
+}
+
+const TRACK_7 := {   # Sunday, the hardest: deep top esses, kinked hairpin rows, two tongues along the bottom, a switchback up the left
+	"centerline": [
+		Vector2(900, 600), Vector2(1250, 500), Vector2(1500, 700), Vector2(1750, 500),
+		Vector2(2000, 700), Vector2(2400, 560), Vector2(2800, 600), Vector2(3200, 700),
+		Vector2(3350, 1000), Vector2(3200, 1250), Vector2(2950, 1140), Vector2(2700, 1250),
+		Vector2(2500, 1060), Vector2(2300, 1180), Vector2(2400, 1420), Vector2(2700, 1500),
+		Vector2(2950, 1400), Vector2(3200, 1520), Vector2(3400, 1750), Vector2(3250, 2050),
+		Vector2(2900, 2100), Vector2(2700, 1850), Vector2(2500, 1650), Vector2(2300, 1850),
+		Vector2(2250, 2150), Vector2(1900, 2200), Vector2(1600, 2050), Vector2(1650, 1700),
+		Vector2(1500, 1450), Vector2(1300, 1600), Vector2(1250, 1950), Vector2(1000, 2150),
+		Vector2(750, 1950), Vector2(760, 1700), Vector2(1050, 1500), Vector2(1120, 1250),
+		Vector2(850, 1150), Vector2(760, 900),
+	],
+	"road_width": 60.0,
+	"checkpoint_count": 14,
 }
 
 ## Multiplayer track (the hidden mode): a wide flowing loop so several cars fit
@@ -103,22 +154,30 @@ const MP_RACE := {
 	"name": "Multiplayer", "track": TRACK_MP, "max_speed": 520.0, "accel_force": 400.0, "laps": 3,
 }
 
-## Per-level: which track, car speed, lap count, and 3-lap medal target totals
-## (seconds). Targets are rough — retune after a drive.
+## Per-level: which track, car speed, and medal targets for ONE lap (the
+## ranked race, seconds). Targets come from a simple bot's lap (gold ~ +10%,
+## silver ~ +40%, bronze ~ +80%): retune after real laps.
 ##
 ## `id` is the level's PERMANENT identity: saved records and the online
 ## leaderboard are keyed by it, so levels can be reordered or dropped without
 ## times landing on the wrong track. Never renumber or reuse one; give a new
-## track the next unused number. (0, 4, 5, 6 and 7 belonged to retired tracks.)
+## track the next unused number. (0-9 belonged to retired tracks: 1, 2, 3, 8 and
+## 9 were the five 3-lap circuits before they grew by half on 2026-11-20.)
+##
+## Level n is the Daily Circuit on weekday n (Monday = Level 1); the Reddit
+## server's LEVEL_IDS lists the same ids in the same order.
 const LEVELS := [
-	{"id": 2, "name": "Level 1", "track": TRACK_1, "max_speed": 620.0, "accel_force": 480.0, "laps": 3, "gold": 58.0, "silver": 74.0, "bronze": 98.0},
-	{"id": 1, "name": "Level 2", "track": TRACK_2, "max_speed": 600.0, "accel_force": 460.0, "laps": 3, "gold": 56.0, "silver": 72.0, "bronze": 95.0},
-	{"id": 3, "name": "Level 3", "track": TRACK_3, "max_speed": 665.0, "accel_force": 510.0, "laps": 3, "gold": 60.0, "silver": 78.0, "bronze": 102.0},
-	{"id": 8, "name": "Level 4", "track": TRACK_4, "max_speed": 700.0, "accel_force": 535.0, "laps": 3, "gold": 80.0, "silver": 103.0, "bronze": 133.0},
-	{"id": 9, "name": "Level 5", "track": TRACK_5, "max_speed": 725.0, "accel_force": 555.0, "laps": 3, "gold": 85.0, "silver": 110.0, "bronze": 143.0},
+	{"id": 10, "name": "Level 1", "track": TRACK_1, "max_speed": 620.0, "accel_force": 480.0, "gold": 29.0, "silver": 37.0, "bronze": 47.5},
+	{"id": 11, "name": "Level 2", "track": TRACK_2, "max_speed": 600.0, "accel_force": 460.0, "gold": 30.0, "silver": 38.5, "bronze": 49.5},
+	{"id": 12, "name": "Level 3", "track": TRACK_3, "max_speed": 665.0, "accel_force": 510.0, "gold": 31.5, "silver": 40.0, "bronze": 51.5},
+	{"id": 13, "name": "Level 4", "track": TRACK_4, "max_speed": 700.0, "accel_force": 535.0, "gold": 36.5, "silver": 46.5, "bronze": 60.0},
+	{"id": 14, "name": "Level 5", "track": TRACK_5, "max_speed": 725.0, "accel_force": 555.0, "gold": 41.5, "silver": 53.0, "bronze": 68.0},
+	{"id": 15, "name": "Level 6", "track": TRACK_6, "max_speed": 745.0, "accel_force": 570.0, "gold": 40.0, "silver": 51.0, "bronze": 65.5},
+	{"id": 16, "name": "Level 7", "track": TRACK_7, "max_speed": 765.0, "accel_force": 585.0, "gold": 45.0, "silver": 57.5, "bronze": 73.5},
 ]
 
 var current_level: int = 0
+var casual: bool = false   ## The mode of the race being picked or run (see the header).
 var progress: Dictionary = {}
 
 
@@ -138,9 +197,24 @@ func get_level(idx: int) -> Dictionary:
 
 
 ## The race config to load. Multiplayer uses the shared wide MP track; otherwise
-## the selected single-player level. (game.gd reads this in _ready.)
+## the selected single-player level, with the lap count of the mode (one lap
+## ranked, three casual). (game.gd reads this in _ready.)
 func active_race() -> Dictionary:
-	return MP_RACE if Net.is_multiplayer else get_level(current_level)
+	if Net.is_multiplayer:
+		return MP_RACE
+	var race := get_level(current_level).duplicate()
+	race["laps"] = laps()
+	return race
+
+
+## Laps in a race of the current mode.
+func laps() -> int:
+	return CASUAL_LAPS if casual else RANKED_LAPS
+
+
+## The weekday whose Daily Circuit the level in slot `idx` is ("MONDAY"...).
+func weekday_of(idx: int) -> String:
+	return WEEKDAYS[clampi(idx, 0, WEEKDAYS.size() - 1)]
 
 
 ## The level's permanent id (see LEVELS): the key for saves and the leaderboard.
@@ -148,12 +222,12 @@ func level_id(idx: int) -> int:
 	return int(get_level(idx)["id"])
 
 
-## Level 1 is always open; each later level opens once the one before it has
-## been finished. Derived from the saved records, so it survives reordering.
-## Inside a Reddit post the day's featured circuit is always open too, so
-## everyone can play the daily challenge.
+## Ranked: Level 1 is always open; each later level opens once the one before
+## it has been finished. Derived from the saved records, so it survives
+## reordering. Inside a Reddit post the day's featured circuit is always open
+## too, so everyone can play the daily challenge. Casual: every map is open.
 func is_unlocked(idx: int) -> bool:
-	return idx <= 0 or best_time(idx - 1) > 0.0 or Reddit.daily_level_id == level_id(idx)
+	return casual or idx <= 0 or best_time(idx - 1) > 0.0 or Reddit.daily_level_id == level_id(idx)
 
 
 # --- Progress / save -------------------------------------------------------
@@ -258,9 +332,39 @@ func record_result(idx: int, total: float, lap: float) -> String:
 	return medal
 
 
-## Inside a Reddit post the game is one circuit a day, so there is no next level.
+## Ranked inside a Reddit post is one circuit a day, so there is no next level
+## there; casual always offers the next map.
 func has_next_level(idx: int) -> bool:
-	return idx + 1 < LEVELS.size() and not Reddit.is_available()
+	return idx + 1 < LEVELS.size() and (casual or not Reddit.is_available())
+
+
+## Casual: the best 3-lap time on the map in slot `idx` (0 = none yet).
+func casual_best(idx: int) -> float:
+	return float(_level_record(idx).get("casual_best", 0.0))
+
+
+## Casual: the best single lap driven in casual on that map (0 = none yet).
+func casual_best_lap(idx: int) -> float:
+	return float(_level_record(idx).get("casual_lap", 0.0))
+
+
+## Records a finished CASUAL run: keeps the best 3-lap time and best lap, apart
+## from the ranked records (no medal, no unlock). Returns true if the time is a
+## new best.
+func record_casual(idx: int, total: float, lap: float) -> bool:
+	var levels: Dictionary = progress["levels"]
+	var key := str(level_id(idx))
+	var rec: Dictionary = levels.get(key, {})
+	var prev := float(rec.get("casual_best", 0.0))
+	var improved := prev <= 0.0 or total < prev
+	if improved:
+		rec["casual_best"] = total
+	var prev_lap := float(rec.get("casual_lap", 0.0))
+	if lap > 0.0 and (prev_lap <= 0.0 or lap < prev_lap):
+		rec["casual_lap"] = lap
+	levels[key] = rec
+	save_progress()
+	return improved
 
 
 ## Slot of today's featured circuit inside a Reddit post, or -1 (not on Reddit,
@@ -324,6 +428,7 @@ func set_player_name(n: String) -> void:
 
 # --- Navigation ------------------------------------------------------------
 
+## Starts a race on the level in slot `idx`, in the current mode.
 func start_level(idx: int) -> void:
 	current_level = idx
 	get_tree().change_scene_to_file(SCENE_RACE)
@@ -332,7 +437,14 @@ func goto_menu() -> void:
 	get_tree().paused = false
 	get_tree().change_scene_to_file(SCENE_MENU)
 
+## The level screen for ranked races (on Reddit: Today's Circuit).
 func goto_level_select() -> void:
+	casual = false
+	get_tree().change_scene_to_file(SCENE_LEVEL_SELECT)
+
+## The level screen for casual races: every map, three laps, no wall-hit limit.
+func goto_casual() -> void:
+	casual = true
 	get_tree().change_scene_to_file(SCENE_LEVEL_SELECT)
 
 func goto_lobby() -> void:

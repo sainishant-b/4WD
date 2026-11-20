@@ -42,7 +42,8 @@ func _run() -> void:
 		var shape := {
 			"id": int(lv["id"]),
 			"name": String(lv["name"]),
-			"laps": int(lv["laps"]),
+			"laps": int(game.RANKED_LAPS),
+			"weekday": String(game.weekday_of(i)),
 			"topSpeed": int(lv["max_speed"]),
 			"roadWidth": roundi(road),
 			"width": roundi(bounds.size.x),
@@ -60,7 +61,10 @@ func _run() -> void:
 export type TrackShape = {
   id: number;
   name: string;
+  /** Laps in a ranked race (the Daily Circuit). */
   laps: number;
+  /** The weekday this circuit is the Daily Circuit, e.g. "MONDAY". */
+  weekday: string;
   topSpeed: number;
   /** Road width, in the same units as the points. */
   roadWidth: number;

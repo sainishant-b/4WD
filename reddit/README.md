@@ -7,10 +7,12 @@ one circuit is featured: race it, climb today's board, and keep your streak goin
 
 1. Open today's post and tap **Drive**. The game opens on **Today's Circuit**: a map of the
    track, its medal times and a **DRIVE** button.
-2. Race **3 laps** through the gates as fast as you can. The gold arrow points to the next gate
+2. Race **one lap** through the gates as fast as you can. The gold arrow points to the next gate
    and the mini map shows the whole circuit.
 3. **Stay off the walls.** Hits one and two are warnings; the **third wall hit ends the race**.
 4. Finish to see your place on today's board, your streak and when the next circuit starts.
+5. Just want to drive? **Casual** (on Today's Circuit or the menu) opens all seven circuits for
+   three laps with no wall-hit limit. Casual times stay on your device.
 
 ### Controls
 
@@ -33,9 +35,10 @@ one circuit is featured: race it, climb today's board, and keep your streak goin
 
 ### Daily circuit, boards and streaks
 
-- A new circuit starts every day at **00:00 UTC**; the five circuits take turns.
-- **TODAY**: fastest on today's circuit. **OVERALL**: your best times on all five circuits added
-  up, lowest total first. There is also a board for each circuit.
+- A new circuit starts every day at **00:00 UTC**: seven circuits, one for each day of the week,
+  **Monday the easiest and Sunday the hardest**.
+- **TODAY**: fastest lap on today's circuit. **OVERALL**: your best times on all seven circuits
+  added up, lowest total first (a week of daily circuits). There is also a board for each circuit.
 - Every row shows the player's Reddit avatar (or their initial if they have none).
 - Finishing today's circuit on consecutive days builds your **streak**.
 - **Streak flair (optional):** after a race, tap **SHOW MY STREAK AS FLAIR** to show
