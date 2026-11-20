@@ -19,18 +19,21 @@ external assets).
 The UI is built in code and styled from a small **design system** in `ui/`: a Godot `Theme`
 (`four_wheel_steer_theme.tres`, set as the project-wide GUI default) plus `Palette.gd` color
 tokens (autoloaded as `Palette`) for the procedural bits — track, cars, HUD arrow, gates. The
-palette is a dark-navy UI with a **gold** hero accent and **blue** player color: gold primary
-buttons, blue secondary, ghost outlines, red for Quit; a green road on a navy field; a blue car
-with a gold nose. The display/UI/HUD face is **Chakra Petch** (Bold) and body copy is **Barlow**
+theme is **"Cobalt & Sun"**: a striped cobalt backdrop, solid cream cards and panels, a
+**sun-gold** primary and a **red-orange** secondary, with a deep navy ink outlining every raised
+thing. Gold primary buttons, red-orange secondary, cream ghost buttons, red for Quit; a green road
+with red-and-white kerbs on a deep-cobalt field; a red car with a gold nose. The display/UI/HUD face is **Chakra Petch** (Bold) and body copy is **Barlow**
 (Regular) — both are bundled in `ui/fonts/` (Open Font License) and wired into the theme (Barlow
 applies via the `LabelBody` type variation). The source design system lives in
 `Four Wheel Steer — Design System/` (excluded from the Godot import via `.gdignore`).
 
-Depth comes from `ui/hud_style.gd` (`HudStyle`): translucent "glass" panels with a hairline rim
-and soft shadow for the race HUD, glow and vignette textures, the shared grid-and-glow backdrop
-behind the menus, and `feather()`, which smooths the edge of solid shapes. The road is a mesh of
-ribbons shaded by vertex colour (a soft glow outside the walls, darker road beside them, a lighter
-crown), sitting on a faint grid. This renderer (GL Compatibility) has no 2D multisampling, so
+Depth comes from `ui/hud_style.gd` (`HudStyle`): raised cream panels with a 3 px ink outline, a
+hard ink lip underneath and a soft shadow (buttons and cards in the theme get the same), sunk
+wells, "sticker" titles (coloured letters with an ink outline), glow and vignette textures, the
+striped cobalt backdrop behind the menus, and `feather()`, which smooths the edge of solid shapes.
+The road is a mesh of ribbons shaded by vertex colour (darker road beside the walls, a lighter
+crown) with red-and-white kerbs and an ink casing outside the walls, casting a shadow onto a
+faint grid. This renderer (GL Compatibility) has no 2D multisampling, so
 smooth edges come from anti-aliased lines and circles, not a project setting. Screenshots are in
 `docs/screenshots/`.
 
@@ -119,8 +122,9 @@ the window is resized across the two.
   from Level 3 on.
 - **Inside a Reddit post it is one circuit a day.** Play opens **Today's Circuit**: that day's
   level drawn as a diagram (`scripts/track_diagram.gd`: the road at true proportions, the
-  chequered start line, a gold arrow for the direction), its medal times and a **DRIVE** button.
-  No other level is offered there, and the results card has no "Next".
+  chequered start line, a gold arrow for the direction), its top speed, your best, its medal
+  times, a big **DRIVE** button, and Back beside How to Play. No other level is offered there,
+  and the results card has no "Next".
 
   | Level | Road | Top speed | Character |
   |---|---|---|---|
@@ -143,8 +147,8 @@ the window is resized across the two.
   **best lap** (flashes on a new best), a **radial speedometer** gauge, a **boost meter**, a live
   **+/- split delta** vs your best lap (green = ahead, red = behind), and an **arrow to the next gate** (handy since
   the camera rotates with the car). The camera is zoomed in, so a **mini map** (top right) shows
-  the whole circuit: north stays up, your car is the blue arrow, the next gate pulses gold, and the
-  white bar is the start/finish line.
+  the whole circuit: north stays up, your car is the red arrow, the next gate pulses gold, and the
+  dark bar is the start/finish line.
 - On finish you get a **medal** by total time; **best time + best lap** are saved, and **Next**
   appears if there is another level. The only way to fail is the third wall hit; retry freely.
   Progress is in `user://save.json`.
@@ -166,10 +170,11 @@ are their Reddit accounts:
 - **Daily Circuit**: each day one level is featured (they take turns). Its board and the streak
   shown on the post count only that level. The post's **Leaderboard** button opens the game
   straight onto the boards.
-- **The results card** after a finish shows your place on today's board ("#12 OF 340 TODAY"), a
-  NEW BEST chip, your streak in days, and a countdown to the next circuit. Its gold
-  **Leaderboard** button opens the TODAY board.
-- **Streak flair (opt-in):** the results card's **SHOW MY STREAK AS FLAIR** sets your user flair
+- **The results card** after a finish shows a medal disc, your times, your place on today's
+  board on a gold plate ("#12 / TODAY'S RANK / of 340 racers"), a NEW BEST chip, your streak in
+  days, and a countdown to the next circuit. Its gold **Leaderboard** button (beside Retry)
+  opens the TODAY board.
+- **Streak flair (opt-in):** the results card's **SHOW MY STREAK AS FLAIR** switch sets your user flair
   in the subreddit to "🔥 n-day streak"; press again to get your own flair back
   (`reddit/src/server/flair.ts`).
 
@@ -250,9 +255,9 @@ Godot 4.7 with the Web export templates.
 ```bash
 cd reddit
 npm install
-npm run export:godot   # headless Godot "Web" export -> reddit/public/ (index.js/.wasm/.pck)
+npm run export:godot   # headless Godot "Web" export -> reddit/public/ (index.js/.wasm/.wasm.gz/.pck)
 npm run build          # bundle the web view scripts + the Devvit server
-npm test               # daily rules: best time, rank, streak
+npm test               # daily rules (best time, rank, streak), flair, the engine loader
 npm run local          # http://localhost:5180/splash.html, strict CSP + fake API, no Reddit needed
 npm run dev            # devvit playtest: uploads and installs to your test subreddit
 ```
@@ -276,7 +281,11 @@ and the three-wall-hits rule: what counts as one hit, the warnings, and game ove
 - **Post flow:** the post shows `splash.html` inline (tiny, instant): the day, today's circuit
   drawn from `src/client/tracks.ts` (written from the game by `tools/track-shapes.gd` during
   `npm run export:godot`), and your best, rank and streak. Tapping Drive opens `game.html`
-  expanded, and only then is the ~38 MB engine downloaded. The game opens on Today's Circuit.
+  expanded, and only then is the engine downloaded. The game opens on Today's Circuit.
+- **Engine download:** the export also writes `index.wasm.gz` (37.7 MB -> 9.7 MB), and
+  `src/client/engine-files.ts` unzips it in the browser as it arrives and keeps it in the Cache
+  API per build, so a returning player downloads nothing. The plain `index.wasm` stays as the
+  fallback for browsers without `DecompressionStream`.
 - **Server** (`src/server`): `GET /api/init`, `POST /api/run`, `GET /api/leaderboard`, a daily cron
   (00:00 UTC) and a moderator menu item that create the day's post. Data lives in Devvit's redis.
 - **Game ↔ server bridge:** `game.ts` exposes `window.FWS` (`init` JSON + `request(...)`); the Godot

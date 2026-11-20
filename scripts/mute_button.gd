@@ -24,9 +24,9 @@ func _ready() -> void:
 	_button = Button.new()
 	_button.focus_mode = Control.FOCUS_NONE
 	_button.tooltip_text = "Sound on / off"
-	_button.add_theme_stylebox_override("normal", HudStyle.glass(12))
-	_button.add_theme_stylebox_override("hover", HudStyle.glass(12))
-	_button.add_theme_stylebox_override("pressed", HudStyle.glass(12, 0.95))
+	_button.add_theme_stylebox_override("normal", HudStyle.panel(12))
+	_button.add_theme_stylebox_override("hover", HudStyle.panel(12))
+	_button.add_theme_stylebox_override("pressed", HudStyle.panel(12, true))
 	_button.draw.connect(_draw_icon)
 	_button.pressed.connect(_toggle)
 	add_child(_button)

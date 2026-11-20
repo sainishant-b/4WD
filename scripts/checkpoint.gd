@@ -52,11 +52,12 @@ func configure_gate(width: float, collision_depth: float) -> void:
 
 
 ## "active" = the gate to hit next (gold, matching the HUD arrow), "done" =
-## already cleared (blue), anything else = not yet reachable (muted).
+## already cleared (a faint dark line), anything else = not yet reachable
+## (a faint white line).
 func set_state(state: String) -> void:
 	_state = state
 	# Painted-on-the-road numbers: flat, no outline, faint until it is their turn.
-	HudStyle.style_panel_label(_label, Palette.GOLD if state == "active" else Color(Palette.TEXT, 0.4))
+	HudStyle.style_panel_label(_label, Palette.GOLD if state == "active" else Color(Palette.TEXT_LIGHT, 0.4))
 	queue_redraw()
 
 
@@ -77,11 +78,11 @@ func _draw() -> void:
 	if index == 0:
 		_draw_chequer(half)
 		return
-	var color := Color(Palette.STROKE, 0.3)
+	var color := Color(Palette.TEXT_LIGHT, 0.3)
 	if _state == "active":
 		color = Color(Palette.GOLD, 0.92)
 	elif _state == "done":
-		color = Color(Palette.BLUE, 0.2)
+		color = Color(Palette.BLACK, 0.2)
 	# A thick anti-aliased line rather than a rect, so its long edges stay smooth.
 	draw_line(Vector2(0, -half), Vector2(0, half), color, BAR_DEPTH, true)
 
@@ -98,7 +99,7 @@ func _draw_chequer(half: float) -> void:
 			# road, which keeps the strip's outer edges smooth.
 			draw_line(
 				Vector2(x, -half + col * cell), Vector2(x, -half + (col + 1) * cell),
-				Palette.TEXT if light else Palette.BLACK, CHECK, true
+				Palette.TEXT_LIGHT if light else Palette.BLACK, CHECK, true
 			)
 
 

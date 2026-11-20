@@ -170,7 +170,10 @@ func _run() -> void:
 	race._finish()   # a real finish: records the run, posts it, fills the card
 	await _frames(2)
 	var chips: Array = hud._daily_chips.get_children().map(func(c: Label) -> String: return c.text)
-	_check("the card shows the place on today's board", hud._daily_rank.text == "#3 OF 41 TODAY", hud._daily_rank.text)
+	_check("the card shows the place on today's board, on the gold plate", hud._rank_plate.visible
+		and not hud._daily_rank.visible and hud._rank_num.text == "#3"
+		and hud._rank_caption.text == "TODAY'S RANK" and hud._rank_of.text == "of 41 racers",
+		"%s / %s / %s" % [hud._rank_num.text, hud._rank_caption.text, hud._rank_of.text])
 	_check("... a new-best chip and the streak", chips == ["NEW BEST", "4-DAY STREAK"], str(chips))
 	_check("... and a countdown to the next circuit", hud._daily_next.text.begins_with("NEXT CIRCUIT IN 5:00:"),
 		hud._daily_next.text)
@@ -196,6 +199,7 @@ func _run() -> void:
 	hud.show_daily_result({"accepted": false, "next_ms": 1000, "at_msec": Time.get_ticks_msec()})
 	await _frames(2)
 	_check("logged out, it asks the player to log in", hud._daily_rank.text == "LOG IN TO RANK"
+		and hud._daily_rank.visible and not hud._rank_plate.visible
 		and hud._daily_chips.get_child_count() == 0 and not hud._flair_btn.visible, hud._daily_rank.text)
 	hud.show_daily_result({})
 	_check("no answer from Reddit is said plainly", hud._daily_rank.text == "COULDN'T REACH REDDIT")

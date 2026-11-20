@@ -1,0 +1,10 @@
+{
+  // Web view code's tests: browser types plus Node's (node:test, zlib), kept
+  // out of tsconfig.client.json so web view code cannot use Node by accident.
+  "extends": "./tsconfig.client.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src/client/*.test.ts"],
+  "exclude": []
+}

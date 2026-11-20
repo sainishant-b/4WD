@@ -1,55 +1,67 @@
 # Four Wheel Steer — color tokens for GDScript / procedural drawing.
 # Autoloaded as "Palette" (see project.godot) — use Palette.GOLD, Palette.TRACK,
 # etc. in _draw(), Polygon2D colors, shaders. (Also usable as FWSPalette.GOLD.)
+#
+# Theme: "Cobalt & Sun" (2026-11-20). A saturated cobalt backdrop, solid cream
+# cards and panels, sun-yellow primary, red-orange "pop" secondary, and a deep
+# navy INK that outlines every raised thing and draws the hard lip under it.
+# Text on a cream card is TEXT (dark ink); text straight on the cobalt backdrop
+# or the race field is TEXT_LIGHT.
 class_name FWSPalette
 extends Node
 
 # ---- Backgrounds ----
-const BLACK         := Color("07090f")
-const BG            := Color("0b0f17")
-const BG_RAISED     := Color("121826")
+const BLACK         := Color("0a143f")   # deepest navy: soft shadows, tyres, dark chequer squares
+const INK           := Color("0d1b55")   # outlines and the hard lip under raised things
+const BG            := Color("2346e0")   # cobalt: the menu backdrop
+const BG_STRIPE     := Color("203fca")   # the backdrop's diagonal stripes
+const BG_RAISED     := Color("122370")   # deep "screen" wells: track maps, thumb-pad wells
+const FIELD         := Color("0f1f63")   # the race ground
 
-# ---- Surfaces ----
-const SURFACE       := Color("161d2b")
-const SURFACE_RAISED:= Color("202a3c")
-const SURFACE_INSET := Color("0e131e")
+# ---- Surfaces (cream cards and HUD panels) ----
+const SURFACE       := Color("fff4dc")
+const SURFACE_RAISED:= Color("fffcf5")   # hover
+const SURFACE_INSET := Color("ede3cd")   # wells sunk into a card
 
 # ---- Strokes ----
-const STROKE        := Color("2a3346")
-const STROKE_STRONG := Color("3c4a63")
+const STROKE        := Color("d6cdb9")   # hairlines and inset shading on cream
+const STROKE_STRONG := Color("8f8778")   # minor ticks, locked things
 
-# ---- Hero gold ----
-const GOLD          := Color("ffc21a")
-const GOLD_BRIGHT   := Color("ffd24d")
-const GOLD_DEEP     := Color("e0a200")
+# ---- Hero gold (sun) ----
+const GOLD          := Color("ffc400")
+const GOLD_BRIGHT   := Color("ffd64d")
+const GOLD_DEEP     := Color("cc9d00")
 
-# ---- Player blue ----
-const BLUE          := Color("2fa8ff")
-const BLUE_BRIGHT   := Color("5bc0ff")
-const BLUE_DEEP     := Color("1b7ad0")
+# ---- Pop (red-orange): the player's car, the secondary button, the left pad ----
+const POP           := Color("d9301a")
+const POP_BRIGHT    := Color("e15948")
+const POP_DEEP      := Color("ae2615")
 
 # ---- Status ----
 const SUCCESS       := Color("2fd27a")
 const WARNING       := Color("ffa53d")
-const DANGER        := Color("ff4d58")
-const DANGER_DEEP   := Color("de3340")
+const DANGER        := Color("ff3b3b")
+const DANGER_DEEP   := Color("c81e2a")
 
 # ---- Medals ----
 const MEDAL_GOLD    := Color("ffc21a")
-const MEDAL_SILVER  := Color("c9d4e2")
-const MEDAL_BRONZE  := Color("d08a4f")
+const MEDAL_SILVER  := Color("d3dbe6")
+const MEDAL_BRONZE  := Color("e0955a")
 
 # ---- Text ----
-const TEXT          := Color("f2f6fc")
-const TEXT_MUTED    := Color("93a0b4")
-const TEXT_DIM      := Color("5c6a7e")
-const TEXT_ON_GOLD  := Color("0b0f17")
-const TEXT_ON_BLUE  := Color("07090f")
+const TEXT             := Color("0c184c")   # on cream cards, panels, ghost buttons
+const TEXT_MUTED       := Color("575a74")
+const TEXT_DIM         := Color("92919b")
+const TEXT_LIGHT       := Color("ffffff")   # on the cobalt backdrop and the race field
+const TEXT_LIGHT_MUTED := Color("d6defc")
+const TEXT_ON_GOLD     := Color("0b1543")
+const TEXT_ON_POP      := Color("ffffff")
 
 # ---- Racetrack ----
-const TRACK         := Color("1f8f4e")
-const TRACK_EDGE    := Color("15663a")
+const TRACK         := Color("1f9a4f")
+const TRACK_EDGE    := Color("17703a")
+const KERB          := Color("d9301a")   # alternates with white outside each wall
 
-# ---- HUD scrims (float text over the bright track) ----
-const HUD_SCRIM         := Color(0.027, 0.035, 0.059, 0.82) # rgba(7,9,15,.82)
-const HUD_SCRIM_STRONG  := Color(0.027, 0.035, 0.059, 0.92)
+# ---- HUD scrims (dim the race behind a dialog) ----
+const HUD_SCRIM         := Color(0.039, 0.078, 0.247, 0.72) # BLACK at 72%
+const HUD_SCRIM_STRONG  := Color(0.039, 0.078, 0.247, 0.86)

@@ -1,8 +1,9 @@
 class_name TrackDiagram
 extends Control
-## A picture of a whole circuit for menus: the green road with its white edges
-## at true proportions, the chequered start/finish line, and a gold arrow for
-## the direction of travel. North is up, as on the in-race mini map.
+## A picture of a whole circuit for menus, on a deep-blue rounded "screen": the
+## green road with its white edges at true proportions over a raised shadow,
+## the chequered start/finish line, and a gold arrow for the direction of
+## travel. North is up, as on the in-race mini map.
 ##
 ##   var map := TrackDiagram.new()
 ##   map.track = Game.get_level(i)["track"]
@@ -52,10 +53,19 @@ func _draw() -> void:
 		line.append(origin + _world[i] * fit)
 	line.append(line[0])
 
-	# A soft shadow under the whole circuit, then the casing, edges and road.
-	HudStyle.draw_glow(self, size * 0.5 + Vector2(0, 6), minf(size.x, size.y) * 0.62, Color(Palette.BLACK, 0.45))
-	draw_polyline(line, Palette.BLACK, road + EDGE * 2.0 + 4.0, true)
-	draw_polyline(line, Palette.TEXT, road + EDGE * 2.0, true)
+	# The deep-blue screen it sits on, sunk into the card: INK rim, a shaded top.
+	var screen := HudStyle.pill(Palette.BG_RAISED, 14)
+	screen.border_color = Palette.INK
+	screen.set_border_width_all(HudStyle.OUTLINE)
+	screen.border_width_top = HudStyle.OUTLINE + 3
+	draw_style_box(screen, Rect2(Vector2.ZERO, size))
+	# A hard shadow under the road (it looks raised), then the casing, edges and road.
+	var shadow := PackedVector2Array()
+	for p in line:
+		shadow.append(p + Vector2(0, 5))
+	draw_polyline(shadow, Color(Palette.BLACK, 0.55), road + EDGE * 2.0 + 4.0, true)
+	draw_polyline(line, Palette.INK, road + EDGE * 2.0 + 4.0, true)
+	draw_polyline(line, Palette.TEXT_LIGHT, road + EDGE * 2.0, true)
 	draw_polyline(line, Palette.TRACK, road, true)
 
 	# Start/finish: a chequered band across the road.
@@ -68,7 +78,7 @@ func _draw() -> void:
 		for c in cells:
 			var o := at + across * (-(road + EDGE * 2.0) * 0.5 + cell * c) + along * (cell * (row - 1))
 			var quad := PackedVector2Array([o, o + across * cell, o + across * cell + along * cell, o + along * cell])
-			draw_colored_polygon(quad, Palette.TEXT if (row + c) % 2 == 0 else Palette.BLACK)
+			draw_colored_polygon(quad, Palette.TEXT_LIGHT if (row + c) % 2 == 0 else Palette.BLACK)
 
 	# Which way to drive: a gold chevron a little past the line.
 	var ahead := int(maxf(road * 3.0, 24.0) / maxf(fit * TrackBuilder.SPACING, 0.01))
@@ -83,4 +93,4 @@ func _draw() -> void:
 	])
 	draw_colored_polygon(chevron, Palette.GOLD)
 	chevron.append(chevron[0])
-	draw_polyline(chevron, Palette.GOLD, 1.0, true)
+	draw_polyline(chevron, Palette.INK, 1.5, true)

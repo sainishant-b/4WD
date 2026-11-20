@@ -1,8 +1,8 @@
 extends Control
-## Radial speedometer gauge (design system): a glass disc with a soft shadow, an
-## inset background arc, a value arc that sweeps blue -> gold -> red with speed
-## and ends in a glowing tip, tick marks, and a centre numeric readout. Floats
-## over the play area.
+## Radial speedometer gauge (design system): a raised cream disc with an INK rim
+## and lip over a soft shadow, an inset background arc, a value arc that runs
+## gold -> red-orange with speed and ends in a glowing tip, tick marks, and a
+## centre numeric readout. Floats over the play area.
 ##
 ## `set_max(top_speed)` once per race sets the scale; `set_value(px_per_sec)`
 ## each frame moves the arc. Colors come from the Palette autoload.
@@ -70,8 +70,8 @@ func set_value(px_per_sec: float) -> void:
 ## Arc colour at `t` (0 = stopped, 1 = flat out).
 func _heat(t: float) -> Color:
 	if t < 0.6:
-		return Palette.BLUE.lerp(Palette.GOLD, t / 0.6)
-	return Palette.GOLD.lerp(Palette.DANGER, (t - 0.6) / 0.4)
+		return Palette.GOLD_DEEP.lerp(Palette.GOLD, t / 0.6)
+	return Palette.GOLD.lerp(Palette.POP, (t - 0.6) / 0.4)
 
 
 func _draw() -> void:
@@ -81,10 +81,11 @@ func _draw() -> void:
 	var r := d * 0.5 - width * 1.6
 	var frac := clampf(_value / _max, 0.0, 1.0)
 
-	# Soft shadow, then the glass disc with a hairline rim.
-	HudStyle.draw_glow(self, c + Vector2(0, d * 0.04), d * 0.62, Color(Palette.BLACK, 0.55))
-	draw_circle(c, d * 0.5, Color(Palette.BG_RAISED, 0.86), true, -1.0, true)
-	draw_arc(c, d * 0.5 - 0.5, 0.0, TAU, 72, Color(Palette.TEXT, 0.14), 1.0, true)
+	# Soft shadow, the INK lip, then the cream disc inside its INK rim.
+	HudStyle.draw_glow(self, c + Vector2(0, d * 0.08), d * 0.62, Color(Palette.BLACK, 0.5))
+	draw_circle(c + Vector2(0, HudStyle.LIP), d * 0.5, Palette.INK, true, -1.0, true)
+	draw_circle(c, d * 0.5, Palette.INK, true, -1.0, true)
+	draw_circle(c, d * 0.5 - HudStyle.OUTLINE, Palette.SURFACE, true, -1.0, true)
 
 	# Inset background arc with rounded ends.
 	var well := Palette.STROKE
@@ -118,4 +119,4 @@ func _draw() -> void:
 		var tip_color := _heat(frac)
 		HudStyle.draw_glow(self, tip, width * 2.4, Color(tip_color, 0.6))
 		draw_circle(tip, width * 0.5, tip_color, true, -1.0, true)
-		draw_circle(tip, width * 0.24, Palette.TEXT, true, -1.0, true)
+		draw_circle(tip, width * 0.24, Palette.TEXT_LIGHT, true, -1.0, true)

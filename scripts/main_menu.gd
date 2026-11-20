@@ -4,7 +4,8 @@ extends Control
 ## `Layout` flips, so the same screen fits a desktop window and a portrait phone.
 ## Styling comes from the design-system theme
 ## (res://ui/four_wheel_steer_theme.tres) + Palette tokens: gold primary CTA,
-## blue secondary, ghost outline, red danger.
+## red-orange secondary, cream ghost, red danger, on a cream card over the
+## striped cobalt backdrop.
 
 var _settings_overlay: Control
 
@@ -48,19 +49,6 @@ func _build() -> void:
 	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	title.offset_top = title_top
 	title.offset_bottom = title_top + (56.0 if narrow else 80.0)
-
-	# A pool of gold light behind the title, so it reads as lit rather than flat.
-	var halo := Control.new()
-	halo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	halo.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	halo.offset_top = title_top - 70.0
-	halo.offset_bottom = title.offset_bottom + 70.0
-	halo.draw.connect(func() -> void:
-		var reach := minf(halo.size.x * 0.55, 420.0)
-		halo.draw_set_transform(halo.size * 0.5, 0.0, Vector2(1.0, 0.36))
-		HudStyle.draw_glow(halo, Vector2.ZERO, reach, Color(Palette.GOLD, 0.2))
-	)
-	add_child(halo)
 	add_child(title)
 
 	var subtitle := Label.new()
@@ -68,7 +56,7 @@ func _build() -> void:
 	subtitle.theme_type_variation = "LabelBody"  # Barlow body face
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	subtitle.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+	subtitle.add_theme_color_override("font_color", Palette.TEXT_LIGHT_MUTED)
 	subtitle.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	subtitle.offset_left = 24.0
 	subtitle.offset_right = -24.0
@@ -81,11 +69,11 @@ func _build() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 
-	# The buttons sit together on a glass card.
+	# The buttons sit together on a cream card.
 	var card := PanelContainer.new()
-	var card_box := HudStyle.glass(20, 0.6)
+	var card_box := HudStyle.panel(20)
 	card_box.set_content_margin_all(20)
-	card_box.shadow_size = 24
+	card_box.shadow_size = 18
 	card_box.shadow_offset = Vector2(0, 10)
 	card.add_theme_stylebox_override("panel", card_box)
 	center.add_child(card)
@@ -150,7 +138,7 @@ func _build_settings_overlay() -> void:
 	heading.text = "SETTINGS"
 	heading.add_theme_font_size_override("font_size", 30)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	HudStyle.style_title(heading)
+	HudStyle.style_sticker(heading, Palette.GOLD)
 	vb.add_child(heading)
 
 	var label := Label.new()

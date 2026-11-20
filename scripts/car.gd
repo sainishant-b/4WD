@@ -162,14 +162,15 @@ func _ready() -> void:
 
 
 ## Dresses the plain shapes from Car.tscn so the car reads as a lit object
-## rather than a flat cut-out. Colours are Palette tokens (blue = the player).
+## rather than a flat cut-out. Colours are Palette tokens (red-orange POP = the
+## player, a gold nose).
 func _build_visuals() -> void:
 	var body: Polygon2D = $Body
 	body.polygon = PackedVector2Array([
 		Vector2(-5, -32), Vector2(5, -32), Vector2(13, -25), Vector2(16, -15), Vector2(16, 22),
 		Vector2(13, 28), Vector2(-13, 28), Vector2(-16, 22), Vector2(-16, -15), Vector2(-13, -25),
 	])
-	body.color = Palette.BLUE_DEEP   # the flanks; the lighter deck sits on top
+	body.color = Palette.POP_DEEP   # the flanks; the lighter deck sits on top
 	HudStyle.feather(body)
 
 	# A soft blob of shadow, first in the tree so it lies under everything else.
@@ -185,17 +186,17 @@ func _build_visuals() -> void:
 	_add_shape(body, [
 		Vector2(-4, -28.5), Vector2(4, -28.5), Vector2(10, -23), Vector2(12.5, -14), Vector2(12.5, 21),
 		Vector2(10, 25), Vector2(-10, 25), Vector2(-12.5, 21), Vector2(-12.5, -14), Vector2(-10, -23),
-	], Palette.BLUE)
+	], Palette.POP)
 	_add_shape(body, [
 		Vector2(-3, -27), Vector2(3, -27), Vector2(3, -12), Vector2(-3, -12),
-	], Palette.BLUE.lerp(Palette.BLUE_BRIGHT, 0.7))           # hood highlight
+	], Palette.GOLD)                                          # racing stripe
 	_add_shape(body, [
 		Vector2(-9, -10), Vector2(9, -10), Vector2(10.5, 5), Vector2(8.5, 15),
 		Vector2(-8.5, 15), Vector2(-10.5, 5),
-	], Palette.SURFACE_INSET)                                 # cockpit glass
+	], Palette.INK)                                           # cockpit glass
 	_add_shape(body, [
 		Vector2(-8, -8.5), Vector2(8, -8.5), Vector2(8.8, -3.5), Vector2(-8.8, -3.5),
-	], Color(Palette.BLUE_BRIGHT, 0.45))                      # windscreen glint
+	], Color(Palette.TEXT_LIGHT, 0.3))                        # windscreen glint
 
 	$Nose.color = Palette.GOLD
 	HudStyle.feather($Nose)

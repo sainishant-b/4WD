@@ -68,7 +68,9 @@ puzzle of when to pivot and when to crab.
 
 ### Challenges
 
-- Running a 38 MB WebAssembly game engine inside a Reddit post under a strict CSP.
+- Running a 38 MB WebAssembly game engine inside a Reddit post under a strict CSP. It ships
+  gzipped (under 10 MB, unzipped in the browser as it arrives) and is cached, so a player coming
+  back for tomorrow's circuit downloads nothing.
 - Two-thumb controls for two steering axles: Godot's own controls follow one pointer, so the
   pads read raw multi-touch events.
 - Making hairpins drivable: the track builder had to guarantee the road never folds.
@@ -94,7 +96,8 @@ levels, medals, an Appwrite leaderboard and a hidden multiplayer mode. New for t
 - **Tracks:** a new track builder (smooth edges that cannot fold), five redesigned circuits with
   rising difficulty and hairpins, and the obstacle levels removed.
 - **Rules:** three wall hits end the race; every race is three laps.
-- **Look and feel:** glass HUD panels, a mini map, a radial speedometer, key-cap control hints,
+- **Look and feel:** a saturated "Cobalt & Sun" look (striped cobalt, cream cards with ink
+  outlines and hard shadows, red-and-white kerbs), a mini map, a radial speedometer, key-cap control hints,
   a picture-only How to Play, a mute button on every screen, shaded menus, and more grip so the
   car stops drifting into walls.
 

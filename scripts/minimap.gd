@@ -1,13 +1,16 @@
 extends Control
-## Mini map: the whole circuit at a glance on a glass panel. North stays up (the
-## map does not turn with the camera), so the shape of the lap is always the
-## same picture; the car is an arrow that turns instead.
+## Mini map: the whole circuit at a glance on a deep-blue screen set into a
+## cream panel. North stays up (the map does not turn with the camera), so the
+## shape of the lap is always the same picture; the car is an arrow that turns
+## instead.
 ##
-## Shows the track, the start/finish line, every gate (the next one in gold,
-## pulsing) and the player's car. game.gd feeds it through the HUD:
-## `set_track()` once, then `set_next_gate()` and `set_car()` as the race runs.
+## Shows the track (green with white edges), the start/finish line, every gate
+## (the next one in gold, pulsing) and the player's car in red. game.gd feeds
+## it through the HUD: `set_track()` once, then `set_next_gate()` and
+## `set_car()` as the race runs.
 
-const PADDING := 12.0      # clear space between the panel edge and the track
+const PADDING := 15.0      # clear space between the panel edge and the track
+const SCREEN_INSET := 6.0  # cream rim round the deep-blue screen
 const STRIDE := 2          # draw every Nth centre-line point (plenty at this size)
 
 var _world_line := PackedVector2Array()
@@ -22,11 +25,13 @@ var _car := Vector2.ZERO
 var _heading: float = 0.0
 var _has_car: bool = false
 var _panel: StyleBoxFlat
+var _screen: StyleBoxFlat
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel = HudStyle.glass(12)
+	_panel = HudStyle.panel(12)
+	_screen = HudStyle.pill(Palette.BG_RAISED, 8)
 
 
 func _notification(what: int) -> void:
@@ -96,39 +101,41 @@ func _refit() -> void:
 
 func _draw() -> void:
 	draw_style_box(_panel, Rect2(Vector2.ZERO, size))
+	draw_style_box(_screen, Rect2(Vector2.ZERO, size).grow(-SCREEN_INSET))
 	if _line.size() < 3:
 		return
 
-	# The track: a dark casing under a light line, so it reads over any backdrop.
-	draw_polyline(_line, Color(Palette.BLACK, 0.55), 6.0, true)
-	draw_polyline(_line, Palette.TEXT_MUTED, 2.5, true)
+	# The track: green road with white edges, like the real one.
+	draw_polyline(_line, Palette.TEXT_LIGHT, 5.5, true)
+	draw_polyline(_line, Palette.TRACK, 3.0, true)
 
 	# Gates still to come this lap are small dots; the next one glows gold.
 	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 5.0)
 	for i in _gates.size():
 		if i == 0 or i == _next:
 			continue
-		draw_circle(_gates[i], 2.0, Palette.STROKE_STRONG, true, -1.0, true)
+		draw_circle(_gates[i], 2.0, Palette.TEXT_LIGHT, true, -1.0, true)
 
-	# Start/finish: a short white bar across the track.
+	# Start/finish: a short dark bar across the white-edged road.
 	if _gates.size() > 0:
 		var across := Vector2(-_start_dir.y, _start_dir.x) * 5.0
-		draw_line(_gates[0] - across, _gates[0] + across, Palette.TEXT, 2.5, true)
+		draw_line(_gates[0] - across, _gates[0] + across, Palette.BLACK, 2.5, true)
 
 	if _next >= 0 and _next < _gates.size():
 		var g := _gates[_next]
 		HudStyle.draw_glow(self, g, 9.0 + pulse * 4.0, Color(Palette.GOLD, 0.55))
-		draw_circle(g, 3.2, Palette.GOLD, true, -1.0, true)
+		draw_circle(g, 3.6, Palette.INK, true, -1.0, true)
+		draw_circle(g, 2.6, Palette.GOLD, true, -1.0, true)
 
-	# The car: a blue arrow with a white rim, pointing where the car points.
+	# The car: a red arrow with a white rim, pointing where the car points.
 	if _has_car:
 		var at := _to_map(_car)
 		var fwd := Vector2.from_angle(_heading - PI / 2.0)
 		var side := Vector2(-fwd.y, fwd.x)
-		HudStyle.draw_glow(self, at, 11.0, Color(Palette.BLUE, 0.5))
+		HudStyle.draw_glow(self, at, 11.0, Color(Palette.POP, 0.5))
 		var rim := PackedVector2Array([at + fwd * 7.5, at - fwd * 5.0 + side * 5.5, at - fwd * 2.0, at - fwd * 5.0 - side * 5.5])
 		var body := PackedVector2Array([at + fwd * 5.5, at - fwd * 3.6 + side * 3.8, at - fwd * 1.6, at - fwd * 3.6 - side * 3.8])
-		draw_colored_polygon(rim, Palette.TEXT)
+		draw_colored_polygon(rim, Palette.TEXT_LIGHT)
 		rim.append(rim[0])
-		draw_polyline(rim, Palette.TEXT, 1.0, true)   # feathers the polygon's edge
-		draw_colored_polygon(body, Palette.BLUE)
+		draw_polyline(rim, Palette.TEXT_LIGHT, 1.0, true)   # feathers the polygon's edge
+		draw_colored_polygon(body, Palette.POP)

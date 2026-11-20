@@ -8,6 +8,7 @@ public/game.js
 public/godot-config.js
 public/index.js
 public/index.wasm
+public/index.wasm.gz
 public/index.pck
 public/index.audio.worklet.js
 public/index.audio.position.worklet.js

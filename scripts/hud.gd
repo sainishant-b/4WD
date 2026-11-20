@@ -5,23 +5,30 @@ extends CanvasLayer
 ## (key caps, or thumb-pad icons on touch), and the Results / Game Over + Pause
 ## overlays. On touch it also shows a pause button.
 ##
-## Readouts sit on translucent "glass" panels (HudStyle) so their text needs no
-## outline; a faint vignette darkens the screen corners behind them.
+## Readouts sit on solid cream panels (`HudStyle.panel()`: INK outline and a hard
+## lip) in dark ink, so their text needs no outline; a faint vignette darkens
+## the screen corners behind them. Text straight over the track is white with
+## an INK halo.
 ##
 ## Nodes are created once in `_ready`; `_layout()` positions and sizes them and
 ## runs again whenever `Layout` flips (landscape <-> portrait, keyboard <-> touch).
 ##
-## Styling follows the design system: gold next-gate arrow, Palette medal colors,
-## and design-system modal dialogs (scrim + PanelModal card) for Results/Pause.
+## Styling follows the design system: gold next-gate arrow, Palette medal colors
+## (as INK-outlined "sticker" titles on the cream card), and design-system modal
+## dialogs (scrim + PanelModal card) for Results/Pause.
 ## Buttons emit `ui_action(name)` -> game.gd
 ## ("retry" | "next" | "leaderboard" | "menu" | "resume" | "pause").
 ##
+## The results card: a medal disc on ribbons poking out of its top edge, the
+## title, the times in a sunk well, then Retry beside the gold next step and
+## Menu under them. Game over reuses it with a red disc and a cross.
+##
 ## Inside a Reddit post the results card also shows the server's answer to the
 ## finish (`show_daily_pending` then `show_daily_result`): the place on the
-## day's board ("#12 OF 340 TODAY"), NEW BEST and streak chips, a live
-## countdown to the next circuit, and (logged in) an opt-in toggle that shows
-## the streak as the player's Reddit user flair. Its gold button is
-## Leaderboard, not Next.
+## day's board on a gold plate ("#12 / TODAY'S RANK / of 340 racers"), NEW
+## BEST and streak chips, a live countdown to the next circuit, and (logged
+## in) an opt-in switch that shows the streak as the player's Reddit user
+## flair. Its gold button is Leaderboard, not Next.
 
 signal ui_action(action: String)
 
@@ -30,7 +37,7 @@ const Minimap := preload("res://scripts/minimap.gd")
 
 const MODAL_WIDTH := 440.0
 
-# Glass panels behind the readouts.
+# Cream panels behind the readouts.
 var _p_lap: Panel      # landscape only; in portrait the lap shares the top bar
 var _p_time: Panel     # the timer card (landscape) / the whole top bar (portrait)
 var _p_best: Panel
@@ -68,18 +75,26 @@ var _pause_bar: StyleBoxFlat
 
 var _modal_panels: Array[PanelContainer] = []
 var _results_overlay: Control
+var _results_badge: Control   # the medal disc sticking out of the card's top edge
+var _badge_color := Palette.MEDAL_SILVER
+var _badge_cross := false     # game over: a cross instead of a star
 var _results_title: Label
-var _results_body: Label
-var _results_buttons: BoxContainer
+var _results_rows: VBoxContainer   # the times, one row each in a sunk well
+var _results_buttons: HBoxContainer   # Retry beside Next / Leaderboard; Menu goes under
 var _results_next: Button
 var _results_board: Button    # Reddit: the next step after a finish
 
 # Reddit's part of the results card: today's place, streak, next circuit.
 var _daily_box: VBoxContainer
-var _daily_rank: Label
+var _rank_plate: PanelContainer   # gold plate: "#12" + TODAY'S RANK + "of 340 racers"
+var _rank_num: Label
+var _rank_caption: Label
+var _rank_of: Label
+var _daily_rank: Label            # the line shown instead of the plate (posting, log in, ...)
 var _daily_chips: HBoxContainer
 var _daily_next: Label
 var _flair_btn: Button          # opt-in: show the streak as Reddit user flair
+var _flair_on := false          # how the button's switch is drawn
 var _next_circuit_at: int = 0   # Time.get_ticks_msec() when the next circuit starts; 0 = unknown
 
 var _pause_overlay: Control
@@ -106,7 +121,7 @@ func _ready() -> void:
 	_p_walls = _make_panel(root)
 	_p_hint = PanelContainer.new()   # filled by _rebuild_hint(); pill and rows fade as one
 	_p_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var hint_box := HudStyle.glass(HudStyle.RADIUS, 0.74)
+	var hint_box := HudStyle.panel()
 	hint_box.set_content_margin_all(10)
 	hint_box.content_margin_left = 14.0
 	hint_box.content_margin_right = 14.0
@@ -142,12 +157,12 @@ func _ready() -> void:
 	root.add_child(_speedo)
 
 	# Boost meter: a pill just above the speedo (gold = ready, dim = depleted).
-	_boost_cap = _make_label(root, "BOOST", Palette.TEXT, true)
-	HudStyle.style_floating_label(_boost_cap, Palette.TEXT, true)
+	_boost_cap = _make_label(root, "BOOST", Palette.TEXT_LIGHT, true)
+	HudStyle.style_floating_label(_boost_cap, Palette.TEXT_LIGHT, true)
 	_boost_cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_boost_well = HudStyle.pill(Color(Palette.SURFACE_INSET, 0.92))
-	_boost_well.border_color = Color(Palette.TEXT, 0.14)
-	_boost_well.set_border_width_all(1)
+	_boost_well = HudStyle.pill(Palette.SURFACE_INSET)
+	_boost_well.border_color = Palette.INK
+	_boost_well.set_border_width_all(2)
 	_boost_fill = HudStyle.pill(Palette.GOLD)
 	_boost_bar = Control.new()
 	_boost_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -155,7 +170,7 @@ func _ready() -> void:
 	root.add_child(_boost_bar)
 
 	# Live split delta vs your best lap (green = ahead, red = behind); fades out.
-	_delta_label = _make_label(root, "", Palette.TEXT, true)
+	_delta_label = _make_label(root, "", Palette.TEXT_LIGHT, true)
 	_delta_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_delta_label.visible = false
 
@@ -185,7 +200,7 @@ func _ready() -> void:
 	_countdown_glow.visible = false
 	root.add_child(_countdown_glow)
 	_box(_countdown_glow, 0.5, 0.39, -150, -110, 300, 220)
-	_countdown_label = _make_label(root, "", Palette.TEXT, true)
+	_countdown_label = _make_label(root, "", Palette.TEXT_LIGHT, true)
 	_countdown_label.add_theme_font_size_override("font_size", 100)
 	_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_countdown_label.visible = false
@@ -209,12 +224,12 @@ func _ready() -> void:
 	_arrow.add_child(arrow_shadow)
 	add_child(_arrow)
 
-	# Touch has no Esc key, so pausing needs a button: a glass chip with two bars.
+	# Touch has no Esc key, so pausing needs a button: a cream chip with two bars.
 	_pause_button = Button.new()
 	_pause_button.focus_mode = Control.FOCUS_NONE
-	_pause_button.add_theme_stylebox_override("normal", HudStyle.glass(12))
-	_pause_button.add_theme_stylebox_override("hover", HudStyle.glass(12))
-	_pause_button.add_theme_stylebox_override("pressed", HudStyle.glass(12, 0.95))
+	_pause_button.add_theme_stylebox_override("normal", HudStyle.panel(12))
+	_pause_button.add_theme_stylebox_override("hover", HudStyle.panel(12))
+	_pause_button.add_theme_stylebox_override("pressed", HudStyle.panel(12, true))
 	_pause_bar = HudStyle.pill(Palette.TEXT, 2)
 	_pause_button.draw.connect(_draw_pause_icon)
 	_pause_button.pressed.connect(func(): ui_action.emit("pause"))
@@ -227,16 +242,16 @@ func _ready() -> void:
 	_layout()
 
 
-func _make_panel(parent: Control, alpha: float = 0.78) -> Panel:
+func _make_panel(parent: Control) -> Panel:
 	var p := Panel.new()
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	p.add_theme_stylebox_override("panel", HudStyle.glass(HudStyle.RADIUS, alpha))
+	p.add_theme_stylebox_override("panel", HudStyle.panel())
 	parent.add_child(p)
 	return p
 
 
-## `floating` labels sit straight on the track and get a soft halo; the rest sit
-## on a glass panel and stay clean.
+## `floating` labels sit straight on the track and get an INK halo; the rest sit
+## on a cream panel and stay clean.
 func _make_label(parent: Control, text: String, color: Color = Palette.TEXT, floating := false) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -295,10 +310,6 @@ func _layout() -> void:
 	var narrow := Layout.portrait
 	for panel in _modal_panels:
 		panel.custom_minimum_size.x = Layout.PORTRAIT_CONTENT_WIDTH if narrow else MODAL_WIDTH
-	# Three buttons do not fit side by side on a phone; stack them instead.
-	_results_buttons.vertical = narrow
-	for b in _results_buttons.get_children():
-		(b as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL if narrow else Control.SIZE_FILL
 
 
 ## Desktop / wide window: three cards along the top, the map under the right one.
@@ -433,12 +444,8 @@ func _draw_wall_pips() -> void:
 	var x0 := area.x * 0.5 - gap * (_wall_limit - 1) * 0.5
 	for i in _wall_limit:
 		var c := Vector2(x0 + gap * i, area.y * 0.5)
-		if i < _wall_used:
-			HudStyle.draw_glow(_walls_pips, c, r * 2.2, Color(Palette.DANGER, 0.55))
-			_walls_pips.draw_circle(c, r, Palette.DANGER, true, -1.0, true)
-		else:
-			_walls_pips.draw_circle(c, r, Color(Palette.SURFACE_INSET, 0.9), true, -1.0, true)
-			_walls_pips.draw_arc(c, r, 0.0, TAU, 32, Palette.STROKE_STRONG, 1.5, true)
+		_walls_pips.draw_circle(c, r, Palette.DANGER if i < _wall_used else Palette.SURFACE_INSET, true, -1.0, true)
+		_walls_pips.draw_arc(c, r, 0.0, TAU, 32, Palette.INK, 2.5, true)
 
 
 func _medal_color(medal: String) -> Color:
@@ -502,9 +509,11 @@ func set_best_lap(seconds: float) -> void:
 
 
 func flash_best_lap() -> void:
-	_bestlap_label.modulate = Palette.GOLD
-	var tw := create_tween()
-	tw.tween_property(_bestlap_label, "modulate", Color(1, 1, 1, 1), 0.8)
+	# Ink text can't be tinted brighter, so the flash eases its colour back instead.
+	create_tween().tween_method(
+		func(c: Color) -> void: _bestlap_label.add_theme_color_override("font_color", c),
+		Palette.POP, Palette.TEXT, 0.8
+	)
 
 
 func set_speed(px_per_sec: float) -> void:
@@ -599,9 +608,9 @@ func fade_hint() -> void:
 
 func show_countdown(text: String) -> void:
 	_countdown_label.text = text
-	# Gold for "GO!", white (with a dark halo) for the 3-2-1 numbers.
+	# Gold for "GO!", white (with an INK halo) for the 3-2-1 numbers.
 	_countdown_label.add_theme_color_override(
-		"font_color", Palette.GOLD if text.begins_with("GO") else Palette.TEXT
+		"font_color", Palette.GOLD if text.begins_with("GO") else Palette.TEXT_LIGHT
 	)
 	_countdown_label.visible = true
 	_countdown_glow.visible = true
@@ -659,60 +668,189 @@ func _build_results_overlay(parent: Control) -> void:
 	_results_overlay = made[0]
 	var vb: VBoxContainer = made[1]
 
+	# The medal: a disc on two ribbons, half outside the card's top edge.
+	_results_badge = Control.new()
+	_results_badge.custom_minimum_size = Vector2(0, 40)
+	_results_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_results_badge.draw.connect(_draw_badge)
+	vb.add_child(_results_badge)
+
 	_results_title = Label.new()
-	_results_title.add_theme_font_size_override("font_size", 34)
+	_results_title.add_theme_font_size_override("font_size", 32)
 	_results_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	HudStyle.style_title(_results_title, true)
 	vb.add_child(_results_title)
 
-	_results_body = Label.new()
-	_results_body.add_theme_font_size_override("font_size", 22)
-	_results_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(_results_body)
+	# The times, one row each in a well sunk into the card.
+	var times := PanelContainer.new()
+	var well := HudStyle.inset(16)
+	well.content_margin_left = 16.0
+	well.content_margin_right = 16.0
+	well.content_margin_top = 8.0
+	well.content_margin_bottom = 8.0
+	times.add_theme_stylebox_override("panel", well)
+	vb.add_child(times)
+	_results_rows = VBoxContainer.new()
+	_results_rows.add_theme_constant_override("separation", 0)
+	times.add_child(_results_rows)
 
-	# Reddit only: an inset strip with today's place, the streak and a countdown.
-	var daily_panel := PanelContainer.new()
-	var inset := HudStyle.glass(12, 0.9)
-	inset.bg_color = Color(Palette.SURFACE_INSET, 0.9)
-	inset.set_content_margin_all(12)
-	daily_panel.add_theme_stylebox_override("panel", inset)
-	vb.add_child(daily_panel)
+	# Reddit only: today's place on a gold plate, the chips, the countdown and the
+	# opt-in streak flair switch.
 	_daily_box = VBoxContainer.new()
-	_daily_box.add_theme_constant_override("separation", 8)
-	daily_panel.add_child(_daily_box)
+	_daily_box.add_theme_constant_override("separation", 10)
+	_daily_box.visible = false
+	vb.add_child(_daily_box)
+	_rank_plate = PanelContainer.new()
+	_rank_plate.add_theme_stylebox_override("panel", _plate_box())
+	_daily_box.add_child(_rank_plate)
+	var plate_row := HBoxContainer.new()
+	plate_row.add_theme_constant_override("separation", 14)
+	_rank_plate.add_child(plate_row)
+	_rank_num = Label.new()
+	_rank_num.add_theme_font_size_override("font_size", 44)
+	_rank_num.add_theme_color_override("font_color", Palette.TEXT_ON_GOLD)
+	plate_row.add_child(_rank_num)
+	var plate_text := VBoxContainer.new()
+	plate_text.alignment = BoxContainer.ALIGNMENT_CENTER
+	plate_text.add_theme_constant_override("separation", 0)
+	plate_row.add_child(plate_text)
+	_rank_caption = Label.new()
+	_rank_caption.add_theme_font_size_override("font_size", 12)
+	_rank_caption.add_theme_color_override("font_color", Palette.TEXT_ON_GOLD)
+	plate_text.add_child(_rank_caption)
+	_rank_of = Label.new()
+	_rank_of.theme_type_variation = "LabelBody"
+	_rank_of.add_theme_font_size_override("font_size", 19)
+	_rank_of.add_theme_color_override("font_color", Palette.TEXT_ON_GOLD)
+	plate_text.add_child(_rank_of)
 	_daily_rank = Label.new()
-	_daily_rank.add_theme_font_size_override("font_size", 28)
+	_daily_rank.add_theme_font_size_override("font_size", 22)
 	_daily_rank.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_daily_box.add_child(_daily_rank)
 	_daily_chips = HBoxContainer.new()
 	_daily_chips.alignment = BoxContainer.ALIGNMENT_CENTER
-	_daily_chips.add_theme_constant_override("separation", 8)
+	_daily_chips.add_theme_constant_override("separation", 10)
 	_daily_box.add_child(_daily_chips)
+	var next_row := HBoxContainer.new()
+	next_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	next_row.add_theme_constant_override("separation", 7)
+	_daily_box.add_child(next_row)
+	var clock := TextureRect.new()
+	clock.texture = HudStyle.icon(HudStyle.ICON_CLOCK, Palette.TEXT_MUTED, 16, 2.6)
+	clock.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	clock.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	next_row.add_child(clock)
 	_daily_next = Label.new()
-	_daily_next.add_theme_font_size_override("font_size", 16)
+	_daily_next.add_theme_font_size_override("font_size", 15)
 	_daily_next.add_theme_color_override("font_color", Palette.TEXT_MUTED)
-	_daily_next.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_daily_box.add_child(_daily_next)
-	# Opt-in streak flair: off unless the player turns it on here.
+	next_row.add_child(_daily_next)
+	# Opt-in streak flair: a switch row, off unless the player turns it on here.
 	_flair_btn = Button.new()
-	_flair_btn.theme_type_variation = "ButtonGhost"
-	_flair_btn.custom_minimum_size = Vector2(0, 40)
+	_flair_btn.custom_minimum_size = Vector2(0, 48)
 	_flair_btn.add_theme_font_size_override("font_size", 14)
+	_flair_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		var sb := HudStyle.inset(14)
+		sb.content_margin_left = 16.0
+		sb.content_margin_right = 76.0   # room for the switch
+		sb.content_margin_top = 4.0
+		sb.content_margin_bottom = 4.0
+		if state == "hover":
+			sb.bg_color = Palette.SURFACE_INSET.lightened(0.04)
+		elif state.contains("pressed"):
+			sb.bg_color = Palette.STROKE
+		_flair_btn.add_theme_stylebox_override(state, sb)
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+		_flair_btn.add_theme_color_override(c, Palette.TEXT)
+	_flair_btn.add_theme_color_override("font_disabled_color", Palette.TEXT_MUTED)
 	_flair_btn.focus_mode = Control.FOCUS_NONE
 	_flair_btn.visible = false
 	_flair_btn.pressed.connect(_on_flair_pressed)
+	_flair_btn.draw.connect(_draw_flair_switch)
 	_daily_box.add_child(_flair_btn)
 	Leaderboard.flair_changed.connect(_on_flair_changed)
-	daily_panel.visible = false
 
-	_results_buttons = BoxContainer.new()
-	_results_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	# Retry beside the gold next step (Next, or Leaderboard on Reddit); Menu under.
+	var actions := VBoxContainer.new()
+	actions.add_theme_constant_override("separation", 14)
+	vb.add_child(actions)
+	_results_buttons = HBoxContainer.new()
 	_results_buttons.add_theme_constant_override("separation", 12)
-	vb.add_child(_results_buttons)
-	_add_action_button(_results_buttons, "Retry", "retry", "ButtonSecondary")
+	actions.add_child(_results_buttons)
+	var retry := _add_action_button(_results_buttons, "Retry", "retry", "ButtonSecondary")
+	retry.icon = HudStyle.icon(HudStyle.ICON_RETRY, Palette.TEXT_ON_POP, 20, 3.0)
 	_results_next = _add_action_button(_results_buttons, "Next", "next")          # gold forward CTA
+	_results_next.icon = HudStyle.icon(HudStyle.ICON_ARROW, Palette.TEXT_ON_GOLD, 20, 3.0)
+	_results_next.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_results_board = _add_action_button(_results_buttons, "Leaderboard", "leaderboard")   # gold, Reddit
+	_results_board.icon = HudStyle.icon(HudStyle.ICON_BOARD, Palette.TEXT_ON_GOLD, 20, 2.8)
 	_results_board.visible = false
-	_add_action_button(_results_buttons, "Menu", "menu", "ButtonGhost")
+	for b: Button in _results_buttons.get_children():
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 56)
+		b.add_theme_font_size_override("font_size", 18)
+	var menu := _add_action_button(actions, "Menu", "menu", "ButtonGhost")
+	menu.add_theme_font_size_override("font_size", 16)
+
+
+## The gold plate behind today's rank: INK rim and lip, like a race number plate.
+func _plate_box() -> StyleBoxFlat:
+	var sb := HudStyle.panel(16)
+	sb.bg_color = Palette.GOLD
+	sb.shadow_size = 0   # it sits on the card; the lip is enough
+	sb.content_margin_left = 16.0
+	sb.content_margin_right = 16.0
+	sb.content_margin_top = 4.0
+	sb.content_margin_bottom = 4.0
+	return sb
+
+
+## The medal at the top of the results card, poking out above the card: two
+## ribbons, an INK lip and rim, the disc in the medal's colour with an inner
+## ring, and a star (or, after a game over, a cross).
+func _draw_badge() -> void:
+	var c := Vector2(_results_badge.size.x * 0.5, -22.0)
+	var r := 38.0
+	var k := r / 46.0
+	for side: float in [-1.0, 1.0]:
+		var ribbon := PackedVector2Array()
+		for p: Vector2 in [Vector2(24, 12), Vector2(38, 70), Vector2(22, 61), Vector2(13, 75), Vector2(2, 18)]:
+			ribbon.append(c + Vector2(p.x * side, p.y) * k)
+		_results_badge.draw_colored_polygon(ribbon, Palette.POP if side < 0.0 else Palette.GOLD)
+		ribbon.append(ribbon[0])
+		_results_badge.draw_polyline(ribbon, Palette.INK, 2.5, true)
+	_results_badge.draw_circle(c + Vector2(0, HudStyle.LIP), r, Palette.INK, true, -1.0, true)
+	_results_badge.draw_circle(c, r, Palette.INK, true, -1.0, true)
+	_results_badge.draw_circle(c, r - 3.5, _badge_color, true, -1.0, true)
+	_results_badge.draw_circle(c, r * 0.72, _badge_color.darkened(0.1), true, -1.0, true)
+	_results_badge.draw_arc(c, r * 0.72, 0.0, TAU, 48, _badge_color.lightened(0.5), 2.5, true)
+	if _badge_cross:
+		# Both INK strokes first, then both white ones, so the cross reads as one.
+		for pass_color: Color in [Palette.INK, Palette.TEXT_LIGHT]:
+			for d: Vector2 in [Vector2(1, 1), Vector2(1, -1)]:
+				_results_badge.draw_line(c - d * r * 0.3, c + d * r * 0.3, pass_color,
+					10.0 if pass_color == Palette.INK else 5.0, true)
+		return
+	var star := PackedVector2Array()
+	for i in 10:
+		star.append(c + Vector2.from_angle(-PI / 2.0 + i * PI / 5.0) * (r * 0.42 if i % 2 == 0 else r * 0.18))
+	var star_color := Palette.GOLD if _badge_color.get_luminance() > 0.85 else _badge_color.lightened(0.6)
+	_results_badge.draw_colored_polygon(star, star_color)
+	star.append(star[0])
+	_results_badge.draw_polyline(star, Palette.INK, 2.0, true)
+
+
+## The switch at the right end of the flair button: gold, knob right, when on.
+func _draw_flair_switch() -> void:
+	var s := _flair_btn.size
+	var track := Rect2(s.x - 66.0, s.y * 0.5 - 14.0, 50.0, 28.0)
+	var sb := HudStyle.pill(Palette.GOLD if _flair_on else Palette.STROKE)
+	sb.border_color = Palette.INK
+	sb.set_border_width_all(HudStyle.OUTLINE)
+	_flair_btn.draw_style_box(sb, track)
+	var at := Vector2(track.end.x - 14.0 if _flair_on else track.position.x + 14.0, track.get_center().y)
+	_flair_btn.draw_circle(at + Vector2(0, 1.5), 9.0, Palette.INK, true, -1.0, true)
+	_flair_btn.draw_circle(at, 7.5, Palette.SURFACE, true, -1.0, true)
 
 
 func _build_pause_overlay(parent: Control) -> void:
@@ -723,7 +861,7 @@ func _build_pause_overlay(parent: Control) -> void:
 	var title := Label.new()
 	title.text = "PAUSED"
 	title.add_theme_font_size_override("font_size", 34)
-	title.add_theme_color_override("font_color", Palette.GOLD)
+	HudStyle.style_sticker(title, Palette.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(title)
 
@@ -759,58 +897,77 @@ func _add_action_button(parent: Node, text: String, action: String, variation :=
 func show_results(total: float, medal: String, best_total: float, best_lap: float, has_next: bool) -> void:
 	if medal == "none":
 		_results_title.text = "FINISHED"
-		_results_title.add_theme_color_override("font_color", Palette.TEXT)
+		_badge_color = Palette.SURFACE
 	else:
 		_results_title.text = medal.to_upper() + " MEDAL"
-		_results_title.add_theme_color_override("font_color", _medal_color(medal))
-	_results_body.text = "Total   %s\nBest    %s\nBest lap   %s" % [
-		Game.format_time(total), Game.format_time(best_total), Game.format_time(best_lap)
-	]
+		_badge_color = _medal_color(medal)
+	_badge_cross = false
+	_results_badge.queue_redraw()
+	_set_rows([
+		["TOTAL", Game.format_time(total)],
+		["BEST", Game.format_time(best_total)],
+		["BEST LAP", Game.format_time(best_lap)],
+	])
 	_results_next.visible = has_next
 	_results_board.visible = false
-	_daily_box.get_parent().visible = false
+	_daily_box.visible = false
 	_arrow.visible = false   # it draws above the overlays
 	_results_overlay.visible = true
+
+
+## Fills the times well with [label, value] rows; the first one is big.
+func _set_rows(rows: Array) -> void:
+	for c in _results_rows.get_children():
+		_results_rows.remove_child(c)
+		c.queue_free()
+	for i in rows.size():
+		var row := HBoxContainer.new()
+		_results_rows.add_child(row)
+		var cap := Label.new()
+		cap.text = String(rows[i][0])
+		cap.add_theme_font_size_override("font_size", 13)
+		cap.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+		cap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cap.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(cap)
+		var value := Label.new()
+		value.text = String(rows[i][1])
+		value.add_theme_font_size_override("font_size", 32 if i == 0 else 19)
+		row.add_child(value)
 
 
 ## Reddit: the results card while the time is on its way to the server. The
 ## gold button becomes Leaderboard, the one clear next step.
 func show_daily_pending() -> void:
-	_daily_rank.text = "POSTING YOUR TIME..."
-	_daily_rank.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+	_set_rank("POSTING YOUR TIME...", Palette.TEXT_MUTED)
 	_clear_daily_chips()
-	_daily_next.text = ""
+	_set_next("")
 	_next_circuit_at = 0
 	_flair_btn.visible = false
 	_results_next.visible = false
 	_results_board.visible = true
-	_daily_box.get_parent().visible = true
+	_daily_box.visible = true
 
 
-## Reddit: the server's answer (Leaderboard.run_recorded): today's place, the
-## streak, a new-best chip and the countdown to the next circuit.
+## Reddit: the server's answer (Leaderboard.run_recorded): today's place on the
+## gold plate, the streak, a new-best chip and the countdown to the next circuit.
 func show_daily_result(info: Dictionary) -> void:
 	_clear_daily_chips()
 	if info.is_empty():
-		_daily_rank.text = "COULDN'T REACH REDDIT"
-		_daily_rank.add_theme_color_override("font_color", Palette.TEXT_MUTED)
-		_daily_next.text = "Your time is saved on this device."
+		_set_rank("COULDN'T REACH REDDIT", Palette.TEXT_MUTED)
+		_set_next("Your time is saved on this device.")
 		return
 	if not bool(info.get("accepted", false)):
-		_daily_rank.text = "LOG IN TO RANK"
-		_daily_rank.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+		_set_rank("LOG IN TO RANK", Palette.TEXT_MUTED)
 	elif int(info.get("rank", 0)) > 0:
-		var where := "TODAY" if Reddit.is_today else "ON DAY %d" % Reddit.day
-		_daily_rank.text = "#%d OF %d %s" % [int(info["rank"]), int(info.get("players", 0)), where]
-		_daily_rank.add_theme_color_override("font_color", Palette.GOLD)
+		_show_plate(int(info["rank"]), int(info.get("players", 0)))
 	else:
-		_daily_rank.text = "TIME SAVED"
-		_daily_rank.add_theme_color_override("font_color", Palette.TEXT)
+		_set_rank("TIME SAVED", Palette.TEXT)
 	if bool(info.get("improved", false)) and bool(info.get("accepted", false)):
 		_daily_chips.add_child(_chip("NEW BEST", Palette.SUCCESS))
 	var streak := int(info.get("streak", 0))
 	if streak > 0:
-		_daily_chips.add_child(_chip("%d-DAY STREAK" % streak if streak > 1 else "STREAK STARTED", Palette.GOLD))
+		_daily_chips.add_child(_chip("%d-DAY STREAK" % streak if streak > 1 else "STREAK STARTED", Palette.POP))
 	var next_ms := int(info.get("next_ms", 0))
 	_next_circuit_at = int(info.get("at_msec", Time.get_ticks_msec())) + next_ms if next_ms > 0 else 0
 	_update_countdown()
@@ -831,12 +988,14 @@ func _on_flair_changed(on: bool, error: String) -> void:
 
 func _show_flair_state(on: bool, error: String) -> void:
 	_flair_btn.disabled = false
+	_flair_on = on and error == ""
 	if error != "":   # the reason is in the server log; keep the button short
 		_flair_btn.text = "FLAIR UNAVAILABLE  ·  TRY AGAIN"
 	elif on:
-		_flair_btn.text = "STREAK FLAIR ON  ·  TURN OFF"
+		_flair_btn.text = "STREAK FLAIR ON"
 	else:
 		_flair_btn.text = "SHOW MY STREAK AS FLAIR"
+	_flair_btn.queue_redraw()
 
 
 func _clear_daily_chips() -> void:
@@ -844,18 +1003,41 @@ func _clear_daily_chips() -> void:
 		c.queue_free()
 
 
-## A small filled pill with dark text.
+## Today's place as a plain line (posting, log in, ...); hides the gold plate.
+func _set_rank(text: String, color: Color) -> void:
+	_rank_plate.visible = false
+	_daily_rank.visible = true
+	_daily_rank.text = text
+	_daily_rank.add_theme_color_override("font_color", color)
+
+
+## Today's place on the gold plate: "#12", TODAY'S RANK, "of 340 racers".
+func _show_plate(rank: int, players: int) -> void:
+	_daily_rank.visible = false
+	_rank_plate.visible = true
+	_rank_num.text = "#%d" % rank
+	_rank_caption.text = "TODAY'S RANK" if Reddit.is_today else "DAY %d RANK" % Reddit.day
+	_rank_of.text = "of %d racers" % players
+
+
+## The line under the chips, with its clock; hidden when there is nothing to say.
+func _set_next(text: String) -> void:
+	_daily_next.text = text
+	_daily_next.get_parent().visible = text != ""
+
+
+## A small filled chip with an INK rim; dark or white text to suit its colour.
 func _chip(text: String, color: Color) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 13)
-	l.add_theme_color_override("font_color", Palette.TEXT_ON_GOLD)
-	var pill := HudStyle.pill(color)
-	pill.content_margin_left = 10.0
-	pill.content_margin_right = 10.0
-	pill.content_margin_top = 2.0
-	pill.content_margin_bottom = 2.0
-	l.add_theme_stylebox_override("normal", pill)
+	l.add_theme_color_override("font_color", HudStyle.text_on(color))
+	var box := HudStyle.chip(color)
+	box.content_margin_left = 12.0
+	box.content_margin_right = 12.0
+	box.content_margin_top = 3.0
+	box.content_margin_bottom = 3.0
+	l.add_theme_stylebox_override("normal", box)
 	return l
 
 
@@ -869,20 +1051,26 @@ func _update_countdown() -> void:
 		return
 	var left := (_next_circuit_at - Time.get_ticks_msec()) / 1000
 	if left <= 0:
-		_daily_next.text = "A NEW CIRCUIT IS UP"
+		_set_next("A NEW CIRCUIT IS UP")
 		return
-	_daily_next.text = "NEXT CIRCUIT IN %d:%02d:%02d" % [left / 3600, (left / 60) % 60, left % 60]
+	_set_next("NEXT CIRCUIT IN %d:%02d:%02d" % [left / 3600, (left / 60) % 60, left % 60])
 
 
-## The race ended on the last allowed wall hit. It reuses the results card, but
-## there is nothing to record and no next level to offer.
+## The race ended on the last allowed wall hit. It reuses the results card (a
+## red badge with a cross), but there is nothing to record and no next level.
 func show_game_over(hits: int, lap: int, laps: int, elapsed: float) -> void:
 	_results_title.text = "GAME OVER"
-	_results_title.add_theme_color_override("font_color", Palette.DANGER)
-	_results_body.text = "%d wall hits\nLap %d of %d   %s" % [hits, lap, laps, Game.format_time(elapsed)]
+	_badge_color = Palette.DANGER
+	_badge_cross = true
+	_results_badge.queue_redraw()
+	_set_rows([
+		["TIME", Game.format_time(elapsed)],
+		["LAP", "%d OF %d" % [lap, laps]],
+		["WALL HITS", "%d" % hits],
+	])
 	_results_next.visible = false
 	_results_board.visible = false
-	_daily_box.get_parent().visible = false
+	_daily_box.visible = false
 	_next_circuit_at = 0
 	_arrow.visible = false   # it draws above the overlays
 	_warn_label.visible = false

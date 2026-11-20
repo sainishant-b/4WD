@@ -13,16 +13,12 @@ var _start_btn: Button
 
 
 func _ready() -> void:
-	var bg := ColorRect.new()
-	bg.color = Palette.BG
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
+	HudStyle.add_backdrop(self)
 
 	var title := Label.new()
 	title.text = "MULTIPLAYER"
 	title.add_theme_font_size_override("font_size", 48)
-	title.add_theme_color_override("font_color", Palette.GOLD)
+	HudStyle.style_title(title)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	title.offset_top = 56.0
@@ -42,7 +38,7 @@ func _ready() -> void:
 	var addr_label := Label.new()
 	addr_label.text = "Host address (paste what your friend sent)"
 	addr_label.theme_type_variation = "LabelBody"
-	addr_label.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+	addr_label.add_theme_color_override("font_color", Palette.TEXT_LIGHT_MUTED)
 	vb.add_child(addr_label)
 
 	_addr_edit = LineEdit.new()
@@ -63,12 +59,12 @@ func _ready() -> void:
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.custom_minimum_size = Vector2(440, 0)
-	_status.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+	_status.add_theme_color_override("font_color", Palette.TEXT_LIGHT_MUTED)
 	vb.add_child(_status)
 
 	var players_label := Label.new()
 	players_label.text = "Players"
-	players_label.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+	players_label.add_theme_color_override("font_color", Palette.TEXT_LIGHT_MUTED)
 	vb.add_child(players_label)
 	_list_box = VBoxContainer.new()
 	vb.add_child(_list_box)
@@ -142,6 +138,7 @@ func _refresh() -> void:
 		var l := Label.new()
 		var who: String = String(Net.players[pid].get("name", "Player"))
 		l.text = "•  %s%s" % [who, "   (you)" if pid == Net.local_id() else ""]
+		l.add_theme_color_override("font_color", Palette.TEXT_LIGHT)
 		_list_box.add_child(l)
 
 

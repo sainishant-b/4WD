@@ -43,13 +43,15 @@ entry. When in doubt, add one — short is fine.
   screen. **Keep that corner free** on every screen (`MuteButton.RESERVED_*`).
 - `ui/` — the **design system**: `four_wheel_steer_theme.tres` (the project-wide GUI theme, set
   in `project.godot` `[gui] theme/custom`), `Palette.gd` (color tokens, autoloaded),
-  `hud_style.gd` (`HudStyle`, static helpers: glass panel styles, glow/vignette textures, label
-  styles, the menus' `add_backdrop()`, and `feather()` edge smoothing), and
+  `hud_style.gd` (`HudStyle`, static helpers: raised `panel()` / sunk `inset()` / `chip()`
+  styles, the tilted `tag()`, line icons via `icon()` (SVG path data), glow/vignette textures,
+  label styles incl. `style_sticker()`, the menus' striped `add_backdrop()`, `add_chequer()`,
+  and `feather()` edge smoothing), and
   `fonts/` (Chakra Petch = default display face; Barlow = body, via the `LabelBody` variation).
   The reference kit lives in `Four Wheel Steer — Design System/` (marked `.gdignore` so Godot
   skips it; `res://ui/` holds the installed, compiled copies).
 - `scenes/` — `MainMenu`, `Instructions` (first-launch how-to-play), `LevelSelect`, `Leaderboard`
-  (online ranked times), `Lobby` (the hidden multiplayer host/join), `Main` (the race: dark-navy field
+  (online ranked times), `Lobby` (the hidden multiplayer host/join), `Main` (the race: deep-cobalt field
   + a generated green `Track` + gates + `Obstacles` + Car + HUD + touch), `Car`, `Checkpoint`,
   `Cone`/`Ramp` (obstacles), `HUD`, `TouchControls`.
   **Main scene = `MainMenu.tscn`** (redirects to `Instructions` on first run).
@@ -88,6 +90,8 @@ entry. When in doubt, add one — short is fine.
   script/style, so never ship Godot's stock `index.html`, and never call `JavaScriptBridge.eval`;
   talk to the page through `JavaScriptBridge.get_interface("FWS")`. After changing the Godot
   project, re-run `npm run export:godot` in `reddit/`. See README "Run it on Reddit".
+  The engine ships as `index.wasm.gz`, unzipped and cached in the browser by
+  `src/client/engine-files.ts`; keep the plain `index.wasm` too (the fallback).
 - `docs/CHANGELOG.md` — running history of changes. `docs/TODO.md` — the hackathon to-do list
   (tick items off as they land; the user's own direction for the daily maps is still to come).
   `docs/DEVPOST.md` — the draft submission text. `reddit/README.md` — player-facing first.
@@ -169,17 +173,22 @@ the user's own design; don't change the gestures without asking.
   for wording/controls. A portrait screen is at least 430x760 logical px
   (`Layout.PORTRAIT_CONTENT_WIDTH` = 398 is the safe content width). Godot's stock Controls follow
   one pointer only, so anything needing two fingers must read `InputEventScreenTouch`/`Drag`.
-- **Styling = design system.** UI is built in code; don't hardcode colors. Pull procedural colors
-  from `Palette.*` and let the project theme style Controls. For button intent use
-  `theme_type_variation`: `""`/gold = primary, `ButtonSecondary` = blue, `ButtonGhost` = outline,
-  `ButtonDanger` = red. Dialogs use the scrim + centered `PanelContainer` (`PanelModal`) pattern.
+- **Styling = design system, theme "Cobalt & Sun"** (the user's pick, 2026-11-20): striped cobalt
+  backdrop, cream cards, sun-gold primary, red-orange `POP`, and a deep navy `INK` outline + hard
+  lip on every raised thing. UI is built in code; don't hardcode colors. Pull procedural colors
+  from `Palette.*` and let the project theme style Controls. `Palette.TEXT` is dark ink for text
+  on cream; text straight on the backdrop or the track uses `TEXT_LIGHT`/`TEXT_LIGHT_MUTED`. For
+  button intent use `theme_type_variation`: `""`/gold = primary, `ButtonSecondary` = red-orange,
+  `ButtonGhost` = cream, `ButtonDanger` = red. Dialogs use the scrim + centered `PanelContainer`
+  (`PanelModal`) pattern; gold or medal-coloured words on cream use `HudStyle.style_sticker()`.
 - **Instructions are bold and visual** (the user asked twice): How to Play is pictures + key caps
   / pad icons + one or two words each, no sentences. Controls are shown as key caps / pad icons
   in the display face (`HudStyle.cap()`, `controls_legend()`), not as a sentence. Body copy (`LabelBody`) uses the emboldened Barlow
   from the theme; don't set thin body text on the dark background.
-- **In-race HUD = glass.** Readouts go on `HudStyle.glass()` panels with
+- **In-race HUD = raised cream panels.** Readouts go on `HudStyle.panel()` panels with
   `HudStyle.style_panel_label` (no outline); text straight over the track uses
-  `style_floating_label`. Menu screens start their `_build()` with `HudStyle.add_backdrop(self)`.
+  `style_floating_label` (white, INK halo). Menu screens start their `_build()` with
+  `HudStyle.add_backdrop(self)`; their titles use `style_title()` (white on a hard INK shadow).
 - **Smooth edges by hand.** The Compatibility renderer has no 2D MSAA and `Polygon2D.antialiased`
   does nothing, so pass `antialiased = true` to `Line2D` / `draw_line` / `draw_arc` / `draw_circle`,
   and call `HudStyle.feather(polygon)` on opaque `Polygon2D`s that sit on a contrasting colour.

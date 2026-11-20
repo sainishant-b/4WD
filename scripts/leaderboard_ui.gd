@@ -85,13 +85,13 @@ func _build() -> void:
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.custom_minimum_size = Vector2(width, 44)
-	_status.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+	_status.add_theme_color_override("font_color", Palette.TEXT_LIGHT_MUTED)
 	col.add_child(_status)
 
 	var panel := PanelContainer.new()
-	var glass := HudStyle.glass(HudStyle.RADIUS, 0.72)
-	glass.set_content_margin_all(8)
-	panel.add_theme_stylebox_override("panel", glass)
+	var box := HudStyle.panel()
+	box.set_content_margin_all(8)
+	panel.add_theme_stylebox_override("panel", box)
 	panel.custom_minimum_size = Vector2(width, 300 if narrow else 330)
 	col.add_child(panel)
 	var scroll := ScrollContainer.new()
@@ -121,14 +121,14 @@ func _build_identity() -> Control:
 	row.add_theme_constant_override("separation", 10)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	var label := Label.new()
-	label.add_theme_color_override("font_color", Palette.TEXT_MUTED)
+	label.add_theme_color_override("font_color", Palette.TEXT_LIGHT_MUTED)
 	row.add_child(label)
 	if Reddit.is_available():
 		if Reddit.username != "":
 			label.text = "Racing as"
 			var who := Label.new()
 			who.text = "u/" + Reddit.username
-			who.add_theme_color_override("font_color", Palette.BLUE_BRIGHT)
+			who.add_theme_color_override("font_color", Palette.GOLD)
 			row.add_child(who)
 		else:
 			label.text = "Log in to Reddit to appear on the board"
@@ -158,6 +158,7 @@ func _build_picker(narrow: bool) -> Control:
 		_board_name.custom_minimum_size = Vector2(170, 0)
 		_board_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_board_name.add_theme_font_size_override("font_size", 22)
+		HudStyle.style_title(_board_name)
 		row.add_child(_board_name)
 		var next := _btn(row, ">", "ButtonGhost")
 		next.custom_minimum_size = Vector2(56, 46)
@@ -275,15 +276,15 @@ func _clear_rows() -> void:
 
 
 ## One ranked line: a badge (medal colours for the top three), the name, the
-## time. The player's own line is picked out in blue.
+## time. The player's own line is picked out in red-orange.
 func _add_row(rank: int, who: String, time_ms: int) -> void:
 	var mine := Reddit.username != "" and who == Reddit.username
 	var line := PanelContainer.new()
-	var back := HudStyle.pill(Color(Palette.SURFACE_RAISED, 0.5 if rank % 2 == 1 else 0.2), 10)
+	var back := HudStyle.pill(Color(Palette.SURFACE_INSET, 1.0 if rank % 2 == 1 else 0.0), 10)
 	if mine:
-		back.bg_color = Color(Palette.BLUE, 0.22)
-		back.border_color = Palette.BLUE
-		back.set_border_width_all(1)
+		back.bg_color = Color(Palette.POP, 0.16)
+		back.border_color = Palette.POP
+		back.set_border_width_all(2)
 	back.content_margin_left = 8.0
 	back.content_margin_right = 12.0
 	back.content_margin_top = 4.0
@@ -302,10 +303,11 @@ func _add_row(rank: int, who: String, time_ms: int) -> void:
 	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	var medals := [Palette.MEDAL_GOLD, Palette.MEDAL_SILVER, Palette.MEDAL_BRONZE]
 	if rank <= 3:
-		badge.add_theme_stylebox_override("normal", HudStyle.pill(medals[rank - 1]))
+		badge.add_theme_stylebox_override("normal", HudStyle.chip(medals[rank - 1]))
 		badge.add_theme_color_override("font_color", Palette.TEXT_ON_GOLD)
 	else:
-		badge.add_theme_stylebox_override("normal", HudStyle.pill(Color(Palette.SURFACE_INSET, 0.9)))
+		var plain := HudStyle.pill(Palette.STROKE)
+		badge.add_theme_stylebox_override("normal", plain)
 		badge.add_theme_color_override("font_color", Palette.TEXT_MUTED)
 	row.add_child(badge)
 
@@ -313,7 +315,7 @@ func _add_row(rank: int, who: String, time_ms: int) -> void:
 	name_lbl.text = who
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lbl.clip_text = true
-	name_lbl.add_theme_color_override("font_color", Palette.BLUE_BRIGHT if mine else Palette.TEXT)
+	name_lbl.add_theme_color_override("font_color", Palette.POP_DEEP if mine else Palette.TEXT)
 	row.add_child(name_lbl)
 
 	var time_lbl := Label.new()

@@ -9,8 +9,8 @@ Tick items off here as they land; the CHANGELOG has the details.
 ## 1. Get it running on Reddit (blocker, do first)
 
 - [x] `cd reddit`, `npx devvit login`, then `npm run dev` (playtest). It runs on Reddit (2026-11-20).
-- [ ] Open that post on a phone in the Reddit app: does the 38 MB engine load, how long does it
-      take, do the thumb pads work?
+- [ ] Open that post on a phone in the Reddit app: does the engine load (9.7 MB gzipped, cached
+      after the first play), how long does it take, do the thumb pads work?
 - [x] Check the `.wasm` is accepted: the playtest runs the engine on Reddit (2026-11-20).
       Re-check after `npm run upload` in case review treats it differently.
 - [ ] Check logged-out play (it should still run, just not rank).
@@ -35,7 +35,10 @@ Tick items off here as they land; the CHANGELOG has the details.
 - [x] Result card on Reddit: place on today's board ("#12 of 340"), streak, countdown to the
       next circuit, one clear next step (Leaderboard -> the new TODAY board). 2026-11-20.
 - [x] Wording pass on How to Play: now pictures and key caps, no sentences.
-- [ ] Loading time on phones: if the engine is slow, consider a smaller custom web template.
+- [x] Loading time: the engine downloads gzipped (38 MB -> 9.7 MB) and is cached for return
+      visits (`reddit/src/client/engine-files.ts`). 2026-11-20.
+- [ ] If phones are still slow: a custom Godot web template (3D and unused modules off) could
+      roughly halve the engine. Needs emsdk + scons and a source build.
 
 ## 4. Reddit-y features
 

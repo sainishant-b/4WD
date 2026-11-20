@@ -42,11 +42,12 @@ class Pad:
 var _pads: Array[Pad] = []
 var _surface: Control
 var _enabled: bool = true
+var _chip_box := HudStyle.chip(Palette.SURFACE)   # behind the FRONT / REAR names
 
 
 func _ready() -> void:
-	# Front axle = player blue, rear axle = hero gold (matches the car & design tokens).
-	_pads = [_make_pad("FRONT", Palette.BLUE), _make_pad("REAR", Palette.GOLD)]
+	# Front axle = the car's red-orange, rear axle = hero gold (design tokens).
+	_pads = [_make_pad("FRONT", Palette.POP), _make_pad("REAR", Palette.GOLD)]
 
 	_surface = Control.new()
 	_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -185,14 +186,17 @@ func _draw_pads() -> void:
 		var held := pad.finger != -1
 		var c := pad.center
 
-		# Base: a soft shadow, a glass disc lit faintly in the pad's colour, and
-		# a ring that brightens (with a halo) while a thumb is on it.
-		HudStyle.draw_glow(_surface, c + Vector2(0, 4.0), PAD_RADIUS * 1.35, Color(Palette.BLACK, 0.5))
-		_surface.draw_circle(c, PAD_RADIUS, Color(Palette.BG_RAISED, 0.62), true, -1.0, true)
-		HudStyle.draw_glow(_surface, c, PAD_RADIUS, Color(pad.color, 0.2 if held else 0.1))
+		# Base: a soft shadow, an INK lip, a deep-blue well lit faintly in the
+		# pad's colour, and a thick ring in that colour inside an INK rim. The ring
+		# brightens (with a halo) while a thumb is on it.
+		HudStyle.draw_glow(_surface, c + Vector2(0, 8.0), PAD_RADIUS * 1.35, Color(Palette.BLACK, 0.5))
+		_surface.draw_circle(c + Vector2(0, HudStyle.LIP), PAD_RADIUS + 4.0, Palette.INK, true, -1.0, true)
+		_surface.draw_circle(c, PAD_RADIUS + 4.0, Palette.INK, true, -1.0, true)
+		_surface.draw_circle(c, PAD_RADIUS, Color(Palette.BG_RAISED, 0.92), true, -1.0, true)
+		HudStyle.draw_glow(_surface, c, PAD_RADIUS, Color(pad.color, 0.22 if held else 0.1))
 		if held:
-			_surface.draw_arc(c, PAD_RADIUS, 0.0, TAU, 64, Color(pad.color, 0.2), 9.0, true)
-		_surface.draw_arc(c, PAD_RADIUS, 0.0, TAU, 64, Color(pad.color, 0.95 if held else 0.6), 2.5, true)
+			_surface.draw_arc(c, PAD_RADIUS - 6.0, 0.0, TAU, 64, Color(pad.color, 0.25), 8.0, true)
+		_surface.draw_arc(c, PAD_RADIUS - 2.5, 0.0, TAU, 64, Color(pad.color, 1.0 if held else 0.8), 5.0, true)
 		_draw_chevron(c + Vector2(0, -PAD_RADIUS + 15.0), -1.0, pad.vec.y < -UP_DEADZONE)
 		_draw_chevron(c + Vector2(0, PAD_RADIUS - 15.0), 1.0, pad.vec.y >= DOWN_AT)
 
@@ -206,25 +210,27 @@ func _draw_pads() -> void:
 			knob = Palette.WARNING
 		var at := c + pad.vec * TRAVEL
 		var alpha := 0.96 if held else 0.7
-		HudStyle.draw_glow(_surface, at + Vector2(0, 3.0), KNOB_RADIUS * 1.5, Color(Palette.BLACK, 0.55))
+		HudStyle.draw_glow(_surface, at + Vector2(0, 6.0), KNOB_RADIUS * 1.5, Color(Palette.BLACK, 0.55))
 		if held:
 			HudStyle.draw_glow(_surface, at, KNOB_RADIUS * 1.9, Color(knob, 0.45))
-		_surface.draw_circle(at, KNOB_RADIUS, Color(knob.darkened(0.18), alpha), true, -1.0, true)
-		_surface.draw_circle(at, KNOB_RADIUS - 3.0, Color(knob, alpha), true, -1.0, true)
+		# The knob: INK lip and rim, a darker edge, then the face.
+		_surface.draw_circle(at + Vector2(0, 4.0), KNOB_RADIUS + 2.5, Color(Palette.INK, alpha), true, -1.0, true)
+		_surface.draw_circle(at, KNOB_RADIUS + 2.5, Color(Palette.INK, alpha), true, -1.0, true)
+		_surface.draw_circle(at, KNOB_RADIUS, Color(knob.darkened(0.2), alpha), true, -1.0, true)
+		_surface.draw_circle(at + Vector2(0, -1.5), KNOB_RADIUS - 3.5, Color(knob, alpha), true, -1.0, true)
 		# A highlight toward the top, as if lit from above.
 		HudStyle.draw_glow(
-			_surface, at + Vector2(0, -KNOB_RADIUS * 0.34), KNOB_RADIUS * 0.62, Color(Palette.TEXT, 0.4 * alpha)
+			_surface, at + Vector2(0, -KNOB_RADIUS * 0.34), KNOB_RADIUS * 0.62, Color(Palette.TEXT_LIGHT, 0.45 * alpha)
 		)
 
 		if not held:
-			var label_at := c + Vector2(-PAD_RADIUS, -PAD_RADIUS - 10.0)
-			_surface.draw_string_outline(
-				font, label_at, pad.label, HORIZONTAL_ALIGNMENT_CENTER, PAD_RADIUS * 2.0, 13, 5,
-				Color(Palette.BLACK, 0.55)
-			)
+			# The pad's name on a cream chip just above it.
+			var text_w := font.get_string_size(pad.label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+			var chip := Rect2(c.x - text_w * 0.5 - 12.0, c.y - PAD_RADIUS - 34.0, text_w + 24.0, 22.0)
+			_surface.draw_style_box(_chip_box, chip)
 			_surface.draw_string(
-				font, label_at, pad.label, HORIZONTAL_ALIGNMENT_CENTER, PAD_RADIUS * 2.0, 13,
-				Palette.TEXT_MUTED
+				font, Vector2(chip.position.x, chip.position.y + 16.0), pad.label,
+				HORIZONTAL_ALIGNMENT_CENTER, chip.size.x, 13, Palette.TEXT
 			)
 
 
@@ -234,5 +240,5 @@ func _draw_chevron(at: Vector2, dir: float, lit: bool) -> void:
 		PackedVector2Array([
 			at + Vector2(-8.0, -4.0 * dir), at + Vector2(0, 4.0 * dir), at + Vector2(8.0, -4.0 * dir)
 		]),
-		Palette.TEXT if lit else Palette.TEXT_DIM, 2.5, true
+		Palette.TEXT_LIGHT if lit else Color(Palette.TEXT_LIGHT, 0.35), 2.5, true
 	)

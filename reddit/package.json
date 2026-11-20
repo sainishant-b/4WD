@@ -7,7 +7,7 @@
     "export:godot": "node tools/export-godot.mjs",
     "build": "node tools/build.mjs",
     "watch": "node tools/build.mjs --watch",
-    "typecheck": "tsc -p tsconfig.client.json && tsc -p tsconfig.server.json",
+    "typecheck": "tsc -p tsconfig.client.json && tsc -p tsconfig.client-test.json && tsc -p tsconfig.server.json",
     "test": "node --test \"src/**/*.test.ts\"",
     "local": "node tools/serve-local.ts",
     "login": "devvit login",

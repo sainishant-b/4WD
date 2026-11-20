@@ -3,9 +3,12 @@
 //
 // This replaces the inline <script> of Godot's default HTML shell, which
 // Reddit's web view CSP would block. `Engine` comes from index.js and
-// `GODOT_CONFIG` from godot-config.js, both loaded before this module.
+// `GODOT_CONFIG` + `ENGINE_VERSION` from godot-config.js, both loaded before
+// this module. The engine files themselves come gzipped and cached through
+// engine-files.ts.
 
 import type { InitResponse } from '../shared/api.ts';
+import { serveEngineFiles } from './engine-files.ts';
 
 type GodotEngine = {
   startGame(overrides: { onProgress(current: number, total: number): void }): Promise<void>;
@@ -16,6 +19,8 @@ declare const Engine: {
   getMissingFeatures(options: { threads: boolean }): string[];
 };
 declare const GODOT_CONFIG: Record<string, unknown>;
+/** Hash of the exported engine; missing in a build made before index.wasm.gz existed. */
+declare const ENGINE_VERSION: string | undefined;
 
 /** What the Godot side sees through JavaScriptBridge.get_interface("FWS"). */
 type Bridge = {
@@ -106,6 +111,7 @@ const missing = Engine.getMissingFeatures({ threads: false });
 if (missing.length > 0) {
   fail(new Error(`This browser is missing: ${missing.join(', ')}`));
 } else {
+  if (typeof ENGINE_VERSION === 'string') serveEngineFiles(ENGINE_VERSION);
   new Engine(GODOT_CONFIG)
     .startGame({
       onProgress(current, total) {

@@ -12,7 +12,7 @@ extends Control
 ## phone, and touch shows the thumb pads instead of keys.
 
 # One tile each: [front wheel deg, rear wheel deg, motion hint, keyboard caps,
-# touch caps as [arrow, pad] (pad 0 = left/front, blue; 1 = right/rear, gold),
+# touch caps as [arrow, pad] (pad 0 = left/front, red; 1 = right/rear, gold),
 # both-at-once, label].
 const TILES := [
 	[24.0, 0.0, "forward", ["A", "D"], [["<>", 0]], false, "FRONT"],
@@ -71,13 +71,15 @@ func _build() -> void:
 	rule.add_child(_make_strikes())
 	var rule_text := _label("3 WALL HITS = OUT", 20 if narrow else 24)
 	rule_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	HudStyle.style_panel_label(rule_text, Palette.TEXT)
+	HudStyle.style_title(rule_text)
 	rule.add_child(rule_text)
 	vb.add_child(rule)
 
 	# Everything else, as the same key caps the race HUD shows.
 	var per_row := 2 if narrow else 4
-	vb.add_child(_centered(HudStyle.controls_legend(touch, per_row, 15 if narrow else 17, ["FRONT", "REAR"])))
+	vb.add_child(_centered(HudStyle.controls_legend(
+		touch, per_row, 15 if narrow else 17, ["FRONT", "REAR"], Palette.TEXT_LIGHT
+	)))
 
 	var btn := Button.new()
 	btn.text = "GOT IT - LET'S DRIVE"   # gold primary CTA (theme default)
@@ -110,10 +112,10 @@ func _centered(child: Control) -> CenterContainer:
 	return c
 
 
-## One tile: the car picture, the caps that do it, and its name, on glass.
+## One tile: the car picture, the caps that do it, and its name, on a cream card.
 func _tile(t: Array, touch: bool, narrow: bool) -> Control:
 	var panel := PanelContainer.new()
-	var sb := HudStyle.glass(14, 0.55)
+	var sb := HudStyle.panel(14)
 	sb.set_content_margin_all(10)
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.custom_minimum_size = Vector2(186 if narrow else 236, 0)
@@ -142,14 +144,14 @@ func _tile(t: Array, touch: bool, narrow: bool) -> Control:
 			caps.add_child(plus)
 		if touch:
 			var pad: Array = tokens[k]
-			caps.add_child(HudStyle.cap(pad[0], fs, true, Palette.BLUE if pad[1] == 0 else Palette.GOLD))
+			caps.add_child(HudStyle.cap(pad[0], fs, true, Palette.POP if pad[1] == 0 else Palette.GOLD))
 		else:
 			caps.add_child(HudStyle.cap(tokens[k], fs, false, Palette.TEXT_MUTED))
 	box.add_child(caps)
 
 	var word := _label(t[6], 18 if narrow else 20)
 	word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	HudStyle.style_panel_label(word, Palette.GOLD)
+	HudStyle.style_sticker(word, Palette.GOLD, 6)
 	box.add_child(word)
 	return panel
 
@@ -170,7 +172,7 @@ func _make_car(front_deg: float, rear_deg: float, hint: String, zoom: float) -> 
 	var c := Vector2.ZERO
 
 	var body := Polygon2D.new()
-	body.color = Palette.BLUE
+	body.color = Palette.POP
 	body.polygon = PackedVector2Array([
 		c + Vector2(-13, -22), c + Vector2(13, -22), c + Vector2(13, 22), c + Vector2(-13, 22)])
 	art.add_child(body)
@@ -200,7 +202,8 @@ func _make_strikes() -> Control:
 		var c := box.size * 0.5
 		for i in 3:
 			var at := c + Vector2((i - 1) * 28.0, 0.0)
-			HudStyle.draw_glow(box, at, 20.0, Color(Palette.DANGER, 0.5))
+			box.draw_circle(at + Vector2(0, 2), 11.5, Palette.INK, true, -1.0, true)   # the lip
+			box.draw_circle(at, 11.5, Palette.INK, true, -1.0, true)
 			box.draw_circle(at, 9.0, Palette.DANGER, true, -1.0, true)
 	)
 	return box
@@ -208,8 +211,8 @@ func _make_strikes() -> Control:
 
 func _add_wheel(box: Node, pos: Vector2, deg: float) -> void:
 	var w := Polygon2D.new()
-	# Light, not the car's near-black: the wheel angle is the whole point of the
-	# diagram and black disappears on the navy background.
+	# Turned wheels in full ink, straight ones faded: the wheel angle is the
+	# whole point of the diagram.
 	w.color = Palette.TEXT if absf(deg) > 0.1 else Palette.TEXT_DIM
 	w.polygon = PackedVector2Array([Vector2(-3, -8), Vector2(3, -8), Vector2(3, 8), Vector2(-3, 8)])
 	w.position = pos
@@ -219,7 +222,7 @@ func _add_wheel(box: Node, pos: Vector2, deg: float) -> void:
 
 
 func _add_hint(box: Node, c: Vector2, hint: String) -> void:
-	var col := Palette.GOLD
+	var col := Palette.POP
 	if hint == "forward":
 		_line(box, [c + Vector2(34, 6), c + Vector2(34, -30)], col)
 		_arrowhead(box, c + Vector2(34, -30), Vector2(0, -1), col)

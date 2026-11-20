@@ -5,5 +5,7 @@
     "types": [],
     "customConditions": ["browser"]
   },
-  "include": ["src/client", "src/shared"]
+  "include": ["src/client", "src/shared"],
+  // Tests run in Node; tsconfig.client-test.json checks them with Node's types too.
+  "exclude": ["src/**/*.test.ts"]
 }

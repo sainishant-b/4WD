@@ -4,6 +4,74 @@ Running history of major changes. Newest on top. See `CLAUDE.md` for when to add
 
 ## 2026-11-20
 
+- **The sample layouts too: Today's Circuit, the results card, the pad names.** *Why:* the user
+  wants the layout ideas from the Cobalt & Sun samples as well ("I did not mean no other UI
+  changes").
+  - Today's Circuit (`level_select.gd` `_build_daily`): a tilted DAY tag above a left-aligned
+    title (beside it on a desktop); the card holds the track, CIRCUIT + the level's name with a
+    3 LAPS tag, TOP SPEED and YOUR BEST tiles sunk into the card (with the medal chip), and the
+    three medal targets as equal chips; then a full-width DRIVE with an arrow, Back (cream)
+    beside How to Play (red-orange), and a chequered strip along the bottom of the screen. On a
+    desktop the track sits beside the details and the buttons go under the details.
+  - Results card (`hud.gd`): a medal disc on two ribbons poking out of the card's top edge (a
+    red disc with a cross after a game over), an ink title, the times as rows in a sunk well
+    (TOTAL big, BEST, BEST LAP; game over: TIME, LAP, WALL HITS), on Reddit the place on a gold
+    plate ("#12 / TODAY'S RANK / of 340 racers"), the chips (streak now red-orange), the
+    countdown with a clock, and streak flair as a switch row. Retry sits beside Next /
+    Leaderboard, Menu under them, with line icons.
+  - Thumb pads: FRONT / REAR on cream chips above the pads.
+  - `HudStyle`: `tag()` (tilted chip; it sits in a plain holder because containers reset
+    rotation), `icon()` (line icons from SVG path data via `Image.load_svg_from_string`, cached),
+    `add_chequer()`.
+  - Tests: `leaderboard_test.gd` reads the rank from the plate now. All suites pass; screenshots
+    regenerated.
+
+- **New look: "Cobalt & Sun", applied everywhere.** *Why:* the user wanted a more saturated,
+  less generic UI with more depth and shadow; of three sample themes they picked Cobalt & Sun
+  and asked for it across the whole app with no other changes. Layouts, text and behaviour are
+  unchanged; only colours and depth styling moved.
+  - `ui/Palette.gd`: cobalt `BG` backdrop with darker `BG_STRIPE` stripes, cream `SURFACE` cards,
+    sun-gold `GOLD`, red-orange `POP` (replaces the player blue: `BLUE*` tokens are now
+    `POP*`), a deep navy `INK` for outlines and lips, `FIELD` for the race ground, `BG_RAISED`
+    for deep-blue map/pad wells, `KERB`. `TEXT` is now dark ink (most text sits on cream);
+    `TEXT_LIGHT` / `TEXT_LIGHT_MUTED` are for text straight on the backdrop or the track.
+  - Theme: every button and card has a 3 px INK outline and a hard INK lip drawn below its rect
+    (`expand_margin_bottom`), over a soft navy shadow; pressed buttons lose the lip and their
+    label drops. Gold primary, red-orange `ButtonSecondary`, cream `ButtonGhost`, red danger,
+    cream `LineEdit`, and an inked slider.
+  - `ui/hud_style.gd`: `glass()` is replaced by `panel()` (raised cream) and `inset()` (a sunk
+    well); new `chip()`, `text_on()`, `style_sticker()` (coloured words with an INK outline,
+    for medal titles and gold headings on cream); `style_title()` is now white on a hard INK
+    shadow; `add_backdrop()` draws the striped cobalt; `controls_legend()` takes the action
+    words' colour.
+  - Race: deep-cobalt field, red-and-white kerbs and an INK casing outside each wall with the
+    road's shadow dropped onto the field (replacing the green glow), a red car with a gold
+    stripe and nose, red (front) and gold (rear) thumb pads with INK rims, a cream speedometer,
+    and a mini map on a deep-blue screen. The track test now checks the kerb's outer edge.
+  - Menus: Today's Circuit draws its track on a deep-blue screen; level cards are cream with a
+    medal-coloured bar; results/pause/settings titles are stickers. The main menu's gold halo
+    is gone (the flat backdrop replaces it).
+  - Reddit: the post splash and the loading screen use the same colours (rings and lips are
+    box-shadows there, so the 512 px post still fits). Screenshots regenerated.
+
+- **Faster loading on Reddit: the engine downloads gzipped and is cached.** *Why:* the user picked
+  loading time from the to-do list; the ~38 MB `index.wasm` was nearly the whole wait.
+  - `reddit/tools/export-godot.mjs` also writes `public/index.wasm.gz` (gzip -9: 37.7 MB -> 9.7 MB)
+    and `ENGINE_VERSION` (a hash of the wasm + pck) into `public/godot-config.js`. Devvit uploads
+    web-view files as they are, so this does not depend on Reddit's CDN compressing anything.
+  - New `reddit/src/client/engine-files.ts`: wraps `window.fetch` for exactly `index.wasm` and
+    `index.pck` (the names Godot's loader asks for). `index.wasm` is served from `index.wasm.gz`
+    through `DecompressionStream('gzip')` as it arrives, so streaming compile and the loading bar
+    still work. Both files are kept in the Cache API (`fws-engine-<version>`), so a returning
+    player downloads nothing; older versions' caches are deleted.
+  - Falls back to the plain `index.wasm` if `DecompressionStream` is missing or the `.gz` fails; a
+    body that is not gzip (a server already unzipped it) passes through; storage blocked in the
+    web view just means no cache; a damaged cached copy is deleted so the next start re-downloads.
+  - Tests: `src/client/engine-files.test.ts` (8, fake network and Cache API), run by `npm test`
+    and typechecked by the new `tsconfig.client-test.json`. Checked in `npm run local`: first load
+    fetched `index.wasm.gz` (never `index.wasm`) and booted; a reload fetched only `index.js`.
+    Not yet measured on a phone in the Reddit app.
+
 - **Opt-in streak flair.** *Why:* the user picked it from the Reddit-y to-do items.
   - On the Reddit results card a logged-in player gets **SHOW MY STREAK AS FLAIR**. Turning it on
     sets their user flair in the app's subreddit to "🔥 4-day streak" (gold, dark text);

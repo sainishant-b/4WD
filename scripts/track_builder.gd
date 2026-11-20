@@ -1,8 +1,9 @@
 class_name TrackBuilder
 extends RefCounted
 ## Builds a racetrack from a closed loop of waypoints: a smooth centre line, a
-## shaded road ribbon with a soft glow, limit lines, wall colliders on both
-## edges, the checkpoint gates and any obstacles.
+## shaded road ribbon edged with red-and-white kerbs and an INK casing over a
+## drop shadow (so the road looks raised off the field), limit lines, wall
+## colliders on both edges, the checkpoint gates and any obstacles.
 ##
 ## Centre-line pipeline (`centerline()`; tools/preview_track.py mirrors it):
 ##   1. a centripetal Catmull-Rom spline through the waypoints. Unlike the
@@ -22,7 +23,10 @@ const RELAX_SPREAD := 3      # neighbours either side of a tight point that also
 const GATE_DEPTH := 28.0
 const START_BACK := 60.0     # px behind the start line where the car spawns
 
-const GLOW_WIDTH := 20.0     # soft halo outside the walls (must stay under BEND_MARGIN)
+const KERB_WIDTH := 9.0      # red/white kerb outside each wall ...
+const CASING_WIDTH := 4.0    # ... then an INK casing (kerb + casing must stay under BEND_MARGIN)
+const KERB_BLOCK := 2        # centre-line points per kerb block (so ~20 px blocks)
+const SHADOW_DROP := Vector2(0, 14)   # how far the road's shadow falls on the field
 const SHADE_WIDTH := 16.0    # darkened strip of road beside each wall
 const GROUND_MARGIN := 900.0 # how far the ground grid reaches past the track
 const GRID_STEP := 120.0
@@ -192,7 +196,7 @@ static func build(track: Dictionary, road_parent: Node2D, cp_parent: Node2D, cp_
 		kerb.width = 5.0
 		kerb.antialiased = true
 		# Bright limit line so the wall edge stays readable against the green road.
-		kerb.default_color = Palette.TEXT
+		kerb.default_color = Palette.TEXT_LIGHT
 		road_parent.add_child(kerb)
 
 		var col := CollisionPolygon2D.new()
@@ -236,8 +240,8 @@ static func build(track: Dictionary, road_parent: Node2D, cp_parent: Node2D, cp_
 
 # --- Looks -----------------------------------------------------------------
 
-## The field the track sits on: flat navy with a faint grid, so there is
-## something to read your speed against away from the road.
+## The field the track sits on: deep cobalt with a faint white grid, so there
+## is something to read your speed against away from the road.
 static func _build_ground(parent: Node2D, line: PackedVector2Array) -> void:
 	var bounds := Rect2(line[0], Vector2.ZERO)
 	for p in line:
@@ -245,9 +249,9 @@ static func _build_ground(parent: Node2D, line: PackedVector2Array) -> void:
 	bounds = bounds.grow(GROUND_MARGIN)
 	var ground := Node2D.new()
 	ground.draw.connect(func() -> void:
-		ground.draw_rect(bounds, Palette.BG)
-		var minor := Color(Palette.STROKE, 0.34)
-		var major := Color(Palette.STROKE_STRONG, 0.42)
+		ground.draw_rect(bounds, Palette.FIELD)
+		var minor := Color(Palette.TEXT_LIGHT, 0.05)
+		var major := Color(Palette.TEXT_LIGHT, 0.09)
 		var x0 := ceilf(bounds.position.x / GRID_STEP)
 		var x1 := floorf(bounds.end.x / GRID_STEP)
 		for gx in range(int(x0), int(x1) + 1):
@@ -268,33 +272,71 @@ static func _build_ground(parent: Node2D, line: PackedVector2Array) -> void:
 	parent.add_child(ground)
 
 
-## The drivable surface as one mesh of ribbons running round the circuit:
-## a soft glow outside each wall, a darker strip of road beside each wall, and
-## a slightly lifted crown down the middle. Vertex colours do the blending.
+## The drivable surface as meshes of ribbons running round the circuit: a hard
+## shadow dropped onto the field, an INK casing, red-and-white kerbs outside
+## each wall, a darker strip of road beside each wall, and a slightly lifted
+## crown down the middle. Vertex colours do the blending.
 static func _build_surface(parent: Node2D, line: PackedVector2Array, hw: float) -> void:
 	var shade := minf(SHADE_WIDTH, hw * 0.45)
-	var glow_in := Color(Palette.TRACK, 0.34)
-	var glow_out := Color(Palette.TRACK, 0.0)
 	var crown := Palette.TRACK.lightened(0.07)
+	var kerb := hw + KERB_WIDTH
+	var outer := kerb + CASING_WIDTH
+	var rails := {}   # offset -> PackedVector2Array, so shared rails are computed once
+	for d in [outer, kerb, hw, hw - shade, 0.0, -(hw - shade), -hw, -kerb, -outer]:
+		rails[d] = offset(line, d)
+
+	# The shadow: the whole road's footprint in translucent black, dropped.
+	var shadow_mesh := ArrayMesh.new()
+	var dark := Color(Palette.BLACK, 0.5)
+	_add_ribbon(shadow_mesh, rails[outer], rails[-outer], dark, dark)
+	var shadow := MeshInstance2D.new()
+	shadow.mesh = shadow_mesh
+	shadow.position = SHADOW_DROP
+	parent.add_child(shadow)
+
+	# Casing and kerbs go under the road, so where two legs of a hairpin sit
+	# close, the road always covers the other leg's kerb rather than the reverse.
+	var edges := ArrayMesh.new()
+	_add_ribbon(edges, rails[outer], rails[kerb], Palette.INK, Palette.INK)
+	_add_ribbon(edges, rails[-kerb], rails[-outer], Palette.INK, Palette.INK)
+	_add_kerb(edges, rails[kerb], rails[hw])
+	_add_kerb(edges, rails[-hw], rails[-kerb])
+	var edge_node := MeshInstance2D.new()
+	edge_node.mesh = edges
+	parent.add_child(edge_node)
+
 	# (offset from the centre line, colour) rails; consecutive pairs make a ribbon.
 	var bands := [
-		[hw + GLOW_WIDTH, glow_out, hw, glow_in],
 		[hw, Palette.TRACK_EDGE, hw - shade, Palette.TRACK],
 		[hw - shade, Palette.TRACK, 0.0, crown],
 		[0.0, crown, -(hw - shade), Palette.TRACK],
 		[-(hw - shade), Palette.TRACK, -hw, Palette.TRACK_EDGE],
-		[-hw, glow_in, -(hw + GLOW_WIDTH), glow_out],
 	]
 	var mesh := ArrayMesh.new()
-	var rails := {}   # offset -> PackedVector2Array, so shared rails are computed once
 	for band in bands:
-		for d in [band[0], band[2]]:
-			if not rails.has(d):
-				rails[d] = offset(line, d)
 		_add_ribbon(mesh, rails[band[0]], rails[band[2]], band[1], band[3])
 	var surface := MeshInstance2D.new()
 	surface.mesh = mesh
 	parent.add_child(surface)
+
+
+## Adds a kerb between rails `a` and `b` to `mesh`: blocks of `KERB_BLOCK`
+## centre-line points, alternating red and white.
+static func _add_kerb(mesh: ArrayMesh, a: PackedVector2Array, b: PackedVector2Array) -> void:
+	var n := a.size()
+	var verts := PackedVector2Array()
+	var colors := PackedColorArray()
+	for i in n:
+		var k := (i + 1) % n
+		var color := Palette.KERB if floori(float(i) / KERB_BLOCK) % 2 == 0 else Palette.TEXT_LIGHT
+		for p in [a[i], b[i], b[k], a[i], b[k], a[k]]:
+			verts.append(p)
+			colors.append(color)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_COLOR] = colors
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 
 
 ## Adds a closed triangle-strip ribbon between rails `a` and `b` to `mesh`.

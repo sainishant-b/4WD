@@ -46,4 +46,4 @@ theme/custom="res://ui/four_wheel_steer_theme.tres"
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-environment/defaults/default_clear_color=Color(0.043137, 0.058824, 0.090196, 1)
+environment/defaults/default_clear_color=Color(0.0588235, 0.121569, 0.388235, 1)

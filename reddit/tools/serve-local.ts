@@ -38,6 +38,8 @@ const MIME: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.wasm': 'application/wasm',
+  // As Devvit's uploader labels it: a plain file, no Content-Encoding (game.ts unzips it).
+  '.gz': 'application/gzip',
   '.pck': 'application/octet-stream',
   '.ttf': 'font/ttf',
   '.png': 'image/png',

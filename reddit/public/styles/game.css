@@ -1,5 +1,6 @@
 /* Expanded (full-screen) game view. Replaces the inline <style> of Godot's
-   default HTML shell, which Reddit's web view CSP would block. */
+   default HTML shell, which Reddit's web view CSP would block. Colours mirror
+   res://ui/Palette.gd ("Cobalt & Sun"). */
 
 @font-face {
   font-family: 'Chakra Petch';
@@ -16,14 +17,15 @@
 }
 
 :root {
-  --bg: #0b0f17;
-  --surface-inset: #0e131e;
-  --stroke: #2a3346;
-  --gold: #ffc21a;
-  --blue: #2fa8ff;
-  --danger: #ff4d58;
-  --text: #f2f6fc;
-  --text-muted: #93a0b4;
+  --bg: #2346e0;
+  --bg-stripe: #203fca;
+  --field: #0f1f63;
+  --ink: #0d1b55;
+  --surface-inset: #ede3cd;
+  --gold: #ffc400;
+  --danger-light: #ffd0d0;
+  --text: #ffffff;
+  --text-muted: #d6defc;
 }
 
 html,
@@ -34,7 +36,7 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background: var(--field);
   color: var(--text);
   font-family: 'Barlow', system-ui, sans-serif;
   overflow: hidden;
@@ -62,7 +64,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: repeating-linear-gradient(-45deg, var(--bg-stripe) 0 28px, transparent 28px 56px);
   text-align: center;
 }
 
@@ -77,6 +80,7 @@ body {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--gold);
+  text-shadow: 0 3px 0 var(--ink);
 }
 
 #loader-text {
@@ -87,10 +91,11 @@ body {
 
 .bar {
   width: min(320px, 78vw);
-  height: 10px;
+  height: 14px;
   background: var(--surface-inset);
-  border: 1px solid var(--stroke);
+  border: 3px solid var(--ink);
   border-radius: 999px;
+  box-shadow: 0 4px 0 var(--ink);
   overflow: hidden;
 }
 
@@ -111,7 +116,7 @@ body {
 }
 
 #loader.failed #loader-text {
-  color: var(--danger);
+  color: var(--danger-light);
 }
 
 #loader.failed .bar {
