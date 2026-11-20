@@ -14,6 +14,7 @@ extends SceneTree
 var _failures := 0
 var _calls: Array = []      # [method, path, body] of every request the game made
 var _logged_in := true
+var _flair_refuse := false
 
 
 func _initialize() -> void:
@@ -43,6 +44,11 @@ func _server(method: String, path: String, body: Dictionary, done: Callable) -> 
 			"players": 41, "streak": {"current": 4, "best": 6} if _logged_in else {"current": 0, "best": 0},
 			"nextCircuitInMs": 5 * 3_600_000 + 30_000,
 		})
+	elif method == "POST" and path == "/api/flair":
+		if _flair_refuse:
+			done.call({"on": false, "text": null, "error": "Couldn't change your flair in this subreddit."})
+		else:
+			done.call({"on": bool(body.get("on", false)), "text": "🔥 4-day streak" if body.get("on", false) else null})
 	elif path.begins_with("/api/leaderboard?board=day"):
 		done.call({
 			"kind": "day", "players": 41, "mapsDone": 3, "mapsTotal": 5,
@@ -170,10 +176,27 @@ func _run() -> void:
 		hud._daily_next.text)
 	_check("its gold button is Leaderboard, not Next",
 		hud._results_board.visible and not hud._results_next.visible)
+	_check("streak flair is offered, and off until chosen", hud._flair_btn.visible
+		and hud._flair_btn.text == "SHOW MY STREAK AS FLAIR" and not reddit.flair_on, hud._flair_btn.text)
+	hud._flair_btn.pressed.emit()
+	await _frames(2)
+	_check("turning it on asks the server and says it is on", _calls[-1][1] == "/api/flair"
+		and _calls[-1][2] == {"on": true} and reddit.flair_on and hud._flair_btn.text.begins_with("STREAK FLAIR ON"),
+		hud._flair_btn.text)
+	hud._flair_btn.pressed.emit()
+	await _frames(2)
+	_check("pressing again turns it off", _calls[-1][2] == {"on": false} and not reddit.flair_on
+		and hud._flair_btn.text == "SHOW MY STREAK AS FLAIR", hud._flair_btn.text)
+	_flair_refuse = true
+	hud._flair_btn.pressed.emit()
+	await _frames(2)
+	_check("if Reddit refuses, it stays off and says so", not reddit.flair_on
+		and hud._flair_btn.text.begins_with("FLAIR UNAVAILABLE"), hud._flair_btn.text)
+	_flair_refuse = false
 	hud.show_daily_result({"accepted": false, "next_ms": 1000, "at_msec": Time.get_ticks_msec()})
 	await _frames(2)
 	_check("logged out, it asks the player to log in", hud._daily_rank.text == "LOG IN TO RANK"
-		and hud._daily_chips.get_child_count() == 0, hud._daily_rank.text)
+		and hud._daily_chips.get_child_count() == 0 and not hud._flair_btn.visible, hud._daily_rank.text)
 	hud.show_daily_result({})
 	_check("no answer from Reddit is said plainly", hud._daily_rank.text == "COULDN'T REACH REDDIT")
 	hud.ui_action.emit("leaderboard")

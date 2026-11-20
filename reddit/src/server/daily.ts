@@ -22,7 +22,9 @@ export interface Store {
   expire(key: string, seconds: number): Promise<unknown>;
   hGetAll(key: string): Promise<Record<string, string>>;
   hSet(key: string, fieldValues: Record<string, string>): Promise<unknown>;
+  hDel(key: string, fields: string[]): Promise<unknown>;
   zAdd(key: string, ...members: { member: string; score: number }[]): Promise<unknown>;
+  zRem(key: string, members: string[]): Promise<unknown>;
   zScore(key: string, member: string): Promise<number | undefined>;
   zRank(key: string, member: string): Promise<number | undefined>;
   zCard(key: string): Promise<number>;
@@ -112,7 +114,8 @@ const dayKey = (day: number) => `board:${day}`;
 const levelKey = (levelId: number) => `level:${levelId}`;
 /** Sum of a player's bests over every level; present only once they have them all. */
 const OVERALL_KEY = 'overall';
-const playerKey = (name: string) => `player:${name}`;
+/** A player's streak, and their streak-flair choice (see flair.ts). */
+export const playerKey = (name: string) => `player:${name}`;
 /** Holds the post id once a day's post exists, so it is only created once. */
 export const dayPostKey = (day: number) => `daypost:${day}`;
 
@@ -161,19 +164,24 @@ async function mapsDoneOf(store: Store, username: string | null): Promise<number
   return (await levelBests(store, username)).filter((best) => best !== undefined).length;
 }
 
-type PlayerRecord = { streak: number; best: number; lastDay: number };
+export type PlayerRecord = { streak: number; best: number; lastDay: number; flairOn: boolean };
 
-async function readPlayer(store: Store, username: string): Promise<PlayerRecord> {
+export async function readPlayer(store: Store, username: string): Promise<PlayerRecord> {
   const raw = await store.hGetAll(playerKey(username));
   return {
     streak: Number(raw.streak ?? 0) || 0,
     best: Number(raw.best ?? 0) || 0,
     lastDay: Number(raw.lastDay ?? 0) || 0,
+    flairOn: raw.flair === '1',
   };
 }
 
+async function flairOnFor(store: Store, username: string | null): Promise<boolean> {
+  return username ? (await readPlayer(store, username)).flairOn : false;
+}
+
 /** A streak is alive if its latest finish was today or yesterday. */
-function visibleStreak(player: PlayerRecord, today: number): Streak {
+export function visibleStreak(player: PlayerRecord, today: number): Streak {
   const alive = player.lastDay >= today - 1;
   return { current: alive ? player.streak : 0, best: player.best };
 }
@@ -189,10 +197,11 @@ export async function getInit(
   nowMs: number,
 ): Promise<InitResponse> {
   const today = dayOf(nowMs);
-  const [board, streak, mapsDone] = await Promise.all([
+  const [board, streak, mapsDone, flairOn] = await Promise.all([
     readDayBoard(store, day, username),
     streakOf(store, username, today),
     mapsDoneOf(store, username),
+    flairOnFor(store, username),
   ]);
   return {
     day,
@@ -208,6 +217,7 @@ export async function getInit(
     top: board.top,
     mapsDone,
     nextCircuitInMs: msUntilNextDay(nowMs),
+    flairOn,
   };
 }
 
@@ -328,5 +338,6 @@ export async function submitRun(
     overall,
     mapsDone,
     nextCircuitInMs: msUntilNextDay(nowMs),
+    flairOn: player ? player.flairOn : await flairOnFor(store, username),
   };
 }

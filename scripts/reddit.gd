@@ -18,6 +18,7 @@ var username: String = ""       ## The player's Reddit name; "" when logged out.
 var day: int = 0                ## Daily Circuit number of the post.
 var daily_level_id: int = -1    ## Permanent id of the level that is today's circuit.
 var is_today: bool = true       ## False on an older day's post (still playable, no streak).
+var flair_on: bool = false      ## The player has opted in to showing their streak as user flair.
 var start_screen: String = ""   ## "leaderboard" when the post asked to open there.
 var start_handled: bool = false ## Set once the main menu has sent the player to their first screen.
 
@@ -71,6 +72,7 @@ func apply_init(data: Variant) -> void:
 	day = int(data.get("day", 0))
 	daily_level_id = int(data.get("levelId", -1))
 	is_today = bool(data.get("isToday", true))
+	flair_on = bool(data.get("flairOn", false))
 	init_loaded.emit()
 
 

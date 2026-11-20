@@ -59,6 +59,8 @@ export type InitResponse = {
   mapsDone: number;
   /** Milliseconds until the next Daily Circuit starts (00:00 UTC), as of the response. */
   nextCircuitInMs: number;
+  /** True when the viewer has opted in to showing their streak as user flair. */
+  flairOn: boolean;
 };
 
 /** POST /api/run — report a finished race. */
@@ -85,6 +87,22 @@ export type RunResponse = {
   mapsDone: number;
   /** Milliseconds until the next Daily Circuit starts (00:00 UTC), as of the response. */
   nextCircuitInMs: number;
+  /** True when the viewer has opted in to showing their streak as user flair. */
+  flairOn: boolean;
+};
+
+/** POST /api/flair — turn the streak flair on or off (opt-in, off by default). */
+export type FlairRequest = {
+  on: boolean;
+};
+
+export type FlairResponse = {
+  /** Whether the streak flair is on now. */
+  on: boolean;
+  /** The flair text shown, when on. */
+  text: string | null;
+  /** Set when the change could not be made (logged out, or Reddit refused). */
+  error?: string;
 };
 
 /** GET /api/leaderboard?board=overall|level|day[&level=<id>][&limit=<n>] */

@@ -13,6 +13,7 @@ import { createServer } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LEVEL_IDS, dayOf, getInit, getLeaderboard, levelOfDay, submitRun } from '../src/server/daily.ts';
+import { type Flair, type FlairSink, refreshStreakFlair, setStreakFlair } from '../src/server/flair.ts';
 import { MemoryStore } from '../src/server/memory-store.ts';
 
 const publicDir = fileURLToPath(new URL('../public', import.meta.url));
@@ -44,6 +45,23 @@ const MIME: Record<string, string> = {
 };
 
 const store = new MemoryStore();
+
+/** Pretend user flair: kept in memory and printed, since there is no subreddit here. */
+const localFlairs = new Map<string, Flair>();
+const localFlair: FlairSink = {
+  async read(name) {
+    return localFlairs.get(name);
+  },
+  async show(name, text) {
+    localFlairs.set(name, { text });
+    console.log(`flair u/${name}: ${text}`);
+  },
+  async restore(name, flair) {
+    if (flair) localFlairs.set(name, flair);
+    else localFlairs.delete(name);
+    console.log(`flair u/${name}: ${flair ? flair.text : '(none)'}`);
+  },
+};
 
 // A few rivals so the boards are not empty on first load. Two of them have a
 // time on every level (so they rank overall); the third is one level short.
@@ -87,7 +105,16 @@ async function api(
   }
   if (path === '/api/run' && request.method === 'POST') {
     const body = (await readBody(request)) as { levelId?: unknown; timeMs?: unknown };
-    return submitRun(store, day, username, body.levelId, body.timeMs, now);
+    const result = await submitRun(store, day, username, body.levelId, body.timeMs, now);
+    if (username && result.accepted && result.flairOn) {
+      await refreshStreakFlair(store, localFlair, username, result.streak.current);
+    }
+    return result;
+  }
+  if (path === '/api/flair' && request.method === 'POST') {
+    if (!username) return { on: false, text: null, error: 'Log in to Reddit to use flair.' };
+    const body = (await readBody(request)) as { on?: unknown };
+    return setStreakFlair(store, localFlair, username, body.on === true, now);
   }
   return undefined;
 }

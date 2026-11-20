@@ -29,6 +29,9 @@ signal score_submitted()
 ## board (0 = not on it), the player's streak in days, and `next_ms` until the
 ## next circuit as of `at_msec` (Time.get_ticks_msec() when the answer arrived).
 signal run_recorded(info: Dictionary)
+## Reddit only: the answer to `set_flair()`. `on` is the flair's state now;
+## `error` is "" on success, else a sentence to show the player.
+signal flair_changed(on: bool, error: String)
 
 ## Board id for "all maps combined". Only the Reddit backend has it.
 const OVERALL := -1
@@ -121,6 +124,7 @@ func _on_reddit_run(result: Variant) -> void:
 	var me: Variant = result.get("me")
 	var streak: Variant = result.get("streak")
 	var accepted := bool(result.get("accepted", false))
+	Reddit.flair_on = bool(result.get("flairOn", Reddit.flair_on))
 	run_recorded.emit({
 		"accepted": accepted,
 		"improved": bool(result.get("improved", false)),
@@ -130,11 +134,29 @@ func _on_reddit_run(result: Variant) -> void:
 		"best_streak": int(streak.get("best", 0)) if streak is Dictionary else 0,
 		"next_ms": int(result.get("nextCircuitInMs", 0)),
 		"at_msec": Time.get_ticks_msec(),
+		"flair_on": bool(result.get("flairOn", false)),
 	})
 	if accepted:
 		score_submitted.emit()
 	else:
 		request_failed.emit("time not recorded: log in to Reddit to rank")
+
+
+## Reddit only: turns the opt-in streak flair on or off (the server saves the
+## player's own flair and puts it back when it goes off). Answers on
+## `flair_changed`.
+func set_flair(on: bool) -> void:
+	if not Reddit.is_available():
+		flair_changed.emit(false, "Flair is only on Reddit.")
+		return
+	Reddit.request("POST", "/api/flair", {"on": on}, func(result: Variant) -> void:
+		if not (result is Dictionary):
+			flair_changed.emit(Reddit.flair_on, "No answer from Reddit.")
+			return
+		Reddit.flair_on = bool(result.get("on", false))
+		var error: Variant = result.get("error")
+		flair_changed.emit(Reddit.flair_on, error if error is String else "")
+	)
 
 
 func _on_submit_done(_result: int, code: int, _h: PackedStringArray, _body: PackedByteArray) -> void:

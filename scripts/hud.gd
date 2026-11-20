@@ -18,8 +18,10 @@ extends CanvasLayer
 ##
 ## Inside a Reddit post the results card also shows the server's answer to the
 ## finish (`show_daily_pending` then `show_daily_result`): the place on the
-## day's board ("#12 OF 340 TODAY"), NEW BEST and streak chips, and a live
-## countdown to the next circuit; its gold button is Leaderboard, not Next.
+## day's board ("#12 OF 340 TODAY"), NEW BEST and streak chips, a live
+## countdown to the next circuit, and (logged in) an opt-in toggle that shows
+## the streak as the player's Reddit user flair. Its gold button is
+## Leaderboard, not Next.
 
 signal ui_action(action: String)
 
@@ -77,6 +79,7 @@ var _daily_box: VBoxContainer
 var _daily_rank: Label
 var _daily_chips: HBoxContainer
 var _daily_next: Label
+var _flair_btn: Button          # opt-in: show the streak as Reddit user flair
 var _next_circuit_at: int = 0   # Time.get_ticks_msec() when the next circuit starts; 0 = unknown
 
 var _pause_overlay: Control
@@ -689,6 +692,16 @@ func _build_results_overlay(parent: Control) -> void:
 	_daily_next.add_theme_color_override("font_color", Palette.TEXT_MUTED)
 	_daily_next.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_daily_box.add_child(_daily_next)
+	# Opt-in streak flair: off unless the player turns it on here.
+	_flair_btn = Button.new()
+	_flair_btn.theme_type_variation = "ButtonGhost"
+	_flair_btn.custom_minimum_size = Vector2(0, 40)
+	_flair_btn.add_theme_font_size_override("font_size", 14)
+	_flair_btn.focus_mode = Control.FOCUS_NONE
+	_flair_btn.visible = false
+	_flair_btn.pressed.connect(_on_flair_pressed)
+	_daily_box.add_child(_flair_btn)
+	Leaderboard.flair_changed.connect(_on_flair_changed)
 	daily_panel.visible = false
 
 	_results_buttons = BoxContainer.new()
@@ -768,6 +781,7 @@ func show_daily_pending() -> void:
 	_clear_daily_chips()
 	_daily_next.text = ""
 	_next_circuit_at = 0
+	_flair_btn.visible = false
 	_results_next.visible = false
 	_results_board.visible = true
 	_daily_box.get_parent().visible = true
@@ -800,6 +814,29 @@ func show_daily_result(info: Dictionary) -> void:
 	var next_ms := int(info.get("next_ms", 0))
 	_next_circuit_at = int(info.get("at_msec", Time.get_ticks_msec())) + next_ms if next_ms > 0 else 0
 	_update_countdown()
+	# Only a logged-in player has a flair to set.
+	_flair_btn.visible = bool(info.get("accepted", false))
+	_show_flair_state(bool(info.get("flair_on", Reddit.flair_on)), "")
+
+
+func _on_flair_pressed() -> void:
+	_flair_btn.disabled = true
+	_flair_btn.text = "UPDATING FLAIR..."
+	Leaderboard.set_flair(not Reddit.flair_on)
+
+
+func _on_flair_changed(on: bool, error: String) -> void:
+	_show_flair_state(on, error)
+
+
+func _show_flair_state(on: bool, error: String) -> void:
+	_flair_btn.disabled = false
+	if error != "":   # the reason is in the server log; keep the button short
+		_flair_btn.text = "FLAIR UNAVAILABLE  ·  TRY AGAIN"
+	elif on:
+		_flair_btn.text = "STREAK FLAIR ON  ·  TURN OFF"
+	else:
+		_flair_btn.text = "SHOW MY STREAK AS FLAIR"
 
 
 func _clear_daily_chips() -> void:

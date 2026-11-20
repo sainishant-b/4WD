@@ -3,14 +3,15 @@
 //   /api/*       called by the web view (splash page and the Godot game)
 //   /internal/*  called by Reddit: menu action, install trigger, daily cron
 //
-// The rules live in daily.ts; this file only wires them to Devvit.
+// The rules live in daily.ts (boards, streaks) and flair.ts (the opt-in streak
+// flair); this file only wires them to Devvit.
 
 import { serve } from '@hono/node-server';
 import { context, createServer, getServerPort, reddit, redis } from '@devvit/web/server';
 import type { TaskResponse } from '@devvit/web/server';
 import type { TriggerResponse, UiResponse } from '@devvit/web/shared';
 import { Hono } from 'hono';
-import type { RunRequest } from '../shared/api.ts';
+import type { FlairRequest, FlairResponse, RunRequest } from '../shared/api.ts';
 import {
   dateOf,
   dayFromPostData,
@@ -19,10 +20,37 @@ import {
   getInit,
   getLeaderboard,
   postTitle,
+  readPlayer,
   submitRun,
 } from './daily.ts';
+import {
+  type FlairSink,
+  refreshAllStreakFlairs,
+  refreshStreakFlair,
+  setStreakFlair,
+} from './flair.ts';
 
 const app = new Hono();
+
+/** The streak flair, set by the app account in the subreddit the app runs in. */
+function flairSink(subredditName: string): FlairSink {
+  return {
+    async read(username) {
+      const user = await reddit.getUserByUsername(username);
+      const flair = user ? await user.getUserFlairBySubreddit(subredditName) : undefined;
+      if (!flair || (!flair.flairText && !flair.flairCssClass)) return undefined;
+      return { text: flair.flairText ?? '', ...(flair.flairCssClass ? { cssClass: flair.flairCssClass } : {}) };
+    },
+    async show(username, text) {
+      // Gold with dark text: the game's own colours.
+      await reddit.setUserFlair({ subredditName, username, text, backgroundColor: '#ffc21a', textColor: 'dark' });
+    },
+    async restore(username, flair) {
+      if (flair) await reddit.setUserFlair({ subredditName, username, text: flair.text, cssClass: flair.cssClass });
+      else await reddit.removeUserFlair(subredditName, username);
+    },
+  };
+}
 
 app.get('/api/init', async (c) => {
   const now = Date.now();
@@ -44,9 +72,35 @@ app.post('/api/run', async (c) => {
   const now = Date.now();
   const day = dayFromPostData(context.postData, now);
   const body = await c.req.json<Partial<RunRequest>>().catch(() => ({}) as Partial<RunRequest>);
-  return c.json(
-    await submitRun(redis, day, context.username ?? null, body.levelId, body.timeMs, now),
-  );
+  const username = context.username ?? null;
+  const result = await submitRun(redis, day, username, body.levelId, body.timeMs, now);
+  if (username && result.accepted && result.flairOn) {
+    try {
+      await refreshStreakFlair(redis, flairSink(context.subredditName), username, result.streak.current);
+    } catch (error) {
+      console.error('streak flair update failed', error);   // the race still counts
+    }
+  }
+  return c.json(result);
+});
+
+// Opt-in streak flair. { on: true } shows "🔥 n-day streak"; { on: false } puts
+// back the flair the player had before.
+app.post('/api/flair', async (c) => {
+  const username = context.username ?? null;
+  if (!username) {
+    return c.json<FlairResponse>({ on: false, text: null, error: 'Log in to Reddit to use flair.' });
+  }
+  const body = await c.req.json<Partial<FlairRequest>>().catch(() => ({}) as Partial<FlairRequest>);
+  try {
+    return c.json<FlairResponse>(
+      await setStreakFlair(redis, flairSink(context.subredditName), username, body.on === true, Date.now()),
+    );
+  } catch (error) {
+    console.error('streak flair change failed', error);
+    const on = (await readPlayer(redis, username)).flairOn;
+    return c.json<FlairResponse>({ on, text: null, error: "Couldn't change your flair in this subreddit." });
+  }
 });
 
 /**
@@ -90,6 +144,12 @@ app.post('/internal/triggers/on-app-install', async (c) => {
 
 app.post('/internal/scheduler/daily-post', async (c) => {
   await ensureDailyPost(dayOf(Date.now()));
+  // A new day can end streaks: keep everyone's streak flair honest.
+  try {
+    await refreshAllStreakFlairs(redis, flairSink(context.subredditName), Date.now());
+  } catch (error) {
+    console.error('daily streak flair refresh failed', error);
+  }
   return c.json<TaskResponse>({});
 });
 

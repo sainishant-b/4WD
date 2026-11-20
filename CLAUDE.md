@@ -125,6 +125,8 @@ entry. When in doubt, add one — short is fine.
   The screen's Reddit tabs are OVERALL (keep it first), TODAY (`Leaderboard.DAY`), then levels.
   On Reddit the results card waits for `Leaderboard.run_recorded` and shows the day rank, streak
   and a countdown (`nextCircuitInMs` from the server); its gold button is Leaderboard -> TODAY.
+  **Streak flair is opt-in only** (`reddit/src/server/flair.ts`, the card's toggle): never set a
+  player's flair without their tap, and always put their own flair back when it goes off.
   Elsewhere the backend is **Appwrite** (IDs pasted into `leaderboard.gd`; name in `save.json`).
 - **Difficulty rises across levels** (the user asked): Levels 1-2 stay as they are; from Level 3
   on each level has a narrower road and a higher top speed than the one before. Keep that

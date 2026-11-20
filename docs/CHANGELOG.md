@@ -4,6 +4,28 @@ Running history of major changes. Newest on top. See `CLAUDE.md` for when to add
 
 ## 2026-11-20
 
+- **Opt-in streak flair.** *Why:* the user picked it from the Reddit-y to-do items.
+  - On the Reddit results card a logged-in player gets **SHOW MY STREAK AS FLAIR**. Turning it on
+    sets their user flair in the app's subreddit to "🔥 4-day streak" (gold, dark text);
+    pressing again turns it off. It is off until the player chooses it.
+  - Turning it on saves the flair the player had (text and CSS class); turning it off puts that
+    back, or removes ours if they had none. Template colours of their old flair are not kept
+    (Reddit's API does not report them).
+  - It follows the streak: after each race, and once a day in the 00:00 UTC job for everyone who
+    has it on, so a lapsed streak changes to "🏁 Daily Circuit racer" instead of showing an old
+    number.
+  - Server: new `src/server/flair.ts` (no Devvit imports; `FlairSink` is Reddit in `index.ts`,
+    a fake in tests and in `tools/serve-local.ts`), `POST /api/flair {on}`, and `flairOn` in the
+    init and run responses. If Reddit refuses (no flair permission, flair disabled), nothing is
+    stored and the button says FLAIR UNAVAILABLE. The `Store` interface gained `hDel`/`zRem`.
+  - Game: `Leaderboard.set_flair()` / `flair_changed`, `Reddit.flair_on`, the toggle in
+    `hud.gd`.
+  - Tests: `src/server/flair.test.ts` (7: off by default, saves and restores the old flair,
+    follows a race, refused change stores nothing, the daily refresh ends a lapsed streak);
+    `leaderboard_test.gd` +4 (offered and off, on, off, refused). Checked end to end against
+    `npm run local`. Not verified on real Reddit: whether the app account may set flair there
+    (the subreddit may need user flair enabled).
+
 - **Credit on the post.** The splash shows "by u/donomadoit" under the title (the user's
   Reddit name, given for the credit line). Still fits a 512 px post.
 

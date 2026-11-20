@@ -169,6 +169,9 @@ are their Reddit accounts:
 - **The results card** after a finish shows your place on today's board ("#12 OF 340 TODAY"), a
   NEW BEST chip, your streak in days, and a countdown to the next circuit. Its gold
   **Leaderboard** button opens the TODAY board.
+- **Streak flair (opt-in):** the results card's **SHOW MY STREAK AS FLAIR** sets your user flair
+  in the subreddit to "🔥 n-day streak"; press again to get your own flair back
+  (`reddit/src/server/flair.ts`).
 
 **Everywhere else** (desktop, Android) it uses **[Appwrite](https://appwrite.io)**, one board per
 level, with a name you type on the screen. It runs over plain HTTPS — no

@@ -46,8 +46,10 @@ Tick items off here as they land; the CHANGELOG has the details.
       Possible: `reddit.submitComment` (as the app, or as the user with
       `permissions.reddit.scope: "user"`) and `subscribeToCurrentSubreddit` (asUser
       `SUBSCRIBE_TO_SUBREDDIT`). Needs Nishant's call: opt-in button, and as whom.
-- [ ] User flair for medals or streak. Possible: `reddit.setUserFlair` (the app sets it in the
-      subreddit). Needs Nishant's call: it would replace a player's own flair, so opt-in only.
+- [x] Streak flair, opt-in from the results card ("🔥 4-day streak"); the player's own flair
+      comes back when they turn it off. 2026-11-20.
+- [ ] Check streak flair on real Reddit: the subreddit may need user flair enabled
+      (mod tools > User flair), and the app account must be allowed to set it.
 - [ ] Reddit avatars on the leaderboard, if the web view's content rules allow loading them.
 
 ## 5. Submission (Devpost + Reddit)
