@@ -303,7 +303,10 @@ road never running into itself, gates and start slot on the road, and every boos
 road, clear of the gates, with room after it, for all 7 levels and the multiplayer track). And the rules:
 `godot --headless --fixed-fps 60 --path . -s tests/rules_test.gd` (seven levels by weekday,
 difficulty order, no obstacles, ranked one lap vs casual three with no limit, and the
-five-wall-hits rule: what counts as one hit, the warnings, and game over).
+five-wall-hits rule: what counts as one hit, the warnings, and game over). And the handling:
+`godot --headless --fixed-fps 60 --path . -s tests/handling_test.gd` (letting go of the steering
+straightens the wheels at once and the car stops turning soon after, a held turn never speeds
+the car up, and the pivot and the handbrake still swing it round).
 
 - **Why a custom loader:** Reddit's web view blocks inline `<script>`/`<style>`, which Godot's
   default `index.html` uses. `tools/export-godot.mjs` discards that page and keeps only the engine
@@ -342,8 +345,12 @@ The handling is a **sim-ish slip-angle (bicycle) model** in `scripts/car.gd`. Se
   (coast-down). The car cruises where the level's `accel_force` meets that resistance, so
   scaling all three together changes how quickly speed builds without moving the top speed.
   `brake_force` is the brakes' extra deceleration.
-- **Steering:** `steer_sensitivity`, `high_speed_lock` (lock retained at top speed),
-  `max_steer_aligned_deg` / `max_steer_opposed_deg`.
+- **Steering:** `steer_sensitivity` (how fast the wheels turn in), `steer_return` (how fast
+  they come back to straight), `yaw_hold` (how fast the car's spin settles to what the wheels
+  ask; higher = stops turning sooner after you let go), `high_speed_lock` (lock retained at
+  cruising speed; the handbrake always gets full lock), `max_steer_aligned_deg` /
+  `max_steer_opposed_deg`. A turn never adds speed: `traction` turns the car's velocity without
+  changing its size.
 - **Camera feel:** the camera dollies **out** as you speed up (more road visible) and back in when
   slow — tune with `camera_zoom_rest`, `camera_zoom_at_top` (fraction of rest zoom held at top
   speed), and `camera_zoom_lerp` (how fast it eases). Braking/handbraking lights the **rear brake

@@ -4,6 +4,27 @@ Running history of major changes. Newest on top. See `CLAUDE.md` for when to add
 
 ## 2026-11-23
 
+- **Steering fix: no more oversteer.** *Why:* the user: "the car over steers, the wheels are not
+  coming back to 0 degrees fast enough". Measured first: the wheels did straighten in 0.1 s, but
+  the car spun on for 0.4-0.6 s after letting go (a 0.2 s tap of full lock turned it 11 deg while
+  held and 21-26 deg MORE after), and a held turn sped the car up (Level 1: 266 -> 427 px/s in a
+  second of full lock) because `traction` reset the sideways speed without taking it off the
+  forward speed. Four changes in `car.gd`:
+  1. the wheels turn back toward straight at `steer_return` 14 rad/s (in: still 6), straight in
+     0.05 s;
+  2. `yaw_hold` (20/s) eases the spin toward what the wheels ask, so the car stops turning
+     ~0.15 s after they straighten (off on the handbrake, so a drift still swings);
+  3. `traction` now turns the velocity without changing its size, and each tyre's side force is
+     square to its wheel (a steered axle scrubs a little speed): a turn never adds speed;
+  4. the lock shrinks to `high_speed_lock` by the CRUISING speed (`cruise_speed()`), not
+     `max_speed` (now only reached on a boost), eased in (`lock_factor()`), so a car slowed for a
+     hairpin keeps most of its lock. The handbrake gets the full lock at any speed.
+  Now a tap turns the car ~6 deg more after letting go and the spin stops in 0.13-0.15 s. A
+  handbrake drift turns as far as before but scrubs off about half the speed. Every lap is
+  slower (the bot: 27.9-41.9 s -> 30.6-46.9 s, no wall hits in all seven), so the medals were
+  re-set from it and the Reddit boards moved to a new key tag (`grip:`, the level boards too)
+  so the faster old times never mix in. New `tests/handling_test.gd` checks the settle.
+
 - **The backdrop stripes move.** *Why:* the user: "make the background lines moving like an
   animation and apply it to all pages". `HudStyle.add_backdrop` now adds a `Backdrop` control
   that redraws each frame with the stripes drifting right at 24 px/s (`STRIPE_SPEED`). Their

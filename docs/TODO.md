@@ -84,7 +84,10 @@ Tick items off here as they land; the CHANGELOG has the details.
 - [x] Boost pads, a night-circuit look, a new car, sparks, crash bursts, trails, speed lines and
       sounds; cars 20% slower, roads 30% wider (2026-11-22). Stunt ramps tried and removed
       (2026-11-23), gate numbers removed, menu stripes drift.
-- [ ] Feel the pads and the slower cars on a real phone; retune medals after real laps.
+- [x] Steering fix: no spinning on after letting go, turns no longer add speed, wheels centre
+      faster (2026-11-23). Medals re-set from the bot; Reddit boards on the `grip:` tag.
+- [ ] Feel the pads, the slower cars and the new steering on a real phone; retune medals after
+      real laps.
 - [x] Phone layout, twin thumb pads, key-cap control hints, mute button on every screen.
 - [x] Reddit server: per-level boards, OVERALL board (sum of best times, lowest first), daily
       board, streaks.

@@ -82,7 +82,11 @@ entry. When in doubt, add one — short is fine.
   touching `track_builder.gd` or any `TRACK_n`. `rules_test.gd` checks the level table and the
   wall-hit limit by driving the real car into walls:
   `godot --headless --fixed-fps 60 --path . -s tests/rules_test.gd`. Run it after touching
-  `game.gd`, the wall-contact code in `car.gd`, or `LEVELS`. `capture_screens.gd` regenerates
+  `game.gd`, the wall-contact code in `car.gd`, or `LEVELS`. `handling_test.gd` drives the real
+  car on an open floor and checks the steering settles (wheels straight at once, no spinning on
+  after letting go, no speed gained in a turn, pivot and handbrake still turn it):
+  `godot --headless --fixed-fps 60 --path . -s tests/handling_test.gd`. Run it after touching
+  the steering, tyre or traction code in `car.gd`. `capture_screens.gd` regenerates
   `docs/screenshots/`; it needs a real window, so launch it only through `run_offscreen.ps1`
   (its own invisible desktop). Never start a capture window on the user's desktop, hidden or
   not: it takes keyboard focus and swallows their typing.
@@ -135,8 +139,9 @@ entry. When in doubt, add one — short is fine.
   DRIVE (ranked), and `Game.has_next_level()` is false; its CASUAL button opens the casual grid
   (all maps, Next works). The ranked level progression is for desktop/Android. The day's level
   follows the UTC weekday (`levelOfDay` in `reddit/src/server/daily.ts`; day 1 was a Monday).
-  Its day/overall board keys carry a tag (`wide:` since 2026-11-22, `1lap:` before) so times
-  from older tracks never mix in; change the tag whenever the tracks change for everyone.
+  Its board keys carry a tag (`BOARD_TAG` in `daily.ts`: `grip:` since 2026-11-23, on the
+  level boards too; `wide:` and `1lap:` before) so times from older tracks or older car physics
+  never mix in; change the tag whenever the tracks or the car's speed change for everyone.
   The game opens straight on Today's Circuit there (`main_menu.gd`, once per load via
   `Reddit.start_handled`); How to Play is behind its button, never forced. The post's splash
   draws today's track from `reddit/src/client/tracks.ts`, generated from the game by
@@ -201,6 +206,12 @@ near the middle (the user found it too sensitive): `STEER_TRAVEL` 60 px for full
 - **Keep the car planted** (the user found it drifted into walls): `car.gd` `traction` pulls the
   sideways slide toward the wheels' no-slip motion (30/s); grip 1400, rear stiffer than front. Don't
   loosen these without asking. The handbrake is the drift button.
+- **No oversteer** (2026-11-23, the user: "the car over steers, the wheels are not coming back to
+  0 degrees fast enough"): the wheels centre at `steer_return` (14 rad/s, faster than turn-in),
+  `yaw_hold` (20/s) stops the car spinning on once they are straight (off on the handbrake),
+  `traction` turns the velocity without changing its size (a turn must never add speed), and the
+  lock shrinks by the cruising speed (`lock_factor()`; the handbrake keeps full lock).
+  `tests/handling_test.gd` guards it; don't undo any of these without asking.
 - **Speed builds gradually** (the user: it hit full speed instantly on a phone): the per-level
   `accel_force`, `rolling_resistance`, `drag` and `boost_accel` were cut to 0.4x on 2026-11-21
   (same cruising speed, ~3 s to reach it) and `brake_force` is 1200. Scale drive and resistance

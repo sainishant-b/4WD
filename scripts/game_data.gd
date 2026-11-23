@@ -166,8 +166,9 @@ const MP_RACE := {
 ## Per-level: which track, car speed, and medal targets for ONE lap (the
 ## ranked race, seconds). Targets come from a simple bot's lap (gold ~ +10%,
 ## silver ~ +40%, bronze ~ +80%): retune after real laps. Last set 2026-11-23
-## (wider roads, slower cars, boost pads, no stunt ramps): the bot lapped in
-## 27.9 / 26.9 / 28.8 / 35.4 / 38.1 / 39.7 / 41.9 s and hit 1 wall in all seven.
+## after the steering fix (turns no longer add speed, less lock at cruise): the
+## bot lapped in 30.6 / 30.6 / 32.5 / 39.0 / 42.1 / 43.5 / 46.9 s and hit no
+## walls in all seven (before it: 27.9 ... 41.9 s, 1 wall).
 ##
 ## `id` is the level's PERMANENT identity: saved records and the online
 ## leaderboard are keyed by it, so levels can be reordered or dropped without
@@ -180,13 +181,13 @@ const MP_RACE := {
 ## Level n is the Daily Circuit on weekday n (Monday = Level 1); the Reddit
 ## server's LEVEL_IDS lists the same ids in the same order.
 const LEVELS := [
-	{"id": 17, "name": "Level 1", "track": TRACK_1, "max_speed": 496.0, "accel_force": 153.6, "gold": 30.5, "silver": 39.0, "bronze": 50.0},
-	{"id": 18, "name": "Level 2", "track": TRACK_2, "max_speed": 480.0, "accel_force": 147.2, "gold": 29.5, "silver": 37.5, "bronze": 48.5},
-	{"id": 19, "name": "Level 3", "track": TRACK_3, "max_speed": 532.0, "accel_force": 163.2, "gold": 31.5, "silver": 40.5, "bronze": 52.0},
-	{"id": 20, "name": "Level 4", "track": TRACK_4, "max_speed": 560.0, "accel_force": 171.2, "gold": 39.0, "silver": 49.5, "bronze": 63.5},
-	{"id": 21, "name": "Level 5", "track": TRACK_5, "max_speed": 580.0, "accel_force": 177.6, "gold": 42.0, "silver": 53.5, "bronze": 68.5},
-	{"id": 22, "name": "Level 6", "track": TRACK_6, "max_speed": 596.0, "accel_force": 182.4, "gold": 43.5, "silver": 55.5, "bronze": 71.5},
-	{"id": 23, "name": "Level 7", "track": TRACK_7, "max_speed": 612.0, "accel_force": 187.2, "gold": 46.0, "silver": 58.5, "bronze": 75.5},
+	{"id": 17, "name": "Level 1", "track": TRACK_1, "max_speed": 496.0, "accel_force": 153.6, "gold": 33.5, "silver": 43.0, "bronze": 55.0},
+	{"id": 18, "name": "Level 2", "track": TRACK_2, "max_speed": 480.0, "accel_force": 147.2, "gold": 33.5, "silver": 43.0, "bronze": 55.0},
+	{"id": 19, "name": "Level 3", "track": TRACK_3, "max_speed": 532.0, "accel_force": 163.2, "gold": 36.0, "silver": 45.5, "bronze": 58.5},
+	{"id": 20, "name": "Level 4", "track": TRACK_4, "max_speed": 560.0, "accel_force": 171.2, "gold": 43.0, "silver": 54.5, "bronze": 70.0},
+	{"id": 21, "name": "Level 5", "track": TRACK_5, "max_speed": 580.0, "accel_force": 177.6, "gold": 46.5, "silver": 59.0, "bronze": 76.0},
+	{"id": 22, "name": "Level 6", "track": TRACK_6, "max_speed": 596.0, "accel_force": 182.4, "gold": 48.0, "silver": 61.0, "bronze": 78.5},
+	{"id": 23, "name": "Level 7", "track": TRACK_7, "max_speed": 612.0, "accel_force": 187.2, "gold": 51.5, "silver": 65.5, "bronze": 84.5},
 ]
 
 var current_level: int = 0

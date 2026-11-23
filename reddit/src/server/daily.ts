@@ -115,16 +115,19 @@ export function dayFromPostData(postData: unknown, nowMs: number): number {
 }
 
 // Sorted sets, member = username, score = time in ms (lowest ranks first).
-// The day and overall keys carry a tag so older times never mix with these:
-// `1lap` from 2026-11-20 (before, races were three laps on smaller tracks, ids
-// 1, 2, 3, 8, 9), then `wide` from 2026-11-22 (roads 30% wider, cars 20%
-// slower, boost pads and stunt ramps; ids 10-16 became 17-23). Level boards
-// need no tag: a changed track gets a new id.
-const dayKey = (day: number) => `wide:board:${day}`;
+// The keys carry a tag so older times never mix with these: `1lap` from
+// 2026-11-20 (before, races were three laps on smaller tracks, ids 1, 2, 3, 8,
+// 9), then `wide` from 2026-11-22 (roads 30% wider, cars 20% slower, boost
+// pads; ids 10-16 became 17-23), then `grip` from 2026-11-23 (the steering fix:
+// a turn no longer adds speed, so every lap got slower; the tracks and ids
+// stayed, so the level boards take the tag too). A changed track still gets a
+// new id; change the tag when the car's speed changes for everyone.
+const BOARD_TAG = 'grip';
+const dayKey = (day: number) => `${BOARD_TAG}:board:${day}`;
 /** Best time ever on one level. */
-const levelKey = (levelId: number) => `level:${levelId}`;
+const levelKey = (levelId: number) => `${BOARD_TAG}:level:${levelId}`;
 /** Sum of a player's bests over every level; present only once they have them all. */
-const OVERALL_KEY = 'wide:overall';
+const OVERALL_KEY = `${BOARD_TAG}:overall`;
 /** A player's streak, and their streak-flair choice (see flair.ts). */
 export const playerKey = (name: string) => `player:${name}`;
 /** Holds the post id once a day's post exists, so it is only created once. */

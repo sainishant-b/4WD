@@ -5,9 +5,14 @@ extends CharacterBody2D
 ## steering that stiffens with speed, tyre grip you can overdrive into a slide or
 ## spin, and a handbrake that breaks the REAR loose. At very low speed it blends
 ## to a kinematic steer so parking stays stable (no spin-in-place / phantom slide).
-## A `traction` pull keeps the slide small: each frame the sideways speed is
-## eased toward what the wheel angles ask for, so the car goes where its wheels
-## point (the handbrake keeps most of its drift).
+## A `traction` pull keeps the slide small: each frame the car's direction of
+## travel is eased toward what the wheel angles ask for, so the car goes where its
+## wheels point (the handbrake keeps most of its drift). It turns the velocity
+## without changing its size, and the tyres' side force leans with the wheels, so
+## a turn scrubs a little speed and never adds any. A `yaw_hold` pull does the
+## same for the spin: the car turns as fast as its wheels ask and stops turning
+## when they straighten. The wheels go back to straight faster (`steer_return`)
+## than they turn in.
 ##
 ## Convention (unchanged): rotation = 0 means the car points UP.
 ##   forward = Vector2.from_angle(rotation - PI/2),  right = Vector2.from_angle(rotation)
@@ -79,8 +84,18 @@ const CarFx := preload("res://scripts/car_fx.gd")
 @export_range(0, 1) var handbrake_traction: float = 0.2    # share of traction kept on the handbrake
 
 # --- Steering --------------------------------------------------------------
-@export var steer_sensitivity: float = 6.0     # radians/sec the wheels turn (snappier turn-in)
-@export_range(0, 1) var high_speed_lock: float = 0.45  # fraction of full lock at top speed
+# 2026-11-23 (the user: "the car over steers, the wheels are not coming back to
+# 0 degrees fast enough"): the wheels now centre at `steer_return`, `yaw_hold`
+# stops the car spinning on once they are straight, a turn no longer adds speed
+# (see `traction`), and the lock shrinks toward `high_speed_lock` by the CRUISING
+# speed, not `max_speed` (only reached on a boost now). A 0.2 s tap of full lock
+# at cruise used to turn the car 21-26 deg more after letting go (spinning on for
+# 0.4-0.5 s) and holding full lock for 1 s sped Level 1 up 266 -> 427 px/s; now
+# it turns ~6 deg more, stops in ~0.15 s and the speed stays put.
+@export var steer_sensitivity: float = 6.0     # radians/sec the wheels turn in
+@export var steer_return: float = 14.0         # radians/sec the wheels turn back toward straight
+@export var yaw_hold: float = 20.0             # 1/s the spin is pulled toward what the wheels ask
+@export_range(0, 1) var high_speed_lock: float = 0.45  # fraction of full lock at cruising speed
 @export_range(0, 90) var max_steer_aligned_deg: float = 55.0
 @export_range(0, 90) var max_steer_opposed_deg: float = 45.0
 
@@ -252,23 +267,41 @@ func _physics_process(delta: float) -> void:
 	var ayf := clampf(-cornering_stiffness_front * af, -grip_accel, grip_accel) * grip_scale
 	var ayr := clampf(-cr * ar, -grip_r, grip_r) * grip_scale
 
-	# --- Integrate body-frame velocity ---
-	vx += (ax_drive + vy * omega - rolling_resistance * vx - drag * vx * absf(vx)) * delta
-	vy += (ay_drive + ayf + ayr - vx * omega) * delta
+	# --- Integrate body-frame velocity. Each tyre's side force is square to its
+	#     WHEEL, so a steered axle's force also leans back against the motion:
+	#     cornering scrubs a little speed. ---
+	var tyre_x := -(ayf * sin(front_steer) + ayr * sin(rear_steer))
+	var tyre_y := ayf * cos(front_steer) + ayr * cos(rear_steer)
+	vx += (ax_drive + tyre_x + vy * omega - rolling_resistance * vx - drag * vx * absf(vx)) * delta
+	vy += (ay_drive + tyre_y - vx * omega) * delta
 
 	# --- Traction: pull the sideways speed toward the no-slip value the wheel
 	#     angles ask for (zero when pivoting, vx*tan when crabbing), so the car
 	#     goes where its wheels point instead of sliding wide. Much weaker on the
-	#     handbrake, which keeps its drift. ---
+	#     handbrake, which keeps its drift. It TURNS the velocity, keeping its
+	#     size: setting vy alone added speed every frame of a turn (Level 1 went
+	#     266 -> 427 px/s in a second of full lock). ---
 	var vy_track := vx * (lr * tan(front_steer) + lf * tan(rear_steer)) / wheelbase
 	var hold := traction * grip_scale * (handbrake_traction if handbrake else 1.0)
-	vy = lerpf(vy, vy_track, 1.0 - exp(-hold * delta))
+	var vy_held := lerpf(vy, vy_track, 1.0 - exp(-hold * delta))
+	if absf(vx) > 1.0:
+		var body_speed := Vector2(vx, vy).length()
+		var held := Vector2(vx, vy_held).normalized() * body_speed
+		vx = held.x
+		vy = held.y
+	else:
+		vy = vy_held
 
 	# --- Yaw: dynamic tyre moment at speed, kinematic steer geometry when slow ---
 	var moment := lf * ayf - lr * ayr
 	var omega_dyn := omega + (moment / yaw_inertia) * delta
 	var omega_kin := (vx / wheelbase) * (tan(front_steer) - tan(rear_steer))
 	omega = lerpf(omega_kin, omega_dyn, grip_scale) * 0.99
+	# Yaw hold: the spin eases toward what the wheels ask, so the car stops
+	# turning soon after they straighten instead of spinning on. Off on the
+	# handbrake, so a drift still swings the tail round.
+	var yaw_k := 0.0 if handbrake else yaw_hold * grip_scale
+	omega = lerpf(omega, omega_kin, 1.0 - exp(-yaw_k * delta))
 
 	# --- Clamp forward speed: boost raises the ceiling instantly, then it eases
 	#     back down to max_speed so the overspeed bleeds off smoothly. ---
@@ -338,14 +371,38 @@ func _update_steering(delta: float) -> void:
 
 	var aligned := absf(front_steer - rear_steer) < 0.1
 	var base_max := deg_to_rad(max_steer_aligned_deg if aligned else max_steer_opposed_deg)
-	# Steering stiffens with speed: less lock available the faster you go.
-	var speed_factor := lerpf(1.0, high_speed_lock, clampf(speed / max_speed, 0.0, 1.0))
-	var max_a := base_max * speed_factor
+	# The handbrake (the drift button) gets the full lock at any speed, so a
+	# drift can swing the car round a hairpin.
+	var max_a := base_max * (1.0 if InputState.handbrake else lock_factor(speed))
 
-	front_steer = move_toward(front_steer, fin * max_a, steer_sensitivity * delta)
-	rear_steer = move_toward(rear_steer, rin * max_a, steer_sensitivity * delta)
+	front_steer = move_toward(front_steer, fin * max_a, _steer_rate(front_steer, fin * max_a) * delta)
+	rear_steer = move_toward(rear_steer, rin * max_a, _steer_rate(rear_steer, rin * max_a) * delta)
 	front_steer = clampf(front_steer, -base_max, base_max)
 	rear_steer = clampf(rear_steer, -base_max, base_max)
+
+
+## How fast a wheel moves from `current` toward `target` (rad/s): quicker on
+## the way back to straight than on the way in.
+func _steer_rate(current: float, target: float) -> float:
+	var centring := current != 0.0 and (current * target < 0.0 or absf(target) < absf(current))
+	return steer_return if centring else steer_sensitivity
+
+
+## Steering stiffens with speed: the share of full lock left at `speed`, down
+## to `high_speed_lock` at the cruising speed (and held there on a boost). Eased
+## in (squared), so a car slowed for a hairpin keeps most of its lock.
+func lock_factor(speed: float) -> float:
+	var k := clampf(speed / cruise_speed(), 0.0, 1.0)
+	return lerpf(1.0, high_speed_lock, k * k)
+
+
+## The speed the car settles at on full throttle (px/s): where `accel_force`
+## meets `rolling_resistance` + `drag`.
+func cruise_speed() -> float:
+	if drag <= 0.0:
+		return accel_force / maxf(rolling_resistance, 0.001)
+	var rr := rolling_resistance
+	return (-rr + sqrt(rr * rr + 4.0 * drag * accel_force)) / (2.0 * drag)
 
 
 func _update_wheel_visuals() -> void:
