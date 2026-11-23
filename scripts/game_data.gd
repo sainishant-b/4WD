@@ -461,33 +461,36 @@ func set_player_name(n: String) -> void:
 
 # --- Navigation ------------------------------------------------------------
 
+# Every screen change goes behind the Transition curtain; `animate = false`
+# switches at once (the main menu's redirects on the way in).
+
 ## Starts a race on the level in slot `idx`, in the current mode.
 func start_level(idx: int) -> void:
 	current_level = idx
-	get_tree().change_scene_to_file(SCENE_RACE)
+	Transition.change_scene(SCENE_RACE)
 
 func goto_menu() -> void:
 	get_tree().paused = false
-	get_tree().change_scene_to_file(SCENE_MENU)
+	Transition.change_scene(SCENE_MENU)
 
 ## The level screen for ranked races (on Reddit: Today's Circuit).
-func goto_level_select() -> void:
+func goto_level_select(animate := true) -> void:
 	casual = false
-	get_tree().change_scene_to_file(SCENE_LEVEL_SELECT)
+	Transition.change_scene(SCENE_LEVEL_SELECT, animate)
 
 ## The level screen for casual races: every map, three laps, no wall-hit limit.
 func goto_casual() -> void:
 	casual = true
-	get_tree().change_scene_to_file(SCENE_LEVEL_SELECT)
+	Transition.change_scene(SCENE_LEVEL_SELECT)
 
 func goto_lobby() -> void:
-	get_tree().change_scene_to_file(SCENE_LOBBY)
+	Transition.change_scene(SCENE_LOBBY)
 
-func goto_leaderboard() -> void:
-	get_tree().change_scene_to_file(SCENE_LEADERBOARD)
+func goto_leaderboard(animate := true) -> void:
+	Transition.change_scene(SCENE_LEADERBOARD, animate)
 
-func goto_instructions() -> void:
-	get_tree().change_scene_to_file(SCENE_INSTRUCTIONS)
+func goto_instructions(animate := true) -> void:
+	Transition.change_scene(SCENE_INSTRUCTIONS, animate)
 
 func has_seen_instructions() -> bool:
 	return bool(progress.get("seen_instructions", false))

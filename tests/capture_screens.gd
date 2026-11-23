@@ -1,6 +1,7 @@
 extends SceneTree
-# Regenerates docs/screenshots/*.png: the race HUD (countdown, a boost pad, a
-# wall-hit warning, game over, the hairpin levels) and every menu (main menu, settings,
+# Regenerates docs/screenshots/*.png: the race HUD (start lights, a boost pad, a
+# wall-hit warning, game over, the hairpin levels), the screen-change curtain, a
+# NEW BEST results card, and every menu (main menu, settings,
 # How to Play, level select, and as shown inside a Reddit post today's circuit,
 # the results card and the leaderboard), at
 # phone size (860x1520, i.e. the 430x760 layout at 2x) and desktop size.
@@ -154,6 +155,12 @@ func _menus(prefix: String) -> void:
 	change_scene_to_file("res://scenes/MainMenu.tscn")
 	await _frames(6)
 	await _shot(prefix + "-main-menu")
+	# The curtain between screens, caught part way across.
+	var curtain = root.get_node("/root/Transition")._curtain
+	curtain.p = 0.62
+	curtain.visible = true
+	await _shot(prefix + "-transition")
+	curtain.visible = false
 	current_scene._on_settings()
 	await _shot(prefix + "-settings")
 	for spec in [["Instructions", "how-to-play"], ["LevelSelect", "level-select"]]:
@@ -165,6 +172,13 @@ func _menus(prefix: String) -> void:
 	await _frames(6)
 	await _shot(prefix + "-casual")
 	_game.casual = false
+	# A new best that also earns a better medal, filled by hand (a real finish
+	# would write the save).
+	await _race(1, 5)
+	current_scene._touch.set_enabled(false)
+	current_scene.get_node("HUD").show_results(41.06, "gold", 41.06, 41.06, true, 1, false, 1.24, true)
+	await _frames(50)
+	await _shot(prefix + "-new-best")
 	var reddit = root.get_node("/root/Reddit")
 	reddit.transport = _fake_server
 	reddit.avatar_transport = _fake_avatar
@@ -180,12 +194,14 @@ func _menus(prefix: String) -> void:
 	hud.show_results(42.18, "silver", 42.18, 42.18, false, 1)   # a ranked race: one lap
 	hud.show_daily_pending()
 	hud.show_daily_result({
-		"accepted": true, "improved": true, "rank": 12, "players": 340, "streak": 4,
-		"best_streak": 6, "next_ms": 5 * 3_600_000 + 12 * 60_000 + 9_000, "at_msec": Time.get_ticks_msec(),
+		"accepted": true, "improved": true, "rank": 12, "prev_rank": 19, "players": 340, "streak": 4,
+		"prev_streak": 3, "best_streak": 6, "next_ms": 5 * 3_600_000 + 12 * 60_000 + 9_000,
+		"at_msec": Time.get_ticks_msec(),
 	})
+	await _frames(80)   # the plate rolls to its place, the sticker and streak land
 	await _shot(prefix + "-reddit-results")
 	change_scene_to_file("res://scenes/Leaderboard.tscn")
-	await _frames(6)
+	await _frames(40)   # the rows fade in
 	await _shot(prefix + "-leaderboard")
 	reddit.transport = Callable()
 	reddit.avatar_transport = Callable()
@@ -201,6 +217,8 @@ func _run() -> void:
 	root.size = Vector2i(860, 1520)
 	await _frames(5)
 	await _race(0, 5)
+	while root.get_node("/root/Transition").is_busy():
+		await _frames(1)   # the opening curtain, which waits for a first scene
 	_touch(5, Vector2(200, 300), true)      # any touch switches the UI to touch mode
 	_touch(5, Vector2(200, 300), false)
 	await _frames(70)

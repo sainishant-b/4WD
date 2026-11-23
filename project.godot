@@ -29,6 +29,8 @@ MuteButton="*res://scripts/mute_button.gd"
 Net="*res://scripts/net.gd"
 Reddit="*res://scripts/reddit.gd"
 Leaderboard="*res://scripts/leaderboard.gd"
+UiFeel="*res://scripts/ui_feel.gd"
+Transition="*res://scripts/transition.gd"
 
 [display]
 

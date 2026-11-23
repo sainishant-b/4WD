@@ -12,6 +12,9 @@ extends Control
 ##
 ## `_build()` runs again when `Layout` flips, narrowing the column and swapping
 ## the row of board buttons for a < Board > stepper on a portrait phone.
+##
+## A board's rows fade in one after another; the player's own row (picked out
+## in red-orange) then glides into view and glows twice.
 
 const WIDE_WIDTH := 560.0
 const ROWS := 25
@@ -22,6 +25,8 @@ const DAY_SLOT := -2
 var _boards: Array[int] = []    # level slots, or OVERALL_SLOT / DAY_SLOT
 var _board: int = 0             # index into _boards
 var _rows_box: VBoxContainer
+var _scroll: ScrollContainer
+var _mine: PanelContainer = null   # the player's own row on the board shown
 var _status: Label
 var _board_btns: Array = []     # desktop: one toggle per board
 var _board_name: Label = null   # phone: the stepper's current board
@@ -97,13 +102,13 @@ func _build() -> void:
 	panel.add_theme_stylebox_override("panel", box)
 	panel.custom_minimum_size = Vector2(width, 300 if narrow else 330)
 	col.add_child(panel)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	panel.add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(_scroll)
 	_rows_box = VBoxContainer.new()
 	_rows_box.add_theme_constant_override("separation", 4)
 	_rows_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_rows_box)
+	_scroll.add_child(_rows_box)
 
 	var btn_row := HBoxContainer.new()
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -244,6 +249,36 @@ func _on_scores_loaded(level: int, rows: Array) -> void:
 	for r in rows:
 		_add_row(rank, String(r["name"]), int(r["time_ms"]), String(r.get("avatar", "")))
 		rank += 1
+	_reveal_rows()
+
+
+## The rows fade in top to bottom; then the player's own row glides into the
+## middle of the list (if it has to) and glows twice.
+func _reveal_rows() -> void:
+	var rows := _rows_box.get_children()
+	for i in rows.size():
+		var row: Control = rows[i]
+		row.modulate.a = 0.0
+		var tw := row.create_tween()
+		tw.tween_interval(mini(i, 12) * 0.03)
+		tw.tween_property(row, "modulate:a", 1.0, 0.2)
+	var mine := _mine
+	if mine == null:
+		return
+	await get_tree().process_frame
+	await get_tree().process_frame   # the rows have their sizes now
+	if not is_instance_valid(mine) or mine != _mine:
+		return
+	var most := maxf(0.0, _rows_box.size.y - _scroll.size.y)
+	var target := clampf(mine.position.y - (_scroll.size.y - mine.size.y) * 0.5, 0.0, most)
+	var tw := create_tween()
+	tw.tween_property(_scroll, "scroll_vertical", int(target), 0.45) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var box: StyleBoxFlat = mine.get_theme_stylebox("panel")
+	var glow := func(a: float) -> void: box.bg_color = Color(Palette.POP, a)
+	for k in 2:
+		tw.tween_method(glow, 0.16, 0.4, 0.22)
+		tw.tween_method(glow, 0.4, 0.16, 0.34)
 
 
 ## The line under the picker: what this board ranks, and where the player is.
@@ -277,6 +312,7 @@ func _on_request_failed(message: String) -> void:
 
 
 func _clear_rows() -> void:
+	_mine = null
 	for c in _rows_box.get_children():
 		c.queue_free()
 
@@ -297,6 +333,8 @@ func _add_row(rank: int, who: String, time_ms: int, avatar_url := "") -> void:
 	back.content_margin_bottom = 4.0
 	line.add_theme_stylebox_override("panel", back)
 	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if mine:
+		_mine = line
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)

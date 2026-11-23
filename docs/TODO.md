@@ -88,6 +88,19 @@ Tick items off here as they land; the CHANGELOG has the details.
       faster (2026-11-23). Medals re-set from the bot; Reddit boards on the `grip:` tag.
 - [ ] Feel the pads, the slower cars and the new steering on a real phone; retune medals after
       real laps.
+- [x] Polish pass (2026-11-23): loading-bar tyre, screen transitions, splash car, start lights,
+      wall-hit pip pop + phone buzz, NEW BEST sticker, rank plate roll, streak flame, leaderboard
+      row reveal, button press + click, interface sounds.
+
+## Polish for later (the user's list, 2026-11-23: "keep the rest in a list for future")
+
+- [ ] **Finish-line moment:** a short slow motion and a camera push-in as you cross the line,
+      with chequered confetti.
+- [ ] **Phone buzz on more moments:** a boost pad and a medal (wall hits buzz already).
+- [ ] **Results card build-up:** the card slides up, the medal disc drops in and spins, the
+      times count up like rolling digits.
+- [ ] **Unlock moment:** when a new level opens, its padlock pops off and the card shines.
+- [ ] **Ghost car:** a see-through copy of your best lap races beside you (the biggest one).
 - [x] Phone layout, twin thumb pads, key-cap control hints, mute button on every screen.
 - [x] Reddit server: per-level boards, OVERALL board (sum of best times, lowest first), daily
       board, streaks.

@@ -340,6 +340,7 @@ func _move(delta: float, speed: float) -> void:
 	_fx.contact(collision.get_position(), normal, velocity)
 	if fresh:
 		_fx.crash(collision.get_position(), normal, speed)
+		UiFeel.buzz(60)   # a short buzz on a phone
 	velocity = velocity.slide(normal) * collision_speed_keep
 	ang_vel *= 0.5
 	if speed > 120.0:

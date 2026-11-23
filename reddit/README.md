@@ -61,7 +61,8 @@ app. The game is the Godot 4 project in the parent folder; its Web export is cop
 ### How a post works
 
 1. The post renders `public/splash.html` inline: the day, today's circuit (name and a picture,
-   from `src/client/tracks.ts`), the viewer's best time, rank and streak.
+   from `src/client/tracks.ts`, with a gold dot lapping it), the viewer's best time, rank and
+   streak.
 2. **Drive** opens `public/game.html` in expanded mode, which downloads and starts the engine:
    `index.wasm.gz` (about 10 MB instead of 38), unzipped in the browser and kept in the Cache API
    so a returning player downloads nothing (`src/client/engine-files.ts`).

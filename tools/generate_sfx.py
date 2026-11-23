@@ -200,6 +200,66 @@ def land():
     return out
 
 
+def ui_click():
+    # A button press: a soft, short wooden tick, 0.05 s.
+    dur = 0.05
+    n = int(RATE * dur)
+    noise = _noise(6)
+    out = []
+    for i in range(n):
+        t = i / RATE
+        env = math.exp(-t * 95.0)
+        v = math.sin(2 * math.pi * 1750.0 * t) * 0.7 + math.sin(2 * math.pi * 2630.0 * t) * 0.3
+        v += noise() * 0.25 * math.exp(-t * 400.0)
+        out.append(v * env * min(1.0, t * 2000.0) * 0.32)
+    return out
+
+
+def ui_whoosh():
+    # The sweep between screens: airy noise swelling and falling away, its
+    # low-pass opening then closing, 0.34 s.
+    dur = 0.34
+    n = int(RATE * dur)
+    noise = _noise(7)
+    lp = 0.0
+    out = []
+    for i in range(n):
+        t = i / RATE
+        k = t / dur
+        a = 0.03 + 0.22 * math.sin(math.pi * k)
+        lp += a * (noise() - lp)
+        env = math.sin(math.pi * min(1.0, k * 1.15)) ** 2
+        out.append(lp * env * 0.55)
+    return out
+
+
+def ui_pop():
+    # A pop-up landing (rank plate, streak chip): a quick upward blip, 0.12 s.
+    dur = 0.12
+    n = int(RATE * dur)
+    phase = 0.0
+    out = []
+    for i in range(n):
+        t = i / RATE
+        f = 480.0 + 620.0 * (t / dur) ** 0.6
+        phase += 2 * math.pi * f / RATE
+        env = math.exp(-t * 26.0) * min(1.0, t * 700.0)
+        out.append((math.sin(phase) + 0.25 * math.sin(2 * phase)) * env * 0.33)
+    return out
+
+
+def best():
+    # A new best time: two bell notes a fourth apart, softly ringing, 0.75 s.
+    out = [0.0] * int(RATE * 0.75)
+    for start, f in ((0.0, 1318.5), (0.11, 1760.0)):
+        for i in range(int(RATE * start), len(out)):
+            t = i / RATE - start
+            env = math.exp(-t * 5.5) * min(1.0, t * 900.0)
+            v = math.sin(2 * math.pi * f * t) + 0.35 * math.sin(2 * math.pi * f * 2.76 * t) * math.exp(-t * 9.0)
+            out[i] += v * env * 0.2
+    return out
+
+
 if __name__ == "__main__":
     write_wav("engine.wav", engine())
     write_wav("checkpoint.wav", ding())
@@ -211,3 +271,7 @@ if __name__ == "__main__":
     write_wav("scrape.wav", scrape())
     write_wav("jump.wav", jump())
     write_wav("land.wav", land())
+    write_wav("ui_click.wav", ui_click())
+    write_wav("ui_whoosh.wav", ui_whoosh())
+    write_wav("ui_pop.wav", ui_pop())
+    write_wav("best.wav", best())

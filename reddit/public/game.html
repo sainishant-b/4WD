@@ -15,7 +15,20 @@
     <div id="loader" role="status" aria-live="polite">
       <p class="eyebrow">fourwd</p>
       <p id="loader-text">Loading the circuit</p>
-      <div class="bar"><div id="loader-fill"></div></div>
+      <div class="bar-wrap">
+        <div class="bar" id="loader-track"><div id="loader-fill"></div></div>
+        <!-- The tyre rolls along the front of the fill (game.ts showProgress):
+             the outer span slides, the wheel inside turns. -->
+        <span class="tyre" id="loader-tyre" aria-hidden="true">
+          <svg id="loader-wheel" viewBox="0 0 32 32">
+            <circle class="tyre-rubber" cx="16" cy="16" r="15" />
+            <circle class="tyre-tread" cx="16" cy="16" r="12.4" />
+            <circle class="tyre-rim" cx="16" cy="16" r="8.2" />
+            <path class="tyre-spokes" d="M16 13.5V8.8M18.38 15.23L22.85 13.78M17.47 18.02L20.23 21.83M14.53 18.02L11.77 21.83M13.62 15.23L9.15 13.78" />
+            <circle class="tyre-hub" cx="16" cy="16" r="2.6" />
+          </svg>
+        </span>
+      </div>
       <div class="legend" id="loader-hint" aria-label="Controls"></div>
     </div>
 

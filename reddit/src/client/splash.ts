@@ -16,6 +16,11 @@ function el(id: string): HTMLElement {
   return node;
 }
 
+/** How long the splash's car dot takes to lap the thumbnail. */
+const LAP_MS = 7000;
+/** The animation frame of the car dot now running, so a redraw can stop it. */
+let lapFrame = 0;
+
 function line(svg: Element, cls: string, points: string, width: number): void {
   const shape = document.createElementNS(SVG_NS, 'polyline');
   shape.setAttribute('class', cls);
@@ -46,6 +51,77 @@ function drawTrack(svg: Element, track: TrackShape): void {
   const [dx, dy] = track.startDir;
   const half = road / 2 + edge;
   line(svg, 'start', `${sx - dy * half},${sy + dx * half} ${sx + dy * half},${sy - dx * half}`, edge * 2.5);
+  lapCar(svg, track, road);
+}
+
+/**
+ * A gold dot with a short trail lapping the circuit from the start line, the
+ * way the race goes (the points run in driving order). Attributes only, set
+ * each frame; a still dot on the start line when the viewer asks for less
+ * motion.
+ */
+function lapCar(svg: Element, track: TrackShape, road: number): void {
+  cancelAnimationFrame(lapFrame);
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (let i = 0; i + 1 < track.points.length; i += 2) {
+    xs.push(track.points[i] as number);
+    ys.push(track.points[i + 1] as number);
+  }
+  if (xs.length < 2) return;
+  xs.push(xs[0] as number); // close the loop
+  ys.push(ys[0] as number);
+  const along = [0];
+  for (let i = 1; i < xs.length; i++) {
+    const step = Math.hypot((xs[i] as number) - (xs[i - 1] as number), (ys[i] as number) - (ys[i - 1] as number));
+    along.push((along[i - 1] as number) + step);
+  }
+  const lap = along[along.length - 1] as number;
+  const at = (distance: number): string => {
+    const d = ((distance % lap) + lap) % lap;
+    let lo = 0;
+    let hi = along.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if ((along[mid] as number) <= d) lo = mid;
+      else hi = mid;
+    }
+    const span = (along[hi] as number) - (along[lo] as number) || 1;
+    const t = (d - (along[lo] as number)) / span;
+    const x = (xs[lo] as number) + ((xs[hi] as number) - (xs[lo] as number)) * t;
+    const y = (ys[lo] as number) + ((ys[hi] as number) - (ys[lo] as number)) * t;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  };
+
+  const trail = document.createElementNS(SVG_NS, 'polyline');
+  trail.setAttribute('class', 'trail');
+  trail.setAttribute('stroke-width', String(road * 0.42));
+  const dot = document.createElementNS(SVG_NS, 'circle');
+  dot.setAttribute('class', 'runner');
+  dot.setAttribute('r', String(road * 0.62));
+  dot.setAttribute('stroke-width', String(road * 0.24));
+  svg.append(trail, dot);
+
+  const trailLength = lap * 0.07;
+  const place = (distance: number): void => {
+    const points: string[] = [];
+    for (let k = 0; k <= 8; k++) points.push(at(distance - trailLength * (1 - k / 8)));
+    trail.setAttribute('points', points.join(' '));
+    const [x, y] = (points[8] as string).split(',');
+    dot.setAttribute('cx', x as string);
+    dot.setAttribute('cy', y as string);
+  };
+  place(0);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    trail.setAttribute('points', '');
+    return;
+  }
+  const started = performance.now();
+  const frame = (now: number): void => {
+    place(((now - started) / LAP_MS) * lap);
+    lapFrame = requestAnimationFrame(frame);
+  };
+  lapFrame = requestAnimationFrame(frame);
 }
 
 function renderToday(levelId: number): void {

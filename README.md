@@ -169,7 +169,8 @@ the window is resized across the two.
   HITS** pips. Hits 1-4 flash the screen edge red with a warning; hit 5 is **GAME OVER**:
   nothing is saved and the next level stays locked. The limit is `MAX_WALL_TOUCHES` in `game.gd`
   (How to Play and the level screen read it from there).
-- A **3-2-1-GO** countdown starts each race; the HUD shows **Lap x/3**, a lap timer, total time,
+- **Start lights** begin each race: three lamps light red with the 3-2-1 beeps and all go green
+  on GO. The HUD shows **Lap x/3**, a lap timer, total time,
   **best lap** (flashes on a new best), a **radial speedometer** gauge, a **boost meter**, a live
   **+/- split delta** vs your best lap (green = ahead, red = behind), and an **arrow to the next gate** (handy since
   the camera rotates with the car). The camera is zoomed in, so a **mini map** (bottom left on a
@@ -177,7 +178,8 @@ the window is resized across the two.
   the whole circuit: north stays up, your car is the red arrow, the next gate pulses gold, and the
   dark bar is the start/finish line.
 - On finish you get a **medal** by total time; **best time + best lap** are saved, and **Next**
-  appears if there is another level. The only way to fail is the fifth wall hit; retry freely.
+  appears if there is another level. Beating your best slaps a gold **NEW BEST** sticker (with
+  the margin) on the card; a better medal than before makes the medal pop. The only way to fail is the fifth wall hit; retry freely.
   Progress is in `user://save.json`.
 
 ## Compete with friends: the online leaderboard
@@ -199,8 +201,9 @@ are their Reddit accounts:
   shown on the post count only that level. The post's **Leaderboard** button opens the game
   straight onto the boards.
 - **The results card** after a finish shows a medal disc, your times, your place on today's
-  board on a gold plate ("#12 / TODAY'S RANK / of 340 racers"), a NEW BEST chip, your streak in
-  days, and a countdown to the next circuit. Its gold **Leaderboard** button (beside Retry)
+  board on a gold plate ("#12 / TODAY'S RANK / of 340 racers") that rolls down to your place
+  (TOP 10 / FASTEST for the best ones, UP n when you climbed), a NEW BEST sticker, your streak in
+  days (with a flame that pops when it grows), and a countdown to the next circuit. Its gold **Leaderboard** button (beside Retry)
   opens the TODAY board.
 - **Streak flair (opt-in):** the results card's **SHOW MY STREAK AS FLAIR** switch sets your user flair
   in the subreddit to "🔥 n-day streak"; press again to get your own flair back
@@ -317,11 +320,13 @@ the car up, and the pivot and the handbrake still swing it round).
   this machine, the script stops it after a short grace period and carries on.)
 - **Post flow:** the post shows `splash.html` inline (tiny, instant): the day, today's circuit
   drawn from `src/client/tracks.ts` (written from the game by `tools/track-shapes.gd` during
-  `npm run export:godot`), and your best, rank and streak. Tapping Drive opens `game.html`
+  `npm run export:godot`) with a gold dot lapping it, and your best, rank and streak. Tapping Drive opens `game.html`
   expanded, and only then is the engine downloaded. The game opens on Today's Circuit.
 - **Engine download:** the export also writes `index.wasm.gz` (37.7 MB -> 9.7 MB), and
   `src/client/engine-files.ts` unzips it in the browser as it arrives and keeps it in the Cache
-  API per build, so a returning player downloads nothing. The plain `index.wasm` stays as the
+  API per build, so a returning player downloads nothing. While it loads, a small tyre rolls
+  along the loading bar; the game then opens behind the same striped curtain it uses between
+  screens (`scripts/transition.gd`). The plain `index.wasm` stays as the
   fallback for browsers without `DecompressionStream`.
 - **Server** (`src/server`): `GET /api/init`, `POST /api/run`, `GET /api/leaderboard`, a daily cron
   (00:00 UTC) and a moderator menu item that create the day's post. Data lives in Devvit's redis.

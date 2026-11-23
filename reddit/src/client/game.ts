@@ -59,6 +59,31 @@ function el(id: string): HTMLElement {
 const loader = el('loader');
 const loaderText = el('loader-text');
 const loaderFill = el('loader-fill');
+const loaderTrack = el('loader-track');
+const loaderTyre = el('loader-tyre');
+const loaderWheel = el('loader-wheel');
+/** The tyre's radius in CSS px (game.css .tyre is 30 px across). */
+const TYRE_RADIUS = 15;
+
+/**
+ * Fills the bar to `fraction` (0..1) and rolls the tyre to its front edge,
+ * turning it through the distance it moved. Styles are set through the CSSOM,
+ * which Reddit's CSP allows (unlike style attributes in markup).
+ */
+function showProgress(fraction: number): void {
+  const f = Math.min(1, Math.max(0, fraction));
+  loaderFill.style.width = `${f * 100}%`;
+  const x = loaderTrack.clientLeft + f * loaderTrack.clientWidth;
+  loaderTyre.style.transform = `translateX(${x.toFixed(1)}px)`;
+  loaderWheel.style.transform = `rotate(${((x / TYRE_RADIUS) * (180 / Math.PI)).toFixed(1)}deg)`;
+}
+
+/** The engine is running: finish the bar, then fade the loader out over the game. */
+function hideLoader(): void {
+  showProgress(1);
+  loader.classList.add('leaving');
+  setTimeout(() => loader.classList.add('done'), 400);
+}
 
 async function requestText(method: string, path: string, body: string): Promise<string> {
   try {
@@ -226,10 +251,8 @@ if (missing.length > 0) {
   new Engine(GODOT_CONFIG)
     .startGame({
       onProgress(current, total) {
-        if (current > 0 && total > 0) {
-          loaderFill.style.width = `${Math.min(100, (current / total) * 100)}%`;
-        }
+        if (current > 0 && total > 0) showProgress(current / total);
       },
     })
-    .then(() => loader.classList.add('done'), fail);
+    .then(hideLoader, fail);
 }

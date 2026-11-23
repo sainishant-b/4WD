@@ -171,6 +171,17 @@ h1 {
   stroke-linecap: butt;
 }
 
+/* The car dot lapping the thumbnail (splash.ts lapCar) and its short trail. */
+.track .trail {
+  stroke: var(--gold);
+  opacity: 0.45;
+}
+
+.track .runner {
+  fill: var(--gold-bright);
+  stroke: var(--ink);
+}
+
 .today-label {
   font-size: 12px;
   color: var(--ink-muted);

@@ -20,6 +20,8 @@ var day: int = 0                ## Daily Circuit number of the post.
 var daily_level_id: int = -1    ## Permanent id of the level that is today's circuit.
 var is_today: bool = true       ## False on an older day's post (still playable, no streak).
 var flair_on: bool = false      ## The player has opted in to showing their streak as user flair.
+var day_rank: int = 0           ## The player's place on this day's board; 0 = not on it yet.
+var streak: int = 0             ## The player's current streak of days.
 var start_screen: String = ""   ## "leaderboard" when the post asked to open there.
 var start_handled: bool = false ## Set once the main menu has sent the player to their first screen.
 
@@ -81,6 +83,10 @@ func apply_init(data: Variant) -> void:
 	daily_level_id = int(data.get("levelId", -1))
 	is_today = bool(data.get("isToday", true))
 	flair_on = bool(data.get("flairOn", false))
+	var me: Variant = data.get("me")
+	day_rank = int(me.get("rank", 0)) if me is Dictionary else 0
+	var days: Variant = data.get("streak")
+	streak = int(days.get("current", 0)) if days is Dictionary else 0
 	init_loaded.emit()
 
 

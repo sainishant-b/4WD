@@ -126,17 +126,25 @@ func _on_reddit_run(result: Variant) -> void:
 	var streak: Variant = result.get("streak")
 	var accepted := bool(result.get("accepted", false))
 	Reddit.flair_on = bool(result.get("flairOn", Reddit.flair_on))
-	run_recorded.emit({
+	# The place and streak before this run too, so the card can show the climb.
+	var info := {
 		"accepted": accepted,
 		"improved": bool(result.get("improved", false)),
 		"rank": int(me.get("rank", 0)) if me is Dictionary else 0,
+		"prev_rank": Reddit.day_rank,
 		"players": int(result.get("players", 0)),
 		"streak": int(streak.get("current", 0)) if streak is Dictionary else 0,
+		"prev_streak": Reddit.streak,
 		"best_streak": int(streak.get("best", 0)) if streak is Dictionary else 0,
 		"next_ms": int(result.get("nextCircuitInMs", 0)),
 		"at_msec": Time.get_ticks_msec(),
 		"flair_on": bool(result.get("flairOn", false)),
-	})
+	}
+	if accepted:
+		if bool(result.get("countsForDay", false)) and int(info["rank"]) > 0:
+			Reddit.day_rank = int(info["rank"])
+		Reddit.streak = int(info["streak"])
+	run_recorded.emit(info)
 	if accepted:
 		score_submitted.emit()
 	else:

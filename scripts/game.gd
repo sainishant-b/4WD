@@ -320,6 +320,7 @@ func _on_wall_touched() -> void:
 ## no medal, no leaderboard entry, and the next level stays locked.
 func _game_over() -> void:
 	_state = State.FINISHED
+	UiFeel.buzz(180)
 	if _car != null:
 		_car.set_physics_process(false)
 	_touch.set_enabled(false)
@@ -346,16 +347,24 @@ func _finish() -> void:
 	if _casual:
 		# Casual: just the time. A personal best per map; no medal, no unlock,
 		# nothing sent to the leaderboard.
+		var prev_casual := Game.casual_best(_level_idx)
 		var improved := Game.record_casual(_level_idx, _elapsed, _best_lap_run)
 		_hud.show_results(
 			_elapsed, "none", Game.casual_best(_level_idx), Game.casual_best_lap(_level_idx),
-			Game.has_next_level(_level_idx), _laps, improved
+			Game.has_next_level(_level_idx), _laps, improved,
+			prev_casual - _elapsed if improved and prev_casual > 0.0 else 0.0
 		)
 		return
+	var prev_best := Game.best_time(_level_idx)
+	var prev_medal := Game.best_medal(_level_idx)
 	var medal := Game.record_result(_level_idx, _elapsed, _best_lap_run)
+	# NEW BEST from this device's record; on Reddit the server's answer says it
+	# instead (the best counts across devices there).
+	var beat := prev_best > 0.0 and _elapsed < prev_best and not Reddit.is_available()
 	_hud.show_results(
 		_elapsed, medal, Game.best_time(_level_idx), Game.best_lap(_level_idx),
-		Game.has_next_level(_level_idx), _laps
+		Game.has_next_level(_level_idx), _laps, false, prev_best - _elapsed if beat else 0.0,
+		Game.medal_rank(medal) > Game.medal_rank(prev_medal)
 	)
 	# On Reddit the card waits for the server's answer (place today, streak,
 	# countdown). Connected before submitting: the answer may come at once.

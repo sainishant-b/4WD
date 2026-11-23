@@ -439,6 +439,14 @@ static func add_backdrop(screen: Control) -> void:
 ## clock, not from when the screen opened, so they carry on without a jump
 ## from one menu screen to the next. The Reddit pages' CSS (`stripes-drift` in
 ## reddit/public/styles) moves theirs at the same speed.
+## Where the backdrop's first stripe starts along the top edge (x, <= 0), from
+## the clock: every striped surface (the menus' backdrop, the Transition
+## curtain) drifts in step, and on across screen changes.
+static func stripe_shift() -> float:
+	var step := STRIPE_PERIOD * sqrt(2.0)
+	return fmod(Time.get_ticks_msec() * 0.001 * STRIPE_SPEED, step) - step
+
+
 class Backdrop extends Control:
 	func _process(_delta: float) -> void:
 		queue_redraw()
@@ -449,7 +457,7 @@ class Backdrop extends Control:
 		# Stripes run up to the right at 45 degrees; `step` is the period along x.
 		var step := STRIPE_PERIOD * sqrt(2.0)
 		var reach := area.size.y + STRIPE * 2.0
-		var x := fmod(Time.get_ticks_msec() * 0.001 * STRIPE_SPEED, step) - step
+		var x := HudStyle.stripe_shift()
 		while x < area.size.x + reach:
 			var top := Vector2(x + STRIPE, -STRIPE)
 			draw_line(top, top + Vector2(-reach, reach), Palette.BG_STRIPE, STRIPE, true)

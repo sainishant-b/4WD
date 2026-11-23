@@ -41,7 +41,12 @@ entry. When in doubt, add one — short is fine.
   (`scripts/leaderboard.gd`) — the online leaderboard: the Reddit server when `Reddit` is there
   (per-level boards + OVERALL), else Appwrite (per level; no-op until its IDs are filled);
   `MuteButton` (`scripts/mute_button.gd`) — the speaker button in the top-right corner of every
-  screen. **Keep that corner free** on every screen (`MuteButton.RESERVED_*`).
+  screen. **Keep that corner free** on every screen (`MuteButton.RESERVED_*`); `UiFeel`
+  (`scripts/ui_feel.gd`) — every button presses in and clicks, a new screen's buttons fade in,
+  the interface sounds (`sound()`), phone buzz (`buzz()`); `Transition`
+  (`scripts/transition.gd`) — the striped curtain between screens: **change scenes through
+  `Game.goto_*` / `Transition.change_scene()`**, never `change_scene_to_file` in game code (pass
+  `animate = false` for a redirect on the way in). It switches at once when headless.
 - `ui/` — the **design system**: `fourwd_theme.tres` (the project-wide GUI theme, set
   in `project.godot` `[gui] theme/custom`), `Palette.gd` (color tokens, autoloaded),
   `hud_style.gd` (`HudStyle`, static helpers: raised `panel()` / sunk `inset()` / `chip()`
@@ -257,6 +262,11 @@ near the middle (the user found it too sensitive): `STEER_TRAVEL` 60 px for full
   `HudStyle.style_panel_label` (no outline); text straight over the track uses
   `style_floating_label` (white, INK halo). Menu screens start their `_build()` with
   `HudStyle.add_backdrop(self)`; their titles use `style_title()` (white on a hard INK shadow).
+- **Polish stays minimal** (the user, 2026-11-23: "dont go overboard ... keep it minimal in
+  taste and smooth and high resolution"): short eased tweens (0.2-0.45 s, back-out for things
+  landing), one sound per moment, everything drawn as vectors (`_draw`, SVG on the Reddit
+  pages), never pixel art or bitmaps that scale. The ideas the user put off are listed in
+  `docs/TODO.md` ("Polish for later"); ask before adding more.
 - **Smooth edges by hand.** The Compatibility renderer has no 2D MSAA and `Polygon2D.antialiased`
   does nothing, so pass `antialiased = true` to `Line2D` / `draw_line` / `draw_arc` / `draw_circle`,
   and call `HudStyle.feather(polygon)` on opaque `Polygon2D`s that sit on a contrasting colour.

@@ -18,14 +18,15 @@ func _ready() -> void:
 	if Reddit.is_available() and not Reddit.start_handled:
 		Reddit.start_handled = true
 		if Reddit.start_screen == "leaderboard":
-			Game.goto_leaderboard.call_deferred()
+			Game.goto_leaderboard.call_deferred(false)
 		else:
-			Game.goto_level_select.call_deferred()
+			Game.goto_level_select.call_deferred(false)
 		return
 	# First launch elsewhere: show the how-to-play slide before the menu. (On
 	# Reddit it waits behind Today's Circuit's How to Play button instead.)
+	# Both switch at once: the opening curtain is still over the screen.
 	if not Game.has_seen_instructions() and not Reddit.is_available():
-		Game.goto_instructions.call_deferred()
+		Game.goto_instructions.call_deferred(false)
 		return
 	Layout.changed.connect(_rebuild)
 	_build()

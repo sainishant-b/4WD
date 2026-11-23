@@ -1,7 +1,8 @@
 extends CanvasLayer
 ## Race HUD (built in code): level + lap, total time, current lap time, best
-## time + best lap, the wall-hit pips, a mini map, speedometer, boost meter, a
-## 3-2-1-GO countdown, an off-screen arrow to the next gate, a keyboard controls
+## time + best lap, the wall-hit pips (the newest one swells as it fills), a mini
+## map, speedometer, boost meter, start lights (three lamps lit red with the
+## 3-2-1 beeps, all green on GO), an off-screen arrow to the next gate, a keyboard controls
 ## legend (key caps; H hides it, remembered in the settings), and the Results /
 ## Game Over + Pause overlays. On touch it shows a pause button and no legend
 ## (the user: it covered the road; How to Play shows the pads). In a wide
@@ -24,14 +25,20 @@ extends CanvasLayer
 ##
 ## The results card: a medal disc on ribbons poking out of its top edge, the
 ## title, the times in a sunk well, then Retry beside the gold next step and
-## Menu under them. Game over reuses it with a red disc and a cross.
+## Menu under them. Game over reuses it with a red disc and a cross. A new best
+## time gets a gold NEW BEST sticker slapped on the card's top-right corner (with
+## how much it beat the old one by) and a chime; a better medal than before makes
+## the disc pop.
 ##
 ## Inside a Reddit post the results card also shows the server's answer to the
 ## finish (`show_daily_pending` then `show_daily_result`): the place on the
-## day's board on a gold plate ("#12 / TODAY'S RANK / of 340 racers"), NEW
-## BEST and streak chips, a live countdown to the next circuit, and (logged
-## in) an opt-in switch that shows the streak as the player's Reddit user
-## flair. Its gold button is Leaderboard, not Next.
+## day's board on a gold plate ("#12 / TODAY'S RANK / of 340 racers") that pops
+## in with the number rolling down to it (TOP 10 / FASTEST for the best
+## places, and an UP n chip when it climbed), the NEW BEST sticker when the
+## server says the time beat the player's best, a streak chip with a flame
+## (it pops when the streak grew), a live countdown to the next circuit, and
+## (logged in) an opt-in switch that shows the streak as the player's Reddit
+## user flair. Its gold button is Leaderboard, not Next.
 
 signal ui_action(action: String)
 
@@ -39,6 +46,9 @@ const Speedometer := preload("res://scripts/speedometer.gd")
 const Minimap := preload("res://scripts/minimap.gd")
 
 const MODAL_WIDTH := 440.0
+const LIGHTS_SIZE := Vector2(184, 62)   # the start lights' bar
+const LAMP_R := 17.0
+const LAMP_GAP := 52.0
 
 # Cream panels behind the readouts.
 var _p_lap: Panel      # landscape only; in portrait the lap shares the top bar
@@ -70,8 +80,17 @@ var _boost_bar: Control
 var _boost_well: StyleBoxFlat
 var _boost_fill: StyleBoxFlat
 var _boost_value: float = 1.0
-var _countdown_label: Label
+var _countdown_label: Label      # "GO!", under the start lights
 var _countdown_glow: TextureRect
+var _start_box: Control          # the start lights, GO! and the blob behind; fades as one
+var _lights: Control
+var _lights_face: StyleBoxFlat
+var _lights_on: int = 0          # lamps lit
+var _lights_go := false          # all green
+var _light_pop: float = 0.0      # 1 -> 0 as the lamp just lit settles
+var _pip_pop: float = 0.0        # 1 -> 0 as the newest wall-hit pip settles
+var _results_card: Control       # the results card itself (the sticker sits on its corner)
+var _best_sticker: Control
 var _arrow: Polygon2D
 var _pause_button: Button
 var _pause_bar: StyleBoxFlat
@@ -191,23 +210,36 @@ func _ready() -> void:
 	_warn_label.visible = false
 	_box(_warn_label, 0.5, 0.39, -200, -44, 400, 88)
 
-	# Countdown: a big number over a soft dark blob (a thick outline goes blocky
-	# at this size), in the gap between the hint and the car rather than on top
-	# of either.
+	# The start: three lamps on a dark bar light red with the 3-2-1 beeps and all
+	# turn green on GO, when GO! punches in under them. Over a soft dark blob (a
+	# thick outline goes blocky at this size), in the gap between the hint and
+	# the car rather than on top of either. They fade out together.
+	_start_box = Control.new()
+	_start_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_start_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_start_box.visible = false
+	root.add_child(_start_box)
 	_countdown_glow = TextureRect.new()
 	_countdown_glow.texture = HudStyle.glow()
 	_countdown_glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_countdown_glow.stretch_mode = TextureRect.STRETCH_SCALE
 	_countdown_glow.modulate = Color(Palette.BLACK, 0.6)
 	_countdown_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_countdown_glow.visible = false
-	root.add_child(_countdown_glow)
-	_box(_countdown_glow, 0.5, 0.39, -150, -110, 300, 220)
-	_countdown_label = _make_label(root, "", Palette.TEXT_LIGHT, true)
-	_countdown_label.add_theme_font_size_override("font_size", 100)
+	_start_box.add_child(_countdown_glow)
+	_box(_countdown_glow, 0.5, 0.39, -170, -120, 340, 240)
+	_lights_face = HudStyle.panel(int(LIGHTS_SIZE.y * 0.5))
+	_lights_face.bg_color = Palette.BLACK
+	_lights = Control.new()
+	_lights.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lights.draw.connect(_draw_lights)
+	_start_box.add_child(_lights)
+	_box(_lights, 0.5, 0.39, -LIGHTS_SIZE.x * 0.5, -LIGHTS_SIZE.y - 4, LIGHTS_SIZE.x, LIGHTS_SIZE.y)
+	_countdown_label = _make_label(_start_box, "GO!", Palette.GOLD, true)
+	_countdown_label.add_theme_font_size_override("font_size", 64)
+	_countdown_label.add_theme_color_override("font_color", Palette.GOLD)
 	_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_countdown_label.visible = false
-	_box(_countdown_label, 0.5, 0.39, -200, -70, 400, 140)
+	_box(_countdown_label, 0.5, 0.39, -160, 8, 320, 84)
 
 	# Next-gate arrow, with a soft dark copy behind so it reads over the road.
 	var arrow_shape := PackedVector2Array([Vector2(0, -18), Vector2(13, 12), Vector2(0, 5), Vector2(-13, 12)])
@@ -313,6 +345,8 @@ func _layout() -> void:
 	var narrow := Layout.portrait
 	for panel in _modal_panels:
 		panel.custom_minimum_size.x = Layout.PORTRAIT_CONTENT_WIDTH if narrow else MODAL_WIDTH
+	if _best_sticker.visible:
+		_place_sticker.call_deferred()   # the card moved
 
 
 ## Desktop / wide window: lap + wall hits top-left, the timer top-centre, best
@@ -482,8 +516,14 @@ func _draw_wall_pips() -> void:
 	var x0 := area.x * 0.5 - gap * (_wall_limit - 1) * 0.5
 	for i in _wall_limit:
 		var c := Vector2(x0 + gap * i, area.y * 0.5)
-		_walls_pips.draw_circle(c, r, Palette.DANGER if i < _wall_used else Palette.SURFACE_INSET, true, -1.0, true)
-		_walls_pips.draw_arc(c, r, 0.0, TAU, 32, Palette.INK, 2.5, true)
+		var pip_r := r
+		if i == _wall_used - 1 and _pip_pop > 0.0:
+			# The hit just counted: its pip swells and a red ring spreads off it.
+			pip_r = r * (1.0 + 0.4 * _pip_pop)
+			_walls_pips.draw_arc(c, r * (1.0 + 1.6 * (1.0 - _pip_pop)), 0.0, TAU, 40,
+				Color(Palette.DANGER, _pip_pop), 2.0, true)
+		_walls_pips.draw_circle(c, pip_r, Palette.DANGER if i < _wall_used else Palette.SURFACE_INSET, true, -1.0, true)
+		_walls_pips.draw_arc(c, pip_r, 0.0, TAU, 40, Palette.INK, 2.5, true)
 
 
 func _medal_color(medal: String) -> Color:
@@ -575,12 +615,20 @@ func set_boost(t: float) -> void:
 ## Shows `used` of `limit` wall hits on the pips. A limit of 0 hides the readout
 ## (multiplayer, where the rule is off).
 func set_wall_touches(used: int, limit: int) -> void:
+	var fresh := used > _wall_used
 	_wall_used = used
+	if fresh:
+		create_tween().tween_method(_set_pip_pop, 1.0, 0.0, 0.45).set_ease(Tween.EASE_OUT)
 	_wall_limit = limit
 	var on := limit > 0
 	_p_walls.visible = on
 	_walls_cap.visible = on
 	_walls_pips.visible = on
+	_walls_pips.queue_redraw()
+
+
+func _set_pip_pop(v: float) -> void:
+	_pip_pop = v
 	_walls_pips.queue_redraw()
 
 
@@ -634,19 +682,62 @@ func show_delta(delta: float) -> void:
 	tw.tween_property(_delta_label, "modulate:a", 0.0, 0.8)
 
 
+## The start, called every frame of it: "3", "2", "1" light one, two, three
+## lamps red (one per beep); "GO!" turns them all green and punches GO! in.
 func show_countdown(text: String) -> void:
-	_countdown_label.text = text
-	# Gold for "GO!", white (with an INK halo) for the 3-2-1 numbers.
-	_countdown_label.add_theme_color_override(
-		"font_color", Palette.GOLD if text.begins_with("GO") else Palette.TEXT_LIGHT
-	)
-	_countdown_label.visible = true
-	_countdown_glow.visible = true
+	var go := text.begins_with("GO")
+	var lit := 3 if go else clampi(4 - text.to_int(), 0, 3)
+	if lit != _lights_on or go != _lights_go:
+		_lights_on = lit
+		_lights_go = go
+		create_tween().tween_method(_set_light_pop, 1.0, 0.0, 0.22).set_ease(Tween.EASE_OUT)
+		if go:
+			_countdown_label.visible = true
+			_countdown_label.pivot_offset = _countdown_label.size * 0.5
+			create_tween().tween_property(_countdown_label, "scale", Vector2.ONE, 0.3) \
+				.from(Vector2.ONE * 1.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if not _start_box.visible:
+		_start_box.modulate.a = 1.0
+		_start_box.visible = true
+	_lights.queue_redraw()
 
 
+func _set_light_pop(v: float) -> void:
+	_light_pop = v
+	_lights.queue_redraw()
+
+
+## The start lights and GO! fade out together.
 func hide_countdown() -> void:
-	_countdown_label.visible = false
-	_countdown_glow.visible = false
+	if not _start_box.visible:
+		return
+	var tw := create_tween()
+	tw.tween_property(_start_box, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(func() -> void: _start_box.visible = false)
+
+
+## Three lamps on a dark bar with an INK rim and lip. Lit ones glow red, or all
+## green on GO; the lamp just lit swells a touch as it comes on.
+func _draw_lights() -> void:
+	var s := _lights.size
+	_lights.draw_style_box(_lights_face, Rect2(Vector2.ZERO, s))
+	var colour := Palette.SUCCESS if _lights_go else Palette.DANGER
+	var centres: Array[Vector2] = []
+	for i in 3:
+		centres.append(Vector2(s.x * 0.5 + (i - 1) * LAMP_GAP, s.y * 0.5))
+	for i in _lights_on:
+		HudStyle.draw_glow(_lights, centres[i], LAMP_R * 2.8, Color(colour, 0.55))
+	for i in 3:
+		var c := centres[i]
+		if i < _lights_on:
+			var fresh := _lights_go or i == _lights_on - 1
+			var r := LAMP_R * (1.0 + 0.16 * _light_pop) if fresh else LAMP_R
+			_lights.draw_circle(c, r, colour, true, -1.0, true)
+			_lights.draw_circle(c + Vector2(-0.3, -0.3) * r, r * 0.3, Color(colour.lightened(0.65), 0.9), true, -1.0, true)
+			_lights.draw_arc(c, r, 0.0, TAU, 48, Palette.INK, 2.5, true)
+		else:
+			_lights.draw_circle(c, LAMP_R, Palette.BG_RAISED, true, -1.0, true)
+			_lights.draw_arc(c, LAMP_R, 0.0, TAU, 48, Palette.INK, 2.5, true)
 
 
 ## `rel` is the on-screen angle to the next gate (0 = straight ahead, clockwise +).
@@ -798,6 +889,14 @@ func _build_results_overlay(parent: Control) -> void:
 	_daily_box.add_child(_flair_btn)
 	Leaderboard.flair_changed.connect(_on_flair_changed)
 
+	# NEW BEST: a gold sticker slapped over the card's top-right corner, beside
+	# the medal. It lives on the overlay, not in the card, so it moves nothing.
+	_results_card = vb.get_parent()
+	_best_sticker = HudStyle.tag("NEW BEST", Palette.GOLD, 17)
+	(_best_sticker.get_child(0) as Label).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_best_sticker.visible = false
+	_results_overlay.add_child(_best_sticker)
+
 	# Retry beside the gold next step (Next, or Leaderboard on Reddit); Menu under.
 	var actions := VBoxContainer.new()
 	actions.add_theme_constant_override("separation", 14)
@@ -924,9 +1023,11 @@ func _add_action_button(parent: Node, text: String, action: String, variation :=
 
 ## The finish card. `laps` is the race's lap count: a one-lap (ranked) race
 ## shows TIME and BEST; a longer one TOTAL, BEST and BEST LAP. `new_best` (casual,
-## which has no medal) titles the card NEW BEST.
+## which has no medal) titles the card NEW BEST. `improved_by` > 0 (seconds the
+## old best was beaten by) brings in the NEW BEST sticker; `medal_up` (a better
+## medal than this level had) makes the medal disc pop.
 func show_results(total: float, medal: String, best_total: float, best_lap: float, has_next: bool,
-		laps := 3, new_best := false) -> void:
+		laps := 3, new_best := false, improved_by := 0.0, medal_up := false) -> void:
 	if medal == "none":
 		_results_title.text = "NEW BEST" if new_best else "FINISHED"
 		_badge_color = Palette.GOLD if new_best else Palette.SURFACE
@@ -950,7 +1051,66 @@ func show_results(total: float, medal: String, best_total: float, best_lap: floa
 	_results_board.visible = false
 	_daily_box.visible = false
 	_arrow.visible = false   # it draws above the overlays
+	_best_sticker.visible = false
+	_results_badge.scale = Vector2.ONE
 	_results_overlay.visible = true
+	if improved_by > 0.0:
+		# The casual card's title already says NEW BEST; its sticker is the margin.
+		var by := "-%.2fs" % improved_by
+		_pop_sticker(by if medal == "none" else "NEW BEST
+" + by)
+	if medal_up:
+		_pop_badge(improved_by <= 0.0)
+
+
+## Slaps the NEW BEST sticker on the card's top-right corner: it lands big
+## and settles, with the best-time chime.
+func _pop_sticker(text: String) -> void:
+	var label: Label = _best_sticker.get_child(0)
+	label.text = text
+	_best_sticker.modulate.a = 0.0
+	_best_sticker.visible = true
+	await get_tree().process_frame   # let the card and the label take their sizes
+	_place_sticker()
+	_best_sticker.pivot_offset = _best_sticker.custom_minimum_size * 0.5
+	var tw := create_tween()
+	tw.tween_interval(0.3)
+	tw.tween_callback(UiFeel.sound.bind("best"))
+	tw.tween_property(_best_sticker, "modulate:a", 1.0, 0.08)
+	tw.parallel().tween_property(_best_sticker, "scale", Vector2.ONE, 0.34).from(Vector2.ONE * 1.7) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## Over the card's top-right corner, clear of the medal and the title.
+func _place_sticker() -> void:
+	var need := _best_sticker.custom_minimum_size
+	_best_sticker.global_position = _results_card.global_position 		+ Vector2(_results_card.size.x - need.x - 18.0, -need.y * 0.45)
+
+
+## A better medal than before: the disc swells and settles (`with_sound` when
+## no NEW BEST chime is coming).
+func _pop_badge(with_sound: bool) -> void:
+	await get_tree().process_frame
+	_results_badge.pivot_offset = Vector2(_results_badge.size.x * 0.5, -22.0)
+	var tw := create_tween()
+	tw.tween_interval(0.12)
+	if with_sound:
+		tw.tween_callback(UiFeel.sound.bind("pop"))
+	tw.tween_property(_results_badge, "scale", Vector2.ONE, 0.42).from(Vector2.ONE * 1.35) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## Fades `node` in, landing a little big and settling, after `delay` seconds.
+func _pop_in(node: Control, delay: float) -> void:
+	node.modulate.a = 0.0
+	await get_tree().process_frame   # sized by its container first
+	node.pivot_offset = node.size * 0.5
+	var tw := create_tween()
+	tw.tween_interval(delay)
+	tw.tween_callback(UiFeel.sound.bind("pop"))
+	tw.tween_property(node, "modulate:a", 1.0, 0.1)
+	tw.parallel().tween_property(node, "scale", Vector2.ONE, 0.3).from(Vector2.ONE * 1.25) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 ## Fills the times well with [label, value] rows; the first one is big.
@@ -995,17 +1155,27 @@ func show_daily_result(info: Dictionary) -> void:
 		_set_rank("COULDN'T REACH REDDIT", Palette.TEXT_MUTED)
 		_set_next("Your time is saved on this device.")
 		return
+	var rank := int(info.get("rank", 0))
+	var prev_rank := int(info.get("prev_rank", 0))
 	if not bool(info.get("accepted", false)):
 		_set_rank("LOG IN TO RANK", Palette.TEXT_MUTED)
-	elif int(info.get("rank", 0)) > 0:
-		_show_plate(int(info["rank"]), int(info.get("players", 0)))
+	elif rank > 0:
+		_show_plate(rank, int(info.get("players", 0)), prev_rank)
+		if prev_rank > rank:
+			_daily_chips.add_child(_chip("UP %d" % (prev_rank - rank), Palette.SUCCESS))
 	else:
 		_set_rank("TIME SAVED", Palette.TEXT)
+	# On Reddit the server says whether this beat the player's best (on any device).
 	if bool(info.get("improved", false)) and bool(info.get("accepted", false)):
-		_daily_chips.add_child(_chip("NEW BEST", Palette.SUCCESS))
+		_pop_sticker("NEW BEST")
 	var streak := int(info.get("streak", 0))
 	if streak > 0:
-		_daily_chips.add_child(_chip("%d-DAY STREAK" % streak if streak > 1 else "STREAK STARTED", Palette.POP))
+		var chip := _chip("%d-DAY STREAK" % streak if streak > 1 else "STREAK STARTED", Palette.POP)
+		chip.get_theme_stylebox("normal").content_margin_left = 30.0   # room for the flame
+		chip.draw.connect(_draw_flame.bind(chip))
+		_daily_chips.add_child(chip)
+		if streak > int(info.get("prev_streak", streak)):
+			_pop_in(chip, 0.6)   # the streak grew with this run
 	var next_ms := int(info.get("next_ms", 0))
 	_next_circuit_at = int(info.get("at_msec", Time.get_ticks_msec())) + next_ms if next_ms > 0 else 0
 	_update_countdown()
@@ -1049,13 +1219,49 @@ func _set_rank(text: String, color: Color) -> void:
 	_daily_rank.add_theme_color_override("font_color", color)
 
 
-## Today's place on the gold plate: "#12", TODAY'S RANK, "of 340 racers".
-func _show_plate(rank: int, players: int) -> void:
+## Today's place on the gold plate: "#12", TODAY'S RANK, "of 340 racers". It
+## pops in and the number rolls down to the place: from the old one, else from
+## the back of the field. The top ten and first place say so.
+func _show_plate(rank: int, players: int, prev_rank := 0) -> void:
 	_daily_rank.visible = false
 	_rank_plate.visible = true
-	_rank_num.text = "#%d" % rank
-	_rank_caption.text = "TODAY'S RANK" if Reddit.is_today else "DAY %d RANK" % Reddit.day
+	var when := "TODAY" if Reddit.is_today else "ON DAY %d" % Reddit.day
+	if rank == 1:
+		_rank_caption.text = "FASTEST " + when
+	elif rank <= 10:
+		_rank_caption.text = "TOP 10 " + when
+	else:
+		_rank_caption.text = "TODAY'S RANK" if Reddit.is_today else "DAY %d RANK" % Reddit.day
 	_rank_of.text = "of %d racers" % players
+	var from := prev_rank if prev_rank > rank else maxi(players, rank)
+	_rank_num.custom_minimum_size.x = 0.0
+	_rank_num.text = "#%d" % from
+	_rank_num.custom_minimum_size.x = _rank_num.get_minimum_size().x   # no jitter as it rolls
+	_pop_in(_rank_plate, 0.1)
+	if from > rank:
+		create_tween().tween_method(func(v: float) -> void: _rank_num.text = "#%d" % roundi(v),
+			float(from), float(rank), 0.7).set_delay(0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	else:
+		_rank_num.text = "#%d" % rank
+
+
+## A small flame at the left of the streak chip (drawn, so it stays sharp).
+func _draw_flame(chip: Label) -> void:
+	var h := chip.size.y
+	var o := Vector2(11.0, h * 0.5 - 8.0)
+	var outer := PackedVector2Array()
+	for p: Vector2 in [Vector2(6, 0), Vector2(9.5, 4.5), Vector2(12, 9), Vector2(11, 13), Vector2(8, 15.6),
+			Vector2(6, 16), Vector2(4, 15.6), Vector2(1, 13), Vector2(0.4, 9), Vector2(2.4, 5.2),
+			Vector2(4.2, 7.6), Vector2(4.6, 3.4)]:
+		outer.append(o + p)
+	chip.draw_colored_polygon(outer, Palette.GOLD)
+	var rim := outer.duplicate()
+	rim.append(outer[0])
+	chip.draw_polyline(rim, Palette.INK, 1.6, true)
+	var inner := PackedVector2Array()
+	for p: Vector2 in [Vector2(6, 7), Vector2(8.2, 10.5), Vector2(8, 13.4), Vector2(6, 14.6), Vector2(4, 13.4), Vector2(3.8, 10.5)]:
+		inner.append(o + p)
+	chip.draw_colored_polygon(inner, Palette.GOLD_BRIGHT.lightened(0.45))
 
 
 ## The line under the chips, with its clock; hidden when there is nothing to say.
@@ -1100,6 +1306,7 @@ func show_game_over(hits: int, lap: int, laps: int, elapsed: float) -> void:
 	_results_title.text = "GAME OVER"
 	_badge_color = Palette.DANGER
 	_badge_cross = true
+	_best_sticker.visible = false
 	_results_badge.queue_redraw()
 	_set_rows([
 		["TIME", Game.format_time(elapsed)],

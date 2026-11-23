@@ -35,12 +35,15 @@ puzzle of when to pivot and when to crab.
 - **Casual mode:** all seven circuits, three laps, no wall-hit limit, just the time, for players
   who want to learn the tracks without pressure.
 - **Reddit-native competition:** players are their Reddit accounts. After a finish the results
-  card shows your place on today's board ("#12 of 340 today"), a new-best chip, your streak and
-  a countdown to the next circuit. The leaderboard has TODAY, OVERALL (best times on all seven
+  card shows your place on today's board ("#12 of 340 today", rolling down to it), a NEW BEST
+  sticker, your streak and a countdown to the next circuit. The leaderboard has TODAY, OVERALL (best times on all seven
   circuits added up, lowest total first) and a board per circuit, each row with the player's
   Reddit avatar. Players can opt in to show
   their streak as their user flair in the subreddit ("🔥 4-day streak").
 - **Five strikes:** the fifth wall hit ends the race, so every corner matters.
+- **Small, smooth touches:** start lights, a striped curtain between screens, a tyre rolling
+  along the loading bar, a car dot lapping today's track on the post, buttons that press and
+  click, and a phone buzz on a crash.
 - **Boost pads:** gold chevron pads fling you down the straights.
 - **A night circuit:** dark asphalt under street lamps, glowing limit lines, a grandstand and a
   lit gantry at the start; sparks off the walls, light trails, speed lines and a sound for each.

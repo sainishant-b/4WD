@@ -210,12 +210,16 @@ func _run() -> void:
 	race._best_lap_run = 20.1
 	race._finish()   # a real finish: records the run, posts it, fills the card
 	await _frames(2)
+	var rolled_from: String = hud._rank_num.text
+	await _frames(70)   # the place rolls down to the final number
 	var chips: Array = hud._daily_chips.get_children().map(func(c: Label) -> String: return c.text)
 	_check("the card shows the place on today's board, on the gold plate", hud._rank_plate.visible
 		and not hud._daily_rank.visible and hud._rank_num.text == "#3"
-		and hud._rank_caption.text == "TODAY'S RANK" and hud._rank_of.text == "of 41 racers",
+		and hud._rank_caption.text == "TOP 10 TODAY" and hud._rank_of.text == "of 41 racers",
 		"%s / %s / %s" % [hud._rank_num.text, hud._rank_caption.text, hud._rank_of.text])
-	_check("... a new-best chip and the streak", chips == ["NEW BEST", "4-DAY STREAK"], str(chips))
+	_check("... its number rolled down from the back of the field", rolled_from == "#41", rolled_from)
+	_check("... the server's new best as the sticker, and the streak", hud._best_sticker.visible
+		and hud._best_sticker.get_child(0).text == "NEW BEST" and chips == ["4-DAY STREAK"], str(chips))
 	_check("... and a countdown to the next circuit", hud._daily_next.text.begins_with("NEXT CIRCUIT IN 5:00:"),
 		hud._daily_next.text)
 	_check("its gold button is Leaderboard, not Next",

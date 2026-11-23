@@ -4,6 +4,44 @@ Running history of major changes. Newest on top. See `CLAUDE.md` for when to add
 
 ## 2026-11-23
 
+- **Polish pass: small, smooth animations and sounds.** *Why:* the user asked for a more
+  professional feel ("loading animations, pop ups when you get your best times, when you are in
+  the leaderboard ... a tire spinning on the loading bar"), picked items 1, 2, 3, 4, 6, 8, 9, 11,
+  12, 13 and 15 from a list, and asked to keep it "minimal in taste and smooth and high
+  resolution". Everything is drawn as vectors (SVG on the Reddit pages, `_draw` in Godot):
+  - **Loading bar tyre** (Reddit `game.html` / `game.css` / `game.ts`): a small tyre rolls along
+    the front of the fill, turning through the distance it moves; the loader then fades out
+    over the game instead of vanishing.
+  - **Screen transitions:** new `Transition` autoload (`scripts/transition.gd`). Every
+    `Game.goto_*` / `start_level` slides a curtain of the menus' cobalt stripes (in step with
+    the backdrop's, `HudStyle.stripe_shift()`) across behind a thin gold edge, swaps the scene
+    while covered and slides it off. The game starts covered and opens once its first screen
+    settles, so it picks up from the Reddit loader. Headless runs (tests) switch at once.
+  - **Splash car** (`splash.ts lapCar`): a gold dot with a short trail laps today's circuit
+    on the post's thumbnail; still on the start line under reduced motion.
+  - **Start lights** (`hud.gd`): three lamps on a dark bar light red with the 3-2-1 beeps and
+    all go green on GO, with GO! punching in underneath; the 3-2-1 numbers are gone.
+  - **Wall hits:** the newest WALL HITS pip swells with a red ring spreading off it, and on a
+    phone every crash gives a short buzz (a longer one on game over), via `UiFeel.buzz`
+    (Android export now asks for the vibrate permission).
+  - **NEW BEST sticker:** a gold tilted sticker lands on the corner of the results card's
+    times ("NEW BEST -1.24s") with a two-note chime; a better medal than before makes the medal
+    disc pop. On Reddit the server's answer brings the sticker (the best counts across devices
+    there), replacing the old NEW BEST chip.
+  - **Rank plate** (Reddit): the plate pops in and its number rolls down to your place (from
+    your old place, else from the back of the field); the top ten say TOP 10 TODAY, first place
+    FASTEST TODAY, and an UP n chip shows a climb. `Reddit.day_rank` / `streak` keep the
+    before-values (`Leaderboard.run_recorded` now carries `prev_rank` and `prev_streak`).
+  - **Streak chip:** a small drawn flame, and it pops in when the run grew the streak.
+  - **Leaderboard screen:** rows fade in one after another; your own row glides into view and
+    glows twice.
+  - **Button feel:** new `UiFeel` autoload (`scripts/ui_feel.gd`): every button presses in a
+    little and springs back, and clicks; a new screen's buttons fade in top to bottom.
+  - **Interface sounds** (`tools/generate_sfx.py`): `ui_click`, `ui_whoosh` (the curtain),
+    `ui_pop` (pop-ups) and `best` (the new-best chime).
+  The rest of the list (finish-line slow motion, buzz on boost pads and medals, the results
+  card building up, the level unlock moment, a ghost car) is in `docs/TODO.md` for later.
+
 - **Steering fix: no more oversteer.** *Why:* the user: "the car over steers, the wheels are not
   coming back to 0 degrees fast enough". Measured first: the wheels did straighten in 0.1 s, but
   the car spun on for 0.4-0.6 s after letting go (a 0.2 s tap of full lock turned it 11 deg while
