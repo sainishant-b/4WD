@@ -1,6 +1,6 @@
 extends SceneTree
 # Headless check of the level table, the two modes (ranked: one lap, three wall
-# hits and out; casual: three laps, no limit) and the three-wall-hits rule:
+# hits and out; casual: three laps, no limit) and the wall-hit limit (5):
 # drives the real car into real walls in the race scene and watches what
 # game.gd counts.
 # Run:
@@ -117,15 +117,15 @@ func _run() -> void:
 	var casual_hud = _race.get_node("HUD")
 	_check("the casual race runs three laps, no hit pips", _race._laps == 3 and casual_hud._wall_limit == 0,
 		"laps=%d limit=%d" % [_race._laps, casual_hud._wall_limit])
-	for fraction in [0.2, 0.4, 0.6, 0.8]:
+	for fraction in [0.15, 0.3, 0.45, 0.6, 0.75, 0.9]:
 		await _frames(90)
 		await _ram(fraction, 1.0, 20)
-	_check("four wall hits and still racing", _race._state == 1 and _race._wall_touches == 0,
+	_check("six wall hits and still racing", _race._state == 1 and _race._wall_touches == 0,
 		"hits=%d state=%d" % [_race._wall_touches, _race._state])
 	_check("no warning banner in casual", not casual_hud._warn_label.visible)
 	game.casual = false
 
-	print("three wall hits (ranked)")
+	print("five wall hits (ranked)")
 	game.current_level = 0
 	change_scene_to_file("res://scenes/Main.tscn")
 	await _frames(240)   # 3-2-1 countdown, then GO
@@ -139,7 +139,7 @@ func _run() -> void:
 	await _ram(0.30, 1.0, 20)
 	_check("first wall contact counts as hit 1", _race._wall_touches == 1, "hits=%d" % _race._wall_touches)
 	_check("it warns and the race goes on", hud._warn_label.visible and _race._state == 1)
-	_check("the HUD pips show 1 of 3", hud._wall_used == 1 and hud._wall_limit == 3)
+	_check("the HUD pips show 1 of 5", hud._wall_used == 1 and hud._wall_limit == 5)
 
 	for i in 6:
 		await _push(10)
@@ -156,11 +156,18 @@ func _run() -> void:
 	await _ram(0.56, 1.0, 20)   # straight across to the other wall, within a second
 	_check("pinballing to the other wall right away is forgiven", _race._wall_touches == 2,
 		"hits=%d" % _race._wall_touches)
-	_check("still racing on the last warning", _race._state == 1)
+	await _frames(90)
+	await _ram(0.65, -1.0, 20)
+	await _frames(90)
+	await _ram(0.72, 1.0, 20)
+	_check("hits 3 and 4 warn too", _race._wall_touches == 4 and hud._warn_label.visible,
+		"hits=%d" % _race._wall_touches)
+	_check("still racing on the last warning", _race._state == 1
+		and hud._warn_label.text.ends_with("LAST WARNING"), "text=%s" % hud._warn_label.text)
 
 	await _frames(90)
 	await _ram(0.80, 1.0, 20)
-	_check("the third hit ends the race", _race._wall_touches == 3 and _race._state == 2,
+	_check("the fifth hit ends the race", _race._wall_touches == 5 and _race._state == 2,
 		"hits=%d state=%d" % [_race._wall_touches, _race._state])
 	_check("the card says GAME OVER and offers no next level",
 		hud._results_overlay.visible and hud._results_title.text == "GAME OVER" and not hud._results_next.visible,
@@ -168,7 +175,7 @@ func _run() -> void:
 	_check("the car is stopped", not _car.is_physics_processing())
 
 	await _ram(0.10, 1.0, 20)
-	_check("nothing more is counted after game over", _race._wall_touches == 3, "hits=%d" % _race._wall_touches)
+	_check("nothing more is counted after game over", _race._wall_touches == 5, "hits=%d" % _race._wall_touches)
 	_check("the save file was not touched", _save_text() == save_before)
 
 	print("")

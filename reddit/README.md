@@ -1,4 +1,4 @@
-# Four Wheel Steer — Daily Circuit
+# fourwd — Daily Circuit
 
 A top-down time-trial racer where you steer the **front and rear wheels separately**. Every day
 one circuit is featured: race it, climb today's board, and keep your streak going.
@@ -9,7 +9,8 @@ one circuit is featured: race it, climb today's board, and keep your streak goin
    track, its medal times and a **DRIVE** button.
 2. Race **one lap** through the gates as fast as you can. The gold arrow points to the next gate
    and the mini map shows the whole circuit.
-3. **Stay off the walls.** Hits one and two are warnings; the **third wall hit ends the race**.
+3. **Stay off the walls.** Hits one to four are warnings; the **fifth wall hit ends the race**.
+   Gold **boost pads** shoot you down the straights.
 4. Finish to see your place on today's board, your streak and when the next circuit starts.
 5. Just want to drive? **Casual** (on Today's Circuit or the menu) opens all seven circuits for
    three laps with no wall-hit limit. Casual times stay on your device.
@@ -18,7 +19,7 @@ one circuit is featured: race it, climb today's board, and keep your streak goin
 
 | | Phone (two thumb pads) | Keyboard |
 | --- | --- | --- |
-| Front wheels | left pad, slide left / right | **A / D** |
+| Front wheels | left pad, slide left / right (further = sharper) | **A / D** |
 | Rear wheels | right pad, slide left / right | **← / →** |
 | Accelerate | push either pad up | **W** |
 | Boost | push both pads up | **Shift** |

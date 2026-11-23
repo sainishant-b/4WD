@@ -1,4 +1,4 @@
-// Devvit server for Four Wheel Steer.
+// Devvit server for fourwd.
 //
 //   /api/*       called by the web view (splash page and the Godot game)
 //   /internal/*  called by Reddit: menu action, install trigger, daily cron

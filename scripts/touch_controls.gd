@@ -7,6 +7,10 @@ extends CanvasLayer
 ##   pull ONE pad down         -> handbrake (drift)
 ##   pull BOTH pads down       -> brake, then reverse
 ##
+## Steering is gentle near the middle (the user found the pads too sensitive):
+## a slide needs `STEER_TRAVEL` px for full lock and is curved by `STEER_CURVE`,
+## so a small slide turns the wheels only a little. Up / down keep `TRAVEL`.
+##
 ## A pad re-centres under the thumb wherever it lands in its half of the lower
 ## screen, so "up" always means "up from where you touched". Everything is
 ## written into the InputState autoload, so the car treats touch and keyboard
@@ -21,7 +25,9 @@ extends CanvasLayer
 
 const PAD_RADIUS := 62.0       # drawn base ring
 const KNOB_RADIUS := 26.0
-const TRAVEL := 52.0           # thumb travel (px) for full deflection on either axis
+const TRAVEL := 52.0           # thumb travel (px) up or down for full throttle / brake
+const STEER_TRAVEL := 60.0     # thumb travel (px) left or right for full lock
+const STEER_CURVE := 1.7       # > 1 = gentle near the middle; full lock is still full lock
 const STEER_DEADZONE := 0.10
 const UP_DEADZONE := 0.22      # ignore the vertical wobble of a thumb that is only steering
 const DOWN_AT := 0.5           # pull at least this far down to count as "down"
@@ -37,6 +43,10 @@ class Pad:
 	var finger: int = -1             # touch index holding this pad, -1 = free
 	var center: Vector2 = Vector2.ZERO   # where the base is drawn
 	var vec: Vector2 = Vector2.ZERO      # deflection, each axis -1..1 (up is negative y)
+
+	## Where the knob is drawn, relative to the base's centre.
+	func knob_offset() -> Vector2:
+		return Vector2(vec.x * STEER_TRAVEL, vec.y * TRAVEL)
 
 
 var _pads: Array[Pad] = []
@@ -126,8 +136,8 @@ func _press(finger: int, pos: Vector2) -> void:
 func _drag(finger: int, pos: Vector2) -> void:
 	for pad in _pads:
 		if pad.finger == finger:
-			var offset := (pos - pad.center) / TRAVEL
-			pad.vec = offset.clamp(-Vector2.ONE, Vector2.ONE)
+			var offset := pos - pad.center
+			pad.vec = Vector2(offset.x / STEER_TRAVEL, offset.y / TRAVEL).clamp(-Vector2.ONE, Vector2.ONE)
 
 
 func _release(finger: int) -> void:
@@ -155,8 +165,8 @@ func _process(_delta: float) -> void:
 func _publish() -> void:
 	var front := _pads[0].vec
 	var rear := _pads[1].vec
-	InputState.touch_front = _past_deadzone(front.x, STEER_DEADZONE)
-	InputState.touch_rear = _past_deadzone(rear.x, STEER_DEADZONE)
+	InputState.touch_front = _steer(front.x)
+	InputState.touch_rear = _steer(rear.x)
 
 	var up_front := maxf(0.0, -_past_deadzone(front.y, UP_DEADZONE))
 	var up_rear := maxf(0.0, -_past_deadzone(rear.y, UP_DEADZONE))
@@ -170,6 +180,13 @@ func _publish() -> void:
 		InputState.touch_throttle = maxf(up_front, up_rear)
 		InputState.touch_handbrake = down_front or down_rear
 	InputState.touch_boost = up_front >= BOOST_AT and up_rear >= BOOST_AT
+
+
+## A pad's left/right deflection (-1..1) as a steering input: 0 inside the
+## deadzone, then curved so it starts gently and still reaches +/-1.
+func _steer(v: float) -> float:
+	var s := _past_deadzone(v, STEER_DEADZONE)
+	return signf(s) * pow(absf(s), STEER_CURVE)
 
 
 ## Rescales `v` (-1..1) so it reads 0 inside the deadzone and still reaches +/-1.
@@ -208,7 +225,7 @@ func _draw_pads() -> void:
 			knob = Palette.GOLD_BRIGHT
 		elif pad.vec.y >= DOWN_AT:
 			knob = Palette.WARNING
-		var at := c + pad.vec * TRAVEL
+		var at := c + pad.knob_offset()
 		var alpha := 0.96 if held else 0.7
 		HudStyle.draw_glow(_surface, at + Vector2(0, 6.0), KNOB_RADIUS * 1.5, Color(Palette.BLACK, 0.55))
 		if held:

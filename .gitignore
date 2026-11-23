@@ -4,6 +4,7 @@
 # Old builds dumped in the project root by earlier exports. They are rebuilt
 # from source, and the largest (100+ MB) are over GitHub's file size limit.
 /Four Wheel Steer.*
+/fourwd.*
 /build/
 *.apk
 *.aab

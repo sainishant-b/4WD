@@ -4,13 +4,14 @@ extends Node2D
 ## awards a medal on finish, tracks best lap, and provides a manual pause.
 ##
 ## The mode comes from `Game.casual` (see game_data.gd): a ranked race is ONE
-## lap with the three-strikes rule, and its time is recorded, medalled and sent
+## lap with the wall-hit limit, and its time is recorded, medalled and sent
 ## to the leaderboard; a casual race is THREE laps with no wall-hit limit, and
 ## only its time is kept, as a casual personal best.
 ##
-## Three strikes (ranked): every new touch of a track wall is counted across the
-## race. The first two get a warning; the third (`MAX_WALL_TOUCHES`) ends the
-## race as GAME OVER, with nothing saved and the next level not unlocked.
+## Wall-hit limit (ranked): every new touch of a track wall is counted across
+## the race. The first four get a warning; the fifth (`MAX_WALL_TOUCHES`) ends
+## the race as GAME OVER, with nothing saved and the next level not unlocked.
+## The HUD pips, How to Play and the level screen all read the limit from here.
 ## Single-player only (the hidden multiplayer has no fail flow).
 
 const CheckpointScene := preload("res://scenes/Checkpoint.tscn")
@@ -18,7 +19,9 @@ const CarScene := preload("res://scenes/Car.tscn")
 
 enum State { COUNTDOWN, RACING, FINISHED }
 
-const MAX_WALL_TOUCHES := 3   # the touch that ends the race
+# The touch that ends the race. 3 until 2026-11-21, when the user found the
+# game "still very difficult" and asked for 5.
+const MAX_WALL_TOUCHES := 5
 
 @onready var _cars := $Cars
 @onready var _hud := $HUD
@@ -237,7 +240,6 @@ func _begin_race() -> void:
 	_lap_start = 0.0
 	_go_hide_t = 0.6
 	_hud.show_countdown("GO!")
-	_hud.fade_hint()
 	if _sfx_go.stream != null:
 		_sfx_go.play()
 

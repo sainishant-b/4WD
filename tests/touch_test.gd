@@ -6,7 +6,9 @@ extends SceneTree
 #
 # This folder is .gdignore'd, so the test is never imported or exported.
 
-const TRAVEL := 52.0
+const TRAVEL := 52.0         # touch_controls.gd: up / down travel
+const STEER_TRAVEL := 60.0   # ... left / right travel for full lock
+const STEER_CURVE := 1.7     # ... and the steering curve
 
 # Untyped on purpose: these are autoload scripts, looked up at run time.
 var _input_state
@@ -16,6 +18,12 @@ var _failures := 0
 
 func _initialize() -> void:
 	_run.call_deferred()
+
+
+## The steering a slide of `px` sideways should give (deadzone 0.1, then curved).
+func _steer_for(px: float) -> float:
+	var s := (px / STEER_TRAVEL - 0.1) / 0.9
+	return pow(s, STEER_CURVE)
 
 
 func _check(label: String, ok: bool, detail := "") -> void:
@@ -118,7 +126,8 @@ func _run() -> void:
 
 	_drag(0, left + Vector2(TRAVEL * 0.6, 0))
 	await _frames(2)
-	_check("left pad right -> front wheels only", _near(_input_state.touch_front, (0.6 - 0.1) / 0.9)
+	_check("left pad right -> front wheels only, gently", _near(_input_state.touch_front, _steer_for(TRAVEL * 0.6))
+		and _input_state.touch_front < 0.4
 		and _near(_input_state.touch_rear, 0) and _near(_input_state.touch_throttle, 0), _state())
 
 	_drag(1, right + Vector2(-TRAVEL * 2.0, 0))
@@ -204,13 +213,15 @@ func _run() -> void:
 	_drag(0, left + Vector2(0, -TRAVEL * 1.2))
 	await _frames(24)
 	var cruising: float = car.velocity.length()
-	_check("one pad up drives the car forward", cruising > 100.0, "speed=%.0f" % cruising)
+	# Speed builds gradually (~53 px/s after 0.4 s since 2026-11-22).
+	_check("one pad up drives the car forward", cruising > 40.0, "speed=%.0f" % cruising)
 	var meter_before: float = car.boost_meter
 	_drag(1, right + Vector2(0, -TRAVEL * 1.2))
 	await _frames(12)
 	var fast: float = car.velocity.length()
+	# +55 px/s in 0.2 s since the cars slowed by a fifth on 2026-11-22.
 	_check("both pads up burns the boost meter and adds speed",
-		car.boost_meter < meter_before - 0.1 and fast > cruising + 60.0,
+		car.boost_meter < meter_before - 0.08 and fast > cruising + 40.0,
 		"meter %.2f -> %.2f, speed %.0f -> %.0f" % [meter_before, car.boost_meter, cruising, fast])
 	_drag(0, left + Vector2(0, TRAVEL * 0.8))
 	_drag(1, right + Vector2(0, TRAVEL * 0.8))
@@ -250,7 +261,7 @@ func _run() -> void:
 	_mouse(pad_at, true)
 	_mouse_move(pad_at + Vector2(TRAVEL * 0.6, -TRAVEL * 1.2))
 	await _frames(2)
-	_check("the mouse drags a pad like a thumb", _near(_input_state.touch_front, (0.6 - 0.1) / 0.9)
+	_check("the mouse drags a pad like a thumb", _near(_input_state.touch_front, _steer_for(TRAVEL * 0.6))
 		and _near(_input_state.touch_throttle, 1.0), _state())
 	_mouse(pad_at, false)
 	await _frames(2)

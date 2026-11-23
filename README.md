@@ -1,11 +1,12 @@
-# Four Wheel Steer
+# fourwd
 
 A 2D top-down car game where you steer the **front and rear wheels independently**.
 Steer both axles the same way and the car **crab-walks** sideways; steer them opposite
 and it does a **tight pivot**. Race a looped **circuit**: hit the checkpoint gates in order
 and cross the start/finish line to complete a lap. A **ranked** race is **one lap**, and **the
-third wall hit is game over**. **Casual** races are **three laps** on any map with no wall-hit
-limit, just the time. The handling is a sim-ish slip-angle model (see Tuning).
+fifth wall hit is game over**. **Casual** races are **three laps** on any map with no wall-hit
+limit, just the time. Gold **boost pads** fling you down the straights. The handling is a
+sim-ish slip-angle model (see Tuning).
 
 Race through **7 levels** of rising difficulty (one for each day of the week, Monday the
 easiest), beating one-lap target times for **gold / silver / bronze medals** — finishing a level
@@ -17,12 +18,17 @@ external assets).
 ## Look & feel (design system)
 
 The UI is built in code and styled from a small **design system** in `ui/`: a Godot `Theme`
-(`four_wheel_steer_theme.tres`, set as the project-wide GUI default) plus `Palette.gd` color
+(`fourwd_theme.tres`, set as the project-wide GUI default) plus `Palette.gd` color
 tokens (autoloaded as `Palette`) for the procedural bits — track, cars, HUD arrow, gates. The
-theme is **"Cobalt & Sun"**: a striped cobalt backdrop, solid cream cards and panels, a
+theme is **"Cobalt & Sun"**: a striped cobalt backdrop (the stripes drift slowly, on every
+menu screen and on the Reddit pages), solid cream cards and panels, a
 **sun-gold** primary and a **red-orange** secondary, with a deep navy ink outlining every raised
-thing. Gold primary buttons, red-orange secondary, cream ghost buttons, red for Quit; a green road
-with red-and-white kerbs on a deep-cobalt field; a red car with a gold nose. The display/UI/HUD face is **Chakra Petch** (Bold) and body copy is **Barlow**
+thing. Gold primary buttons, red-orange secondary, cream ghost buttons, red for Quit. The race
+itself is a **night circuit**: dark asphalt with glowing white limit lines and red-and-white
+kerbs on the deep-cobalt field, street lamps throwing warm pools of light, tyre stacks on the
+tight bends, a grandstand and a lit gantry at the start; the car is a red-orange open-wheel
+racer (`scripts/car_look.gd`) with headlights and a red underglow. The menus' track maps stay
+green. The display/UI/HUD face is **Chakra Petch** (Bold) and body copy is **Barlow**
 (Regular) — both are bundled in `ui/fonts/` (Open Font License) and wired into the theme (Barlow
 applies via the `LabelBody` type variation). The source design system lives in
 `Four Wheel Steer — Design System/` (excluded from the Godot import via `.gdignore`).
@@ -33,7 +39,8 @@ wells, "sticker" titles (coloured letters with an ink outline), glow and vignett
 striped cobalt backdrop behind the menus, and `feather()`, which smooths the edge of solid shapes.
 The road is a mesh of ribbons shaded by vertex colour (darker road beside the walls, a lighter
 crown) with red-and-white kerbs and an ink casing outside the walls, casting a shadow onto a
-faint grid. This renderer (GL Compatibility) has no 2D multisampling, so
+faint grid; glows (lamp light, limit lines, the boost pads, lights on the car) are additive
+sprites, since this renderer has no 2D glow. This renderer (GL Compatibility) has no 2D multisampling, so
 smooth edges come from anti-aliased lines and circles, not a project setting. Screenshots are in
 `docs/screenshots/`.
 
@@ -57,11 +64,13 @@ smooth edges come from anti-aliased lines and circles, not a project setting. Sc
 | **Esc / P** | pause (Resume / Restart / Menu) |
 | **H** | hide / show the controls legend (remembered) |
 
-Restart and "next level" are on the pause and results screens. During a race the same list sits
-under the top row as a strip of **key caps** (thumb-pad icons on touch). It is built by
-`HudStyle.controls_legend()` in `ui/hud_style.gd`. **How to Play** is pictures, not sentences: four
-tiles (FRONT, REAR, SPIN TURN, SIDEWAYS), each a little car with its wheels turned, the keys or
-pads that do it and its name, then "3 WALL HITS = OUT" and the rest of the controls as key caps.
+Restart and "next level" are on the pause and results screens. During a keyboard race the same
+list sits on the screen as a strip of **key caps** (none on touch, where it would cover the road).
+It is built by `HudStyle.controls_legend()` in `ui/hud_style.gd`. **How to Play** is pictures, not
+sentences: four tiles (FRONT, REAR, SPIN TURN, SIDEWAYS), each a little car with its wheels
+turned, the keys or pads that do it and its name, then "5 WALL HITS = OUT" and the rest of the
+controls. On touch the pads are drawn like the real ones: the red or gold ring with its knob
+pushed the way to slide.
 
 ### Controls (touch)
 
@@ -82,7 +91,8 @@ lower screen, so every gesture is relative to where you touched.
 | **II** button (top right) | pause |
 
 The pads are true multi-touch (`scripts/touch_controls.gd`), so both axles can be steered while
-accelerating. The thresholds are constants at the top of that script.
+accelerating. Steering starts gently: a small slide turns the wheels a little, a full slide
+(60 px) gives full lock. The thresholds are constants at the top of that script.
 
 ### Screen sizes
 
@@ -100,13 +110,19 @@ the window is resized across the two.
 - **Handbrake slide:** carry speed into a corner and tap **Space** → the rear breaks loose for
   a drift; overcook the entry and it'll spin. The handling is **sim-ish** — momentum, weight,
   and grip you can overdrive, though without the handbrake the car stays planted and goes where
-  its wheels point. Drifts lay **skid marks** and kick up **dust**; wall hits **shake**
-  the screen.
+  its wheels point. Drifts lay **skid marks** and tyre **smoke**; scraping a wall throws
+  **sparks**, and a counted hit bursts sparks and bits and **shakes** the screen. Fast, the
+  tail lights leave red **light trails** and **speed lines** stream past (`scripts/car_fx.gd`,
+  with a sound for each: boost, crash, scrape).
 - **Boost:** hold **Shift** (or push both thumb pads fully up) on a straight to burst past your normal top
   speed; it drains the boost meter, refills when you let off, and the camera pulls out as you surge.
 
 ## Track, levels & progression
 
+- **Boost pads.** Each track lists `boost_pads` (fractions of the way round the centre line),
+  laid at the start of the longer straights. A **boost pad** (`scripts/boost_pad.gd`, gold
+  chevrons) gives a kick and a hard 0.9 s push past your top speed. (Stunt ramps that flipped
+  the car were tried on 2026-11-22 and removed the next day.)
 - **Data-driven circuits** (road with walls on both edges): a closed centerline + road width in
   `scripts/game_data.gd` (`TRACK_1`..`TRACK_7`) is turned into the road, walls and gates by
   `scripts/track_builder.gd`. Preview/iterate a shape without the editor via
@@ -119,7 +135,7 @@ the window is resized across the two.
   close together two waypoints are. `godot --headless --path . -s tests/track_test.gd` checks it
   on every track.
 - **7 levels**, one per weekday (Level 1 = Monday, the easiest; Level 7 = Sunday, the hardest),
-  laps of about 7-12k px. **Ranked** (Play): one lap, three wall hits and out, medals, unlocked in
+  laps of about 7-12k px. **Ranked** (Play): one lap, five wall hits and out, medals, unlocked in
   order (a level opens once the one before it has been finished). Difficulty rises level by
   level: the road narrows and the top speed climbs from Level 3 on.
 - **Casual** (the main menu's Casual, or CASUAL on Today's Circuit): every map open, three laps,
@@ -132,21 +148,27 @@ the window is resized across the two.
 
   | Level | Road | Top speed | Character |
   |---|---|---|---|
-  | 1 | 88 px | 620 | medium width, flowing |
-  | 2 | 75 px | 600 | tight and twisty |
-  | 3 | 72 px | 665 | deeper esses on both sides |
-  | 4 | 68 px | 700 | esses along the top and bottom, a tight two-hairpin switchback |
-  | 5 | 64 px | 725 | three hairpins (a narrow inlet, a double switchback) plus esses on three sides |
-  - No level has obstacles. The cone / wall / ramp code is still in `track_builder.gd`,
+  | 1 | 114 px | 496 | wide and flowing |
+  | 2 | 98 px | 480 | tight and twisty |
+  | 3 | 94 px | 532 | narrow esses |
+  | 4 | 88 px | 560 | esses, a two-hairpin switchback, a hairpin tongue |
+  | 5 | 83 px | 580 | two hairpin tongues, esses, a double switchback |
+  | 6 | 81 px | 596 | a chicane, kinked hairpin rows |
+  | 7 | 78 px | 612 | the hardest: deep esses, hairpin rows, two tongues |
+
+  (Roads 30% wider and cars 20% slower since 2026-11-22; "top speed" is the gauge's full scale,
+  the car cruises at about 54% of it and boost or a pad takes it higher.)
+  - No level has obstacles (the boost pads and ramps never block the car). The cone / wall / ramp code is still in `track_builder.gd`,
     `cone.gd` and `ramp.gd` (a track dict may carry
     `"obstacles": [{type:"cone"|"wall"|"ramp", t, offset, …}]`), but nothing uses it.
   - Add a track with a `TRACK_n` dict + a `LEVELS` entry in `game_data.gd`. Give the entry a new,
     never-used `id`: saved times and the leaderboard are keyed by it, so levels can be reordered
     without times landing on the wrong track.
-- **Three strikes.** Every new touch of a wall is counted across the whole race (one scrape or
-  bounce is one touch; `car.gd` decides, see `WALL_*` constants). The HUD shows three **WALL
-  HITS** pips. Hits 1 and 2 flash the screen edge red with a warning; hit 3 is **GAME OVER**:
-  nothing is saved and the next level stays locked. The limit is `MAX_WALL_TOUCHES` in `game.gd`.
+- **Five strikes.** Every new touch of a wall is counted across the whole race (one scrape or
+  bounce is one touch; `car.gd` decides, see `WALL_*` constants). The HUD shows five **WALL
+  HITS** pips. Hits 1-4 flash the screen edge red with a warning; hit 5 is **GAME OVER**:
+  nothing is saved and the next level stays locked. The limit is `MAX_WALL_TOUCHES` in `game.gd`
+  (How to Play and the level screen read it from there).
 - A **3-2-1-GO** countdown starts each race; the HUD shows **Lap x/3**, a lap timer, total time,
   **best lap** (flashes on a new best), a **radial speedometer** gauge, a **boost meter**, a live
   **+/- split delta** vs your best lap (green = ahead, red = behind), and an **arrow to the next gate** (handy since
@@ -155,7 +177,7 @@ the window is resized across the two.
   the whole circuit: north stays up, your car is the red arrow, the next gate pulses gold, and the
   dark bar is the start/finish line.
 - On finish you get a **medal** by total time; **best time + best lap** are saved, and **Next**
-  appears if there is another level. The only way to fail is the third wall hit; retry freely.
+  appears if there is another level. The only way to fail is the fifth wall hit; retry freely.
   Progress is in `user://save.json`.
 
 ## Compete with friends: the online leaderboard
@@ -212,7 +234,8 @@ cheat-proof one.)
 
 ## Run it on Android
 
-The project is already configured for mobile: **portrait** orientation, the
+The project is already configured for mobile: it turns with the phone (portrait or
+landscape, each screen has a layout for both), the
 `gl_compatibility` renderer (widest device support), phone-sized layouts, and the on-screen
 thumb pads (see "Controls (touch)").
 (Desktop opens maximized/landscape.)
@@ -225,16 +248,16 @@ Building an APK is a one-time tooling setup:
    Export → Android` and set the **Android SDK Path** and **Java SDK Path** (or **Debug
    Keystore** — Godot can generate a debug keystore for you from the Export window).
 3. **Export:** `Project → Export…` → the **Android** preset is already here →
-   **Export Project** to `build/FourWheelSteer.apk`.
+   **Export Project** to `build/fourwd.apk`.
    - Or one-click deploy: plug in a phone with USB debugging on and press the little
      Android/▶ "remote deploy" button in the top-right of the editor.
 4. **Command line** (after the above is configured):
    ```
-   godot --headless --path . --export-debug "Android" build/FourWheelSteer.apk
-   adb install -r build/FourWheelSteer.apk
+   godot --headless --path . --export-debug "Android" build/fourwd.apk
+   adb install -r build/fourwd.apk
    ```
 
-> The app id is `com.saini.fourwheelsteer` (change it in `export_presets.cfg` or the
+> The app id is `com.saini.fourwd` (change it in `export_presets.cfg` or the
 > Export dialog if you like).
 
 ## Share it for others to test
@@ -249,7 +272,7 @@ Easiest (no install, works on desktop + mobile browsers): **Web export → itch.
    just host the `build/web` folder.)
 
 Other options (presets already in `export_presets.cfg`):
-- **Windows:** export the **Windows Desktop** preset → `build/windows/FourWheelSteer.exe` (PCK
+- **Windows:** export the **Windows Desktop** preset → `build/windows/fourwd.exe` (PCK
   embedded) → zip and share. Windows-only, requires a download.
 - **Android:** the **Android** preset builds an APK (needs the Android SDK/JDK set up first, above);
   testers enable "install unknown apps" to sideload it.
@@ -276,18 +299,19 @@ The touch controls have their own headless test, run from the project root:
 boost, drift, brake, pause, the portrait/landscape switch, and the mouse driving the pads in a
 phone-shaped window). The track geometry has one too:
 `godot --headless --path . -s tests/track_test.gd` (no folded edges, no over-tight bends, the
-road never running into itself, and gates and start slot on the road, for all 7 levels and the
-multiplayer track). And the rules:
+road never running into itself, gates and start slot on the road, and every boost pad on the
+road, clear of the gates, with room after it, for all 7 levels and the multiplayer track). And the rules:
 `godot --headless --fixed-fps 60 --path . -s tests/rules_test.gd` (seven levels by weekday,
 difficulty order, no obstacles, ranked one lap vs casual three with no limit, and the
-three-wall-hits rule: what counts as one hit, the warnings, and game over).
+five-wall-hits rule: what counts as one hit, the warnings, and game over).
 
 - **Why a custom loader:** Reddit's web view blocks inline `<script>`/`<style>`, which Godot's
   default `index.html` uses. `tools/export-godot.mjs` discards that page and keeps only the engine
   files plus the engine settings (`public/godot-config.js`); `public/game.html` +
   `src/client/game.ts` boot the engine instead. The Web preset must keep **thread support off**.
 - **Re-run `npm run export:godot` after any change to the Godot project** — the web view ships
-  the last export, not the live project.
+  the last export, not the live project. (If Godot finishes but hangs on exit, as 4.7 does on
+  this machine, the script stops it after a short grace period and carries on.)
 - **Post flow:** the post shows `splash.html` inline (tiny, instant): the day, today's circuit
   drawn from `src/client/tracks.ts` (written from the game by `tools/track-shapes.gd` during
   `npm run export:godot`), and your best, rank and streak. Tapping Drive opens `game.html`
@@ -315,7 +339,9 @@ The handling is a **sim-ish slip-angle (bicycle) model** in `scripts/car.gd`. Se
   freely), `handbrake_traction` (the share of that kept on the handbrake),
   `handbrake_rear_grip` (how far the handbrake frees the rear).
 - **Weight:** `yaw_inertia` (higher = heavier, slower rotation), `rolling_resistance` / `drag`
-  (coast-down).
+  (coast-down). The car cruises where the level's `accel_force` meets that resistance, so
+  scaling all three together changes how quickly speed builds without moving the top speed.
+  `brake_force` is the brakes' extra deceleration.
 - **Steering:** `steer_sensitivity`, `high_speed_lock` (lock retained at top speed),
   `max_steer_aligned_deg` / `max_steer_opposed_deg`.
 - **Camera feel:** the camera dollies **out** as you speed up (more road visible) and back in when
@@ -325,6 +351,7 @@ The handling is a **sim-ish slip-angle (bicycle) model** in `scripts/car.gd`. Se
 - **Boost:** held boost adds forward thrust and a higher speed ceiling, burning a meter that refills
   when idle — `boost_accel`, `boost_speed_mult` (ceiling = this × top speed), `boost_duration`,
   `boost_recharge_rate`, `boost_min_to_fire`, `boost_decel` (overspeed bleed-off), `boost_zoom_out`.
+- **Boost pads:** `pad_kick` (instant px/s), `pad_accel` and `pad_time` (the push).
 
 Speed bleeds in corners naturally (no artificial cap). Per-level top speed and acceleration come
 from the `LEVELS` table in `scripts/game_data.gd` (they override the Car's defaults at the start

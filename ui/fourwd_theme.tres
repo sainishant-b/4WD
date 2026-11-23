@@ -1,7 +1,7 @@
 [gd_resource type="Theme" load_steps=26 format=3]
 
 ; ============================================================
-; FOUR WHEEL STEER — Godot 4 Theme · "Cobalt & Sun"
+; FOURWD — Godot 4 Theme · "Cobalt & Sun"
 ; Colors are the Palette.gd tokens as Godot float Color(r,g,b,a).
 ; Every raised thing (buttons, cards) has a 3 px INK outline and a
 ; hard INK lip under it: the bottom border is thicker and drawn

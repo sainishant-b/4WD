@@ -6,6 +6,7 @@ Outputs into ../audio relative to this file.
 """
 import math
 import os
+import random
 import struct
 import wave
 
@@ -98,9 +99,115 @@ def go_tone():
     return out
 
 
+def _noise(seed):
+    rng = random.Random(seed)
+    return lambda: rng.uniform(-1.0, 1.0)
+
+
+def boost():
+    # Boost pad whoosh: noise swept open (a one-pole low-pass rising) under a
+    # sine sliding up, 0.7 s.
+    dur = 0.7
+    n = int(RATE * dur)
+    noise = _noise(1)
+    lp = 0.0
+    phase = 0.0
+    out = []
+    for i in range(n):
+        t = i / RATE
+        k = t / dur
+        a = 0.04 + 0.4 * k
+        lp += a * (noise() - lp)
+        f = 180.0 + 760.0 * k * k
+        phase += 2 * math.pi * f / RATE
+        env = min(1.0, t * 30.0) * (1.0 - k) ** 1.4
+        out.append((lp * 1.6 + 0.3 * math.sin(phase)) * env * 0.55)
+    return out
+
+
+def crash():
+    # A counted wall hit: a low thud falling in pitch, a burst of grit and a
+    # metallic clank (inharmonic partials), 0.6 s.
+    dur = 0.6
+    n = int(RATE * dur)
+    noise = _noise(2)
+    lp = 0.0
+    phase = 0.0
+    out = []
+    for i in range(n):
+        t = i / RATE
+        f = 45.0 + 60.0 * math.exp(-t * 8.0)
+        phase += 2 * math.pi * f / RATE
+        thud = math.sin(phase) * math.exp(-t * 7.0)
+        lp += 0.35 * (noise() - lp)
+        grit = lp * math.exp(-t * 13.0) * 1.6
+        clank = sum(math.sin(2 * math.pi * fr * t) for fr in (1730.0, 2410.0, 3170.0)) * math.exp(-t * 11.0) * 0.12
+        out.append((thud * 0.8 + grit + clank) * min(1.0, t * 400.0) * 0.6)
+    return out
+
+
+def scrape():
+    # Grinding along a wall: gritty noise, pulsing 24 times a second, 0.5 s
+    # (a whole number of pulses, so it loops).
+    dur = 0.5
+    n = int(RATE * dur)
+    noise = _noise(3)
+    lp = 0.0
+    out = []
+    for i in range(n):
+        t = i / RATE
+        lp += 0.3 * (noise() - lp)
+        hiss = noise() * 0.25
+        pulse = 0.65 + 0.35 * math.sin(2 * math.pi * 24.0 * t)
+        out.append((lp * 1.4 + hiss) * pulse * 0.4)
+    return out
+
+
+def jump():
+    # Take-off (the dormant obstacle ramps' hop): a rising swoop, 0.4 s.
+    dur = 0.4
+    n = int(RATE * dur)
+    noise = _noise(4)
+    lp = 0.0
+    phase = 0.0
+    out = []
+    for i in range(n):
+        t = i / RATE
+        k = t / dur
+        f = 220.0 + 700.0 * k
+        phase += 2 * math.pi * f / RATE
+        lp += (0.05 + 0.3 * k) * (noise() - lp)
+        env = min(1.0, t * 25.0) * (1.0 - k)
+        out.append((0.45 * math.sin(phase) + lp) * env * 0.5)
+    return out
+
+
+def land():
+    # Touching down: a short thump, 0.3 s.
+    dur = 0.3
+    n = int(RATE * dur)
+    noise = _noise(5)
+    lp = 0.0
+    phase = 0.0
+    out = []
+    for i in range(n):
+        t = i / RATE
+        f = 50.0 + 70.0 * math.exp(-t * 18.0)
+        phase += 2 * math.pi * f / RATE
+        lp += 0.25 * (noise() - lp)
+        v = math.sin(phase) * math.exp(-t * 12.0) + lp * math.exp(-t * 28.0) * 1.5
+        out.append(v * min(1.0, t * 500.0) * 0.6)
+    return out
+
+
 if __name__ == "__main__":
     write_wav("engine.wav", engine())
     write_wav("checkpoint.wav", ding())
     write_wav("finish.wav", fanfare())
     write_wav("beep.wav", beep())
     write_wav("go.wav", go_tone())
+    write_wav("boost.wav", boost())
+    write_wav("crash.wav", crash())
+    write_wav("scrape.wav", scrape())
+    write_wav("jump.wav", jump())
+    write_wav("land.wav", land())

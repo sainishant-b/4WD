@@ -2,8 +2,15 @@ class_name TrackBuilder
 extends RefCounted
 ## Builds a racetrack from a closed loop of waypoints: a smooth centre line, a
 ## shaded road ribbon edged with red-and-white kerbs and an INK casing over a
-## drop shadow (so the road looks raised off the field), limit lines, wall
-## colliders on both edges, the checkpoint gates and any obstacles.
+## drop shadow (so the road looks raised off the field), glowing limit lines,
+## wall colliders on both edges, the checkpoint gates and any obstacles.
+##
+## The look is a night circuit (2026-11-22): dark asphalt (`Palette.ROAD`) on the
+## cobalt field, street lamps throwing warm pools of light along the road, tyre
+## stacks on the outside of the tight bends, a grandstand and a lit gantry at
+## the start. The track's boost pads go on the road too (gold chevrons,
+## boost_pad.gd), each placed by its fraction of the way round the centre line:
+##   "boost_pads": [0.02, 0.63]
 ##
 ## Centre-line pipeline (`centerline()`; tools/preview_track.py mirrors it):
 ##   1. a centripetal Catmull-Rom spline through the waypoints. Unlike the
@@ -34,8 +41,14 @@ const GRID_STEP := 120.0
 const DASH_ON := 4           # centre-line points per lane dash ...
 const DASH_PERIOD := 10      # ... out of every this many
 
+const LAMP_EVERY := 30        # centre-line points between street lamps (alternating sides)
+const LAMP_OUT := 18.0        # px beyond the casing where a lamp stands
+const TYRE_BEND := 150.0      # bends tighter than this get a tyre stack outside
+const DECOR_CLEARANCE := 24.0 # scenery keeps this far off any road edge
+
 const ConeScene := preload("res://scenes/Cone.tscn")
 const RampScene := preload("res://scenes/Ramp.tscn")
+const BoostPad := preload("res://scripts/boost_pad.gd")
 
 
 # --- Centre line -----------------------------------------------------------
@@ -174,7 +187,8 @@ static func nearest(points: PackedVector2Array, to: Vector2) -> int:
 
 ## Builds road/wall nodes under `road_parent` and gate instances under `cp_parent`.
 ## Returns { checkpoints, car_start_pos, car_start_rot, centerline, gate_points,
-## half_width }; the last three feed the HUD's mini map.
+## half_width, features }; centerline, gate_points and half_width feed the HUD's
+## mini map, features lists the boost pads.
 static func build(track: Dictionary, road_parent: Node2D, cp_parent: Node2D, cp_scene: PackedScene, obstacle_parent: Node2D = null) -> Dictionary:
 	var waypoints: Array = track["centerline"]
 	var hw: float = float(track["road_width"]) * 0.5
@@ -186,6 +200,8 @@ static func build(track: Dictionary, road_parent: Node2D, cp_parent: Node2D, cp_
 	_build_ground(road_parent, line)
 	_build_surface(road_parent, line, hw)
 	_build_lane_dashes(road_parent, line)
+	var features := _build_features(track, line, hw, road_parent)
+	_build_scenery(road_parent, line, hw)
 
 	# Limit lines + wall colliders on both edges.
 	var walls := StaticBody2D.new()
@@ -195,8 +211,16 @@ static func build(track: Dictionary, road_parent: Node2D, cp_parent: Node2D, cp_
 		# The hard limit line: solid white, wholly outside the road, so where the
 		# green meets it is exactly the wall. The car's collision box covers its
 		# tyres, so a tyre touching this line is a wall hit.
+		var limit_points := offset(line, side * (hw + LIMIT_WIDTH * 0.5))
+		var glow := Line2D.new()   # a soft neon halo round the line
+		glow.points = limit_points
+		glow.closed = true
+		glow.width = 18.0
+		glow.default_color = Color(Palette.TEXT_LIGHT, 0.09)
+		glow.material = _additive()
+		road_parent.add_child(glow)
 		var limit := Line2D.new()
-		limit.points = offset(line, side * (hw + LIMIT_WIDTH * 0.5))
+		limit.points = limit_points
 		limit.closed = true
 		limit.width = LIMIT_WIDTH
 		limit.antialiased = true
@@ -232,6 +256,7 @@ static func build(track: Dictionary, road_parent: Node2D, cp_parent: Node2D, cp_
 	# road even where the track curves into the start.
 	var start_idx := nearest(line, spline_point(waypoints, 0.0))
 	var si := posmod(start_idx - roundi(START_BACK / SPACING), n)
+	_build_start(road_parent, line, hw, start_idx)
 	return {
 		"checkpoints": checkpoints,
 		"car_start_pos": line[si],
@@ -239,13 +264,14 @@ static func build(track: Dictionary, road_parent: Node2D, cp_parent: Node2D, cp_
 		"centerline": line,
 		"gate_points": gate_points,
 		"half_width": hw,
+		"features": features,
 	}
 
 
 # --- Looks -----------------------------------------------------------------
 
-## The field the track sits on: deep cobalt with a faint white grid, so there
-## is something to read your speed against away from the road.
+## The field the track sits on: deep cobalt with a faint white grid (something
+## to read your speed against away from the road) and a scatter of far-off lights.
 static func _build_ground(parent: Node2D, line: PackedVector2Array) -> void:
 	var bounds := Rect2(line[0], Vector2.ZERO)
 	for p in line:
@@ -272,6 +298,15 @@ static func _build_ground(parent: Node2D, line: PackedVector2Array) -> void:
 				Vector2(bounds.position.x, y), Vector2(bounds.end.x, y),
 				major if gy % 4 == 0 else minor, 2.0, true
 			)
+		# Distant lights in the dark (the road covers any that fall under it).
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 4242
+		for i in int(bounds.get_area() / 60000.0):
+			var at := Vector2(
+				rng.randf_range(bounds.position.x, bounds.end.x), rng.randf_range(bounds.position.y, bounds.end.y)
+			)
+			var tint := Palette.LAMP if rng.randf() < 0.4 else Palette.TEXT_LIGHT_MUTED
+			ground.draw_circle(at, rng.randf_range(1.2, 2.6), Color(tint, rng.randf_range(0.12, 0.35)), true, -1.0, true)
 	)
 	parent.add_child(ground)
 
@@ -282,7 +317,7 @@ static func _build_ground(parent: Node2D, line: PackedVector2Array) -> void:
 ## crown down the middle. Vertex colours do the blending.
 static func _build_surface(parent: Node2D, line: PackedVector2Array, hw: float) -> void:
 	var shade := minf(SHADE_WIDTH, hw * 0.45)
-	var crown := Palette.TRACK.lightened(0.07)
+	var crown := Palette.ROAD_CROWN
 	var inner := hw + LIMIT_WIDTH   # the kerb starts where the limit line ends
 	var kerb := inner + KERB_WIDTH
 	var outer := kerb + CASING_WIDTH
@@ -312,10 +347,10 @@ static func _build_surface(parent: Node2D, line: PackedVector2Array, hw: float) 
 
 	# (offset from the centre line, colour) rails; consecutive pairs make a ribbon.
 	var bands := [
-		[hw, Palette.TRACK_EDGE, hw - shade, Palette.TRACK],
-		[hw - shade, Palette.TRACK, 0.0, crown],
-		[0.0, crown, -(hw - shade), Palette.TRACK],
-		[-(hw - shade), Palette.TRACK, -hw, Palette.TRACK_EDGE],
+		[hw, Palette.ROAD_EDGE, hw - shade, Palette.ROAD],
+		[hw - shade, Palette.ROAD, 0.0, crown],
+		[0.0, crown, -(hw - shade), Palette.ROAD],
+		[-(hw - shade), Palette.ROAD, -hw, Palette.ROAD_EDGE],
 	]
 	var mesh := ArrayMesh.new()
 	for band in bands:
@@ -372,11 +407,208 @@ static func _build_lane_dashes(parent: Node2D, line: PackedVector2Array) -> void
 		dash.antialiased = true
 		dash.begin_cap_mode = Line2D.LINE_CAP_ROUND
 		dash.end_cap_mode = Line2D.LINE_CAP_ROUND
-		dash.default_color = Color(Palette.GOLD, 0.55)
+		dash.default_color = Color(Palette.GOLD, 0.7)
 		for k in range(at, at + DASH_ON + 1):
 			dash.add_point(line[k])
 		parent.add_child(dash)
 		at += DASH_PERIOD
+
+
+static func _additive() -> CanvasItemMaterial:
+	var m := CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	return m
+
+
+## True when `p` is at least `clearance` px from every point of the centre line
+## (so a thing of that radius there stays off the road, other legs included).
+static func _clear_of(line: PackedVector2Array, p: Vector2, clearance: float) -> bool:
+	var c2 := clearance * clearance
+	for q in line:
+		if q.distance_squared_to(p) < c2:
+			return false
+	return true
+
+
+# --- Features: boost pads ----------------------------------------------------
+
+## Lays the track's boost pads on the road (see the header for the dict
+## format) and returns them.
+static func _build_features(track: Dictionary, line: PackedVector2Array, hw: float, parent: Node2D) -> Array:
+	var built: Array = []
+	var n := line.size()
+	for f in track.get("boost_pads", []):
+		var idx := posmod(int(float(f) * n), n)
+		var pad := BoostPad.new()
+		pad.position = line[idx]
+		pad.rotation = tangent(line, idx).angle()
+		parent.add_child(pad)
+		pad.setup(hw * 2.0)
+		built.append(pad)
+	return built
+
+
+# --- Scenery ---------------------------------------------------------------
+
+## Street lamps along the road (alternating sides) with warm pools of light on
+## the asphalt, and tyre stacks on the outside of the tight bends. Static: two
+## nodes draw it all, the light pools blended additively.
+static func _build_scenery(parent: Node2D, line: PackedVector2Array, hw: float) -> void:
+	var n := line.size()
+	var edge := hw + LIMIT_WIDTH + KERB_WIDTH + CASING_WIDTH
+	var lamps: Array = []   # [post, head, pool centre]
+	var side := 1.0
+	for i in range(0, n, LAMP_EVERY):
+		var t := tangent(line, i)
+		var nrm := Vector2(-t.y, t.x) * side
+		var post := line[i] + nrm * (edge + LAMP_OUT)
+		side = -side
+		if not _clear_of(line, post, edge + LAMP_OUT - 2.0):
+			continue   # another leg of the track runs here
+		lamps.append([post, line[i] + nrm * (edge - 4.0), line[i] + nrm * hw * 0.3])
+
+	var stacks: Array = []   # [centre, along]
+	var i := 0
+	while i < n:
+		var a := line[(i - 3 + n) % n]
+		var b := line[i]
+		var c := line[(i + 3) % n]
+		if bend_radius(a, b, c) < TYRE_BEND:
+			var out := (b * 2.0 - a - c).normalized()   # away from the bend's centre
+			var at := b + out * (edge + 22.0)
+			if _clear_of(line, at, edge + 14.0):
+				stacks.append([at, tangent(line, i)])
+				i += 25
+				continue
+		i += 1
+
+	var pools := Node2D.new()
+	pools.material = _additive()
+	var glow := HudStyle.glow()
+	var r := hw * 1.25 + 40.0
+	pools.draw.connect(func() -> void:
+		for lamp in lamps:
+			pools.draw_texture_rect(glow, Rect2(lamp[2] - Vector2(r, r), Vector2(r, r) * 2.0), false, Color(Palette.LAMP, 0.16))
+			pools.draw_texture_rect(glow, Rect2(lamp[1] - Vector2(16, 16), Vector2(32, 32)), false, Color(Palette.LAMP, 0.7))
+	)
+	parent.add_child(pools)
+
+	var props := Node2D.new()
+	props.draw.connect(func() -> void:
+		for lamp in lamps:
+			props.draw_line(lamp[0], lamp[1], Palette.INK, 5.0, true)
+			props.draw_circle(lamp[0] + Vector2(2, 3), 6.5, Color(Palette.BLACK, 0.5), true, -1.0, true)
+			props.draw_circle(lamp[0], 6.5, Palette.INK, true, -1.0, true)
+			props.draw_circle(lamp[0], 3.2, Palette.STROKE_STRONG, true, -1.0, true)
+			props.draw_circle(lamp[1], 5.0, Palette.INK, true, -1.0, true)
+			props.draw_circle(lamp[1], 3.4, Palette.LAMP, true, -1.0, true)
+		for stack in stacks:
+			var along: Vector2 = stack[1]
+			for k in [-1.0, 0.0, 1.0]:
+				var at: Vector2 = stack[0] + along * k * 17.0
+				props.draw_circle(at + Vector2(2, 4), 9.0, Color(Palette.BLACK, 0.5), true, -1.0, true)
+				props.draw_circle(at, 9.0, Palette.INK, true, -1.0, true)
+				props.draw_circle(at, 7.5, Palette.BLACK, true, -1.0, true)
+				props.draw_arc(at, 5.0, 0.0, TAU, 20, Palette.POP if k == 0.0 else Palette.TEXT_LIGHT, 2.0, true)
+				props.draw_circle(at, 2.6, Palette.INK, true, -1.0, true)
+	)
+	parent.add_child(props)
+
+
+## The start: a grandstand beside the road (on whichever side has room) and a
+## lit gantry spanning the road just past the line, drawn over the cars.
+static func _build_start(parent: Node2D, line: PackedVector2Array, hw: float, start_idx: int) -> void:
+	var n := line.size()
+	var edge := hw + LIMIT_WIDTH + KERB_WIDTH + CASING_WIDTH
+	var k := (start_idx + 8) % n
+	var t := tangent(line, k)
+	var nrm := Vector2(-t.y, t.x)
+
+	const STAND := Vector2(230.0, 58.0)   # along x across
+	var stand_side := 0.0
+	for side in [1.0, -1.0]:
+		var centre: Vector2 = line[k] + nrm * side * (edge + 20.0 + STAND.y * 0.5)
+		var ok := true
+		for corner in [Vector2(-0.5, -0.5), Vector2(0.5, -0.5), Vector2(0.5, 0.5), Vector2(-0.5, 0.5), Vector2.ZERO]:
+			var p: Vector2 = centre + t * corner.x * STAND.x + nrm * corner.y * STAND.y
+			if not _clear_of(line, p, edge + 10.0):
+				ok = false
+				break
+		if ok:
+			stand_side = side
+			break
+	if stand_side != 0.0:
+		var stand := Node2D.new()
+		stand.position = line[k] + nrm * stand_side * (edge + 20.0 + STAND.y * 0.5)
+		stand.rotation = t.angle() if stand_side < 0.0 else t.angle() + PI   # the crowd faces the road
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 77
+		var crowd: Array = []
+		for row in 3:
+			for col in 22:
+				crowd.append([Vector2(-STAND.x * 0.5 + 12.0 + col * 9.8 + rng.randf_range(-1.5, 1.5), -STAND.y * 0.5 + 9.0 + row * 12.0),
+					[Palette.POP, Palette.GOLD, Palette.SURFACE, Palette.POP_BRIGHT, Palette.SUCCESS, Palette.TEXT_LIGHT_MUTED][rng.randi() % 6]])
+		var font: Font = ThemeDB.fallback_font
+		var theme := ThemeDB.get_project_theme()
+		if theme != null and theme.default_font != null:
+			font = theme.default_font
+		stand.draw.connect(func() -> void:
+			var body := Rect2(-STAND * 0.5, STAND)
+			stand.draw_rect(Rect2(body.position + Vector2(4, 8), body.size), Color(Palette.BLACK, 0.5))
+			stand.draw_rect(body.grow(2.0), Palette.INK)
+			stand.draw_rect(body, Palette.BG_RAISED)
+			for row in 3:
+				stand.draw_rect(Rect2(-STAND.x * 0.5 + 4.0, -STAND.y * 0.5 + 4.0 + row * 12.0, STAND.x - 8.0, 10.0), Palette.STROKE_STRONG.darkened(0.45))
+			for fan in crowd:
+				stand.draw_circle(fan[0], 3.4, fan[1], true, -1.0, true)
+			# The roof edge at the back, in red and white; the game's name on a
+			# gold banner along the front, facing the road.
+			var roof := Rect2(-STAND.x * 0.5, -STAND.y * 0.5 - 12.0, STAND.x, 12.0)
+			stand.draw_rect(roof.grow(2.0), Palette.INK)
+			for j in 12:
+				stand.draw_rect(Rect2(roof.position.x + j * roof.size.x / 12.0, roof.position.y, roof.size.x / 12.0, roof.size.y),
+					Palette.POP if j % 2 == 0 else Palette.SURFACE)
+			var banner := Rect2(-STAND.x * 0.5, STAND.y * 0.5 - 12.0, STAND.x, 16.0)
+			stand.draw_rect(banner.grow(2.0), Palette.INK)
+			stand.draw_rect(banner, Palette.GOLD)
+			stand.draw_string(font, Vector2(-STAND.x * 0.5, banner.end.y - 3.0), "FOURWD  ·  FOURWD  ·  FOURWD",
+				HORIZONTAL_ALIGNMENT_CENTER, STAND.x, 13, Palette.INK)
+		)
+		parent.add_child(stand)
+
+	# The gantry: two pylons outside the kerbs and a beam of lights across the road.
+	var g := (start_idx + 5) % n
+	var gt := tangent(line, g)
+	var gantry := Node2D.new()
+	gantry.position = line[g]
+	gantry.rotation = gt.angle()
+	gantry.z_index = 4   # over the cars: they drive under it
+	var span := edge + 16.0
+	gantry.draw.connect(func() -> void:
+		gantry.draw_rect(Rect2(-7.0 + 6.0, -span + 10.0, 14.0, span * 2.0), Color(Palette.BLACK, 0.35))   # shadow
+		gantry.draw_rect(Rect2(-8.0, -span, 16.0, span * 2.0), Palette.INK)
+		gantry.draw_rect(Rect2(-5.0, -span + 3.0, 10.0, span * 2.0 - 6.0), Palette.BG_RAISED)
+		for y in [-span, span]:
+			gantry.draw_rect(Rect2(-12.0, y - 9.0, 24.0, 18.0), Palette.INK)
+			gantry.draw_rect(Rect2(-8.0, y - 5.0, 16.0, 10.0), Palette.POP)
+		var lights := 5
+		for j in lights:
+			var y := lerpf(-span * 0.6, span * 0.6, float(j) / float(lights - 1))
+			gantry.draw_circle(Vector2(0, y), 4.2, Palette.GOLD_BRIGHT, true, -1.0, true)
+	)
+	parent.add_child(gantry)
+	var halo := Node2D.new()
+	halo.material = _additive()
+	halo.position = gantry.position
+	halo.rotation = gantry.rotation
+	halo.z_index = 4
+	var glow := HudStyle.glow()
+	halo.draw.connect(func() -> void:
+		for j in 5:
+			var y := lerpf(-span * 0.6, span * 0.6, float(j) / 4.0)
+			halo.draw_texture_rect(glow, Rect2(Vector2(-18, y - 18), Vector2(36, 36)), false, Color(Palette.GOLD, 0.55))
+	)
+	parent.add_child(halo)
 
 
 # --- Obstacles -------------------------------------------------------------

@@ -14,28 +14,47 @@ extends CharacterBody2D
 ## Work is done in the body frame (vx = forward speed, vy = sideways speed) then
 ## recomposed into the world `velocity` (px/s). Forces are expressed directly as
 ## accelerations (px/s^2), so `accel_force` stays the forward acceleration and
-## game.gd can keep setting `max_speed`/`accel_force` per level.
+## game.gd can keep setting `max_speed`/`accel_force` per level. The cruising
+## speed is where `accel_force` meets `rolling_resistance` + `drag`; scale all
+## three together to change how quickly the car gets there without moving it.
 ##
-## Feel/FX owned here: a held BOOST (extra thrust + raised speed ceiling on a
-## meter), skid marks + dust on a drift, wall-impact screen shake, a
-## speed-sensitive camera dolly (zooms out at speed), and rear brake lights.
-## The look is dressed in code too (`_build_visuals`): a soft shadow under the
-## car, darker flanks round a lighter deck, and a glass cockpit.
+## Feel owned here: a held BOOST (extra thrust + raised speed ceiling on a
+## meter), skid marks on a drift, wall-impact screen shake and a speed-sensitive
+## camera dolly (zooms out at speed). The track's boost pads call in too:
+## `hit_boost_pad` (a short hard push along the road).
+## The car is drawn by its "Look" child (car_look.gd) and its effects and
+## sounds come from its "Fx" child (car_fx.gd); a soft shadow stays on the
+## ground under it.
 ##
 ## It also reports wall contact: `wall_touched` fires once per NEW touch (one
 ## scrape or bounce is one touch), which game.gd counts toward game over. The
-## collision box (Car.tscn, 42 x 63) covers the drawn tyres, so a hit happens
+## collision box (Car.tscn, 38 x 60) covers the drawn tyres, so a hit happens
 ## the moment a tyre reaches the white limit line, never after it rides over.
 
 ## A new contact with a track wall. See `_note_wall_contact` for what "new" means.
 signal wall_touched
 
+const CarLook := preload("res://scripts/car_look.gd")
+const CarFx := preload("res://scripts/car_fx.gd")
+
 # --- Drive / speed ---------------------------------------------------------
 @export var max_speed: float = 340.0          # forward top speed (set per level)
-@export var accel_force: float = 300.0        # forward drive accel (set per level)
-@export var brake_force: float = 600.0        # braking decel
-@export var rolling_resistance: float = 0.9   # linear coast-down (1/s)
-@export var drag: float = 0.0016              # quadratic drag
+@export var accel_force: float = 120.0        # forward drive accel (set per level)
+@export var brake_force: float = 1200.0       # braking decel
+@export var rolling_resistance: float = 0.36  # linear coast-down (1/s)
+@export var drag: float = 0.0008              # quadratic drag
+# 2026-11-21: the drive (LEVELS accel_force), rolling_resistance, drag and
+# boost_accel were all cut to 0.4x (the user: "it instantly hits full speed on
+# mobile"), so the cruising speed is the same but it takes ~2.5x as long to
+# reach: half speed 0.45 -> 1.1 s, 90% 1.3 -> 3.2 s. Lifting off now slows the
+# car less (1 s of coasting keeps 59% of its speed, was 30%), so the brakes
+# were doubled too (600 -> 1200; the user: "make the brakes stronger"): a stop
+# from cruising speed takes 0.45 -> 0.3 s and a third less road. The bot's laps
+# got ~5% slower (LEVELS medals moved with them) and hit walls 29 -> 23 times.
+# 2026-11-22: every car 20% slower (the user: still "very difficult on mobile"):
+# LEVELS max_speed/accel_force and boost_accel x0.8, drag / 0.8, so the cruising
+# speed drops a fifth (Level 1: 334 -> 268 px/s) while the time to reach it is
+# unchanged (rolling_resistance sets that and stays put).
 
 # --- Geometry / mass-feel --------------------------------------------------
 @export var wheelbase: float = 50.0
@@ -46,14 +65,17 @@ signal wall_touched
 # --- Tyres (the heart of the feel) -----------------------------------------
 @export var cornering_stiffness_front: float = 3500.0
 @export var cornering_stiffness_rear: float = 4200.0  # > front => the tail stays planted
-@export var grip_accel: float = 800.0          # max lateral accel before the tyre slides
+@export var grip_accel: float = 1400.0         # max lateral accel before the tyre slides
 @export_range(0, 1) var handbrake_rear_grip: float = 0.15  # rear grip multiplier on handbrake
 # How fast a sideways slide is pulled back toward the line the wheels point
 # along (1/s). 0 = pure tyre model (slides a lot); higher = more planted.
 # 2026-11-20: grip 520 -> 800, rear 3100 -> 4200 and traction 0 -> 6 (the user
 # found the car drifted into the walls). A driver bot lapping all five levels
 # the same way hit walls 26 -> 9 times and lapped faster on every level.
-@export var traction: float = 6.0
+# 2026-11-21: grip 800 -> 1400 and traction 6 -> 30 (the user: "reduce drift").
+# Full lock at top speed slides 25% -> 16% sideways; the bot's hard laps of all
+# seven levels hit walls 41 -> 29 times. The handbrake still drifts (62% -> 55%).
+@export var traction: float = 30.0
 @export_range(0, 1) var handbrake_traction: float = 0.2    # share of traction kept on the handbrake
 
 # --- Steering --------------------------------------------------------------
@@ -77,13 +99,18 @@ signal wall_touched
 # A held boost (Shift / on-screen BOOST) burns a meter for extra forward thrust
 # and a higher speed ceiling; the meter refills when not boosting. After a boost
 # the overspeed bleeds off smoothly (no hard snap back to max_speed).
-@export var boost_accel: float = 460.0               # extra forward accel while boosting
+@export var boost_accel: float = 184.0               # extra forward accel while boosting
 @export var boost_speed_mult: float = 1.45           # top-speed multiplier while boosting
 @export var boost_duration: float = 1.6              # seconds of boost from a full meter
 @export var boost_recharge_rate: float = 0.35        # meter refilled per second when idle
 @export_range(0, 1) var boost_min_to_fire: float = 0.15   # min meter to start a fresh boost
 @export var boost_decel: float = 700.0               # overspeed bleed-off after boost (px/s^2)
 @export_range(0.5, 1.0) var boost_zoom_out: float = 0.92  # extra camera dolly-out while boosting
+
+# --- Boost pads (track_builder.gd lays them; boost_pad.gd calls in) ----------
+@export var pad_kick: float = 70.0           # px/s added along the pad at once
+@export var pad_accel: float = 320.0         # extra forward accel while the push lasts
+@export var pad_time: float = 0.9            # s the push lasts
 
 @export_range(0, 1) var collision_speed_keep: float = 0.5
 
@@ -109,30 +136,28 @@ var _since_wall_touch: float = INF
 
 # --- Juice / FX ---
 const MAX_SKID_LINES := 60
-var _dust: CPUParticles2D
 var _shake: float = 0.0
 var _tiremarks: Node2D
 var _skid_active: bool = false
 var _skid_l: Line2D
 var _skid_r: Line2D
 var _skid_all: Array = []
-var _brake_l: Polygon2D
-var _brake_r: Polygon2D
+var _look: Node2D         # CarLook: draws the car
+var _fx: Node2D           # CarFx: sparks, smoke, trails, speed lines, sounds
+var _pad_t: float = 0.0   # time left on a boost pad's push
 
-# --- Fake jump (ramps): a short hop that scales the visuals up and drops all
-#     collision so the car sails over obstacles, then lands. ---
+# --- Fake jump (the dormant obstacle ramps): a short hop that scales the
+#     look up and drops all collision so the car sails over obstacles. ---
 var _air_t: float = 0.0
 var _air_dur: float = 0.0
 var _base_layer: int = 1
 var _base_mask: int = 1
-var _visual_nodes: Array = []
 var _shadow: Sprite2D
 const SHADOW_REST := Vector2(4.0, 7.0)    # where the shadow lies with the car on the ground
 const SHADOW_ALPHA := 0.8
-const SHADOW_LIFT := Vector2(9.0, 15.0)   # extra drift at the top of a hop
-
-@onready var _front_wheels := [$WheelFL, $WheelFR]
-@onready var _rear_wheels := [$WheelRL, $WheelRR]
+const SHADOW_LIFT := Vector2(18.0, 30.0)  # extra drift at the top of a jump
+const WHEEL_RL := Vector2(-16, 21)
+const WHEEL_RR := Vector2(16, 21)
 
 
 func _ready() -> void:
@@ -140,40 +165,6 @@ func _ready() -> void:
 	# TireMarks is a sibling of the Cars node under the race scene root.
 	var scene := get_tree().current_scene
 	_tiremarks = scene.get_node_or_null("TireMarks") if scene != null else null
-	_dust = CPUParticles2D.new()
-	_dust.local_coords = false
-	_dust.emitting = false
-	_dust.amount = 20
-	_dust.lifetime = 0.5
-	_dust.position = Vector2(0, 24)
-	_dust.spread = 50.0
-	_dust.gravity = Vector2.ZERO
-	_dust.initial_velocity_min = 15.0
-	_dust.initial_velocity_max = 50.0
-	_dust.scale_amount_min = 1.5
-	_dust.scale_amount_max = 3.5
-	_dust.color = Color(0.7, 0.68, 0.6, 0.5)
-	add_child(_dust)
-
-	# Rear brake lights (created in code like the dust); lit when braking/handbraking.
-	_brake_l = _make_brake_light(Vector2(-10, 27))
-	_brake_r = _make_brake_light(Vector2(10, 27))
-
-	_build_visuals()
-	_visual_nodes = [$Body, $Nose, $WheelFL, $WheelFR, $WheelRL, $WheelRR]
-
-
-## Dresses the plain shapes from Car.tscn so the car reads as a lit object
-## rather than a flat cut-out. Colours are Palette tokens (red-orange POP = the
-## player, a gold nose).
-func _build_visuals() -> void:
-	var body: Polygon2D = $Body
-	body.polygon = PackedVector2Array([
-		Vector2(-5, -32), Vector2(5, -32), Vector2(13, -25), Vector2(16, -15), Vector2(16, 22),
-		Vector2(13, 28), Vector2(-13, 28), Vector2(-16, 22), Vector2(-16, -15), Vector2(-13, -25),
-	])
-	body.color = Palette.POP_DEEP   # the flanks; the lighter deck sits on top
-	HudStyle.feather(body)
 
 	# A soft blob of shadow, first in the tree so it lies under everything else.
 	_shadow = Sprite2D.new()
@@ -184,49 +175,30 @@ func _build_visuals() -> void:
 	add_child(_shadow)
 	move_child(_shadow, 0)
 
-	# Children of Body draw over it and follow it when a hop scales it up.
-	_add_shape(body, [
-		Vector2(-4, -28.5), Vector2(4, -28.5), Vector2(10, -23), Vector2(12.5, -14), Vector2(12.5, 21),
-		Vector2(10, 25), Vector2(-10, 25), Vector2(-12.5, 21), Vector2(-12.5, -14), Vector2(-10, -23),
-	], Palette.POP)
-	_add_shape(body, [
-		Vector2(-3, -27), Vector2(3, -27), Vector2(3, -12), Vector2(-3, -12),
-	], Palette.GOLD)                                          # racing stripe
-	_add_shape(body, [
-		Vector2(-9, -10), Vector2(9, -10), Vector2(10.5, 5), Vector2(8.5, 15),
-		Vector2(-8.5, 15), Vector2(-10.5, 5),
-	], Palette.INK)                                           # cockpit glass
-	_add_shape(body, [
-		Vector2(-8, -8.5), Vector2(8, -8.5), Vector2(8.8, -3.5), Vector2(-8.8, -3.5),
-	], Color(Palette.TEXT_LIGHT, 0.3))                        # windscreen glint
-
-	$Nose.color = Palette.GOLD
-	HudStyle.feather($Nose)
-	for wheel in [$WheelFL, $WheelFR, $WheelRL, $WheelRR]:
-		wheel.color = Palette.BLACK
-		HudStyle.feather(wheel)
+	_look = CarLook.new()
+	_look.name = "Look"
+	add_child(_look)
+	_fx = CarFx.new()
+	_fx.name = "Fx"
+	_fx.car = self
+	add_child(_fx)
 
 
-## Adds a filled shape under `parent`; opaque ones get a smoothed edge.
-func _add_shape(parent: Node, points: Array, color: Color) -> Polygon2D:
-	var shape := Polygon2D.new()
-	shape.polygon = PackedVector2Array(points)
-	shape.color = color
-	parent.add_child(shape)
-	if color.a >= 1.0:
-		HudStyle.feather(shape)
-	return shape
+func _is_puppet() -> bool:
+	return Net.is_multiplayer and not is_multiplayer_authority()
 
 
 func _physics_process(delta: float) -> void:
 	# Online: only the owning peer simulates its car. Everyone else's car is a
 	# puppet whose transform/steer arrive via the MultiplayerSynchronizer; we just
 	# reflect the synced wheel angles. (No-op in single-player.)
-	if Net.is_multiplayer and not is_multiplayer_authority():
+	if _is_puppet():
 		_update_wheel_visuals()
 		return
 
-	_update_airborne(delta)
+	if _air_t > 0.0:
+		_fly(delta)
+		return
 	_update_steering(delta)
 
 	var fwd := Vector2.from_angle(rotation - PI / 2.0)
@@ -257,6 +229,10 @@ func _physics_process(delta: float) -> void:
 		drive += boost_accel
 	else:
 		boost_meter = minf(1.0, boost_meter + boost_recharge_rate * delta)
+	var pushed := _pad_t > 0.0   # a boost pad's push
+	if pushed:
+		_pad_t -= delta
+		drive += pad_accel
 
 	var ax_drive := drive * 0.5 * (cos(front_steer) + cos(rear_steer))
 	var ay_drive := drive * 0.5 * (sin(front_steer) + sin(rear_steer))
@@ -296,7 +272,7 @@ func _physics_process(delta: float) -> void:
 
 	# --- Clamp forward speed: boost raises the ceiling instantly, then it eases
 	#     back down to max_speed so the overspeed bleeds off smoothly. ---
-	if _boosting:
+	if _boosting or pushed:
 		_speed_cap = max_speed * boost_speed_mult
 	else:
 		_speed_cap = move_toward(_speed_cap, max_speed, boost_decel * delta)
@@ -305,30 +281,43 @@ func _physics_process(delta: float) -> void:
 	ang_vel = omega
 	rotation += omega * delta
 
-	_since_wall_contact += delta
-	_since_wall_touch += delta
-	var collision := move_and_collide(velocity * delta)
-	if collision:
-		_note_wall_contact(collision.get_collider())
-		velocity = velocity.slide(collision.get_normal()) * collision_speed_keep
-		ang_vel *= 0.5
-		if speed > 120.0:
-			_shake = minf(5.0 + speed * 0.012, 14.0)
+	_move(delta, speed)
 
 	var skidding := speed > 40.0 and (handbrake or absf(vy) > 70.0)
 	var braking := handbrake or (thr < 0.0 and vx > 5.0)
-	_update_tire_fx(skidding, _boosting)
-	_update_brake_lights(braking)
+	_update_tire_fx(skidding)
+	_look.braking = braking
+	_look.flame = move_toward(_look.flame, 1.0 if (_boosting or pushed) else 0.0, delta * 6.0)
+	_fx.update(delta, speed / maxf(max_speed, 1.0), skidding, _boosting or pushed)
 	_update_camera_zoom(delta, speed)
 	_apply_shake(delta)
 	_update_wheel_visuals()
 
 
-## Called on every frame the car collides. Emits `wall_touched` only when this
-## is the start of a new touch (see the constants above).
-func _note_wall_contact(collider: Object) -> void:
+## Moves the car one step; a wall stops it like a cushion (slide along it,
+## shed speed), throws sparks and, at speed, shakes the camera.
+func _move(delta: float, speed: float) -> void:
+	_since_wall_contact += delta
+	_since_wall_touch += delta
+	var collision := move_and_collide(velocity * delta)
+	if collision == null:
+		return
+	var normal := collision.get_normal()
+	var fresh := _note_wall_contact(collision.get_collider())
+	_fx.contact(collision.get_position(), normal, velocity)
+	if fresh:
+		_fx.crash(collision.get_position(), normal, speed)
+	velocity = velocity.slide(normal) * collision_speed_keep
+	ang_vel *= 0.5
+	if speed > 120.0:
+		_shake = minf(5.0 + speed * 0.012, 14.0) * (1.5 if fresh else 1.0)
+
+
+## Called on every frame the car collides. Emits `wall_touched` (and returns
+## true) only when this is the start of a new touch (see the constants above).
+func _note_wall_contact(collider: Object) -> bool:
 	if not (collider is StaticBody2D):
-		return   # another car, not a wall
+		return false   # another car, not a wall
 	var fresh := (
 		_since_wall_contact >= WALL_RELEASE_TIME
 		and _since_wall_touch >= WALL_TOUCH_GRACE
@@ -339,6 +328,7 @@ func _note_wall_contact(collider: Object) -> void:
 	if fresh:
 		_since_wall_touch = 0.0
 		wall_touched.emit()
+	return fresh
 
 
 func _update_steering(delta: float) -> void:
@@ -359,10 +349,8 @@ func _update_steering(delta: float) -> void:
 
 
 func _update_wheel_visuals() -> void:
-	for w in _front_wheels:
-		w.rotation = front_steer
-	for w in _rear_wheels:
-		w.rotation = rear_steer
+	_look.front_steer = front_steer
+	_look.rear_steer = rear_steer
 
 
 ## Soft-cone hit (called by cone.gd): bleed some speed + a small jolt.
@@ -372,39 +360,63 @@ func hit_cone() -> void:
 	_shake = maxf(_shake, 4.0)
 
 
-## Start a fake hop (called by ramp.gd): drop all collision so we sail over
-## obstacles, and scale the visuals up for a height illusion.
+## A boost pad (boost_pad.gd): a kick along the road at once, then a hard
+## push for `pad_time` that may run past max_speed (it bleeds off after).
+func hit_boost_pad(forward: Vector2) -> void:
+	if _is_puppet():
+		return
+	_pad_t = pad_time
+	velocity += forward * pad_kick
+	_fx.boost_pad()
+
+
+## Start a fake hop (called by ramp.gd, the dormant obstacle): drop all
+## collision so we sail over obstacles, and scale the visuals up for height.
 func jump(dur: float) -> void:
 	if _air_t <= 0.0:
 		_base_layer = collision_layer
 		_base_mask = collision_mask
 		collision_layer = 0
 		collision_mask = 0
+		_fx.launch()
 	_air_dur = maxf(dur, 0.1)
 	_air_t = _air_dur
 
 
-func _update_airborne(delta: float) -> void:
-	if _air_t <= 0.0:
-		return
+## One physics step in the air: no grip, no steering, no throttle; the car
+## carries on (a little air drag) while the Look grows toward the camera and
+## the shadow drifts off.
+func _fly(delta: float) -> void:
 	_air_t -= delta
-	# Scale peaks at mid-hop (sine arc), back to 1 at landing.
 	var p := clampf(1.0 - _air_t / _air_dur, 0.0, 1.0)
 	var height := sin(p * PI)
-	var s := 1.0 + height * 0.4
-	for nd in _visual_nodes:
-		nd.scale = Vector2(s, s)
-	# The shadow slides away and thins as the car rises.
+	_look.set_air(height)
 	_shadow.position = SHADOW_REST + SHADOW_LIFT * height
-	_shadow.modulate.a = SHADOW_ALPHA * (1.0 - height * 0.5)
+	_shadow.modulate.a = SHADOW_ALPHA * (1.0 - height * 0.55)
+	_shadow.scale = Vector2(78.0, 104.0) * (1.0 - height * 0.25) / _shadow.texture.get_size()
+	ang_vel = 0.0
+	velocity *= 1.0 - 0.1 * delta
+	boost_meter = minf(1.0, boost_meter + boost_recharge_rate * delta)
+	var speed := velocity.length()
+	_move(delta, speed)
+	_look.flame = move_toward(_look.flame, 0.0, delta * 6.0)
+	_fx.update(delta, speed / maxf(max_speed, 1.0), false, false)
 	if _air_t <= 0.0:
-		collision_layer = _base_layer
-		collision_mask = _base_mask
-		for nd in _visual_nodes:
-			nd.scale = Vector2.ONE
-		_shadow.position = SHADOW_REST
-		_shadow.modulate.a = SHADOW_ALPHA
-		_shake = maxf(_shake, 6.0)   # landing thump
+		_land()
+	_update_camera_zoom(delta, speed)
+	_apply_shake(delta)
+
+
+func _land() -> void:
+	_air_t = 0.0
+	_look.set_air(0.0)
+	_shadow.position = SHADOW_REST
+	_shadow.modulate.a = SHADOW_ALPHA
+	_shadow.scale = Vector2(78.0, 104.0) / _shadow.texture.get_size()
+	collision_layer = _base_layer
+	collision_mask = _base_mask
+	_shake = maxf(_shake, 7.0)   # landing thump
+	_fx.land()
 
 
 ## Eases the camera out as speed rises (more road visible at speed) and back in
@@ -414,41 +426,25 @@ func _update_camera_zoom(delta: float, speed: float) -> void:
 	var target := camera_zoom_rest * lerpf(1.0, camera_zoom_at_top, t)
 	if Layout.portrait:
 		target *= camera_zoom_portrait
-	if _boosting:
+	if _boosting or _pad_t > 0.0:
 		target *= boost_zoom_out
 	var cam := $Camera2D
 	var z := lerpf(cam.zoom.x, target, clampf(camera_zoom_lerp * delta, 0.0, 1.0))
 	cam.zoom = Vector2(z, z)
 
 
-func _make_brake_light(pos: Vector2) -> Polygon2D:
-	var p := Polygon2D.new()
-	p.polygon = PackedVector2Array([Vector2(-5, -2), Vector2(5, -2), Vector2(5, 2), Vector2(-5, 2)])
-	p.position = pos
-	p.color = Color(1.0, 0.18, 0.12)
-	p.visible = false
-	add_child(p)
-	return p
-
-
-func _update_brake_lights(braking: bool) -> void:
-	if _brake_l != null:
-		_brake_l.visible = braking
-		_brake_r.visible = braking
-
-
-func _update_tire_fx(skidding: bool, dust_extra: bool = false) -> void:
-	if _dust != null:
-		_dust.emitting = skidding or dust_extra
+## Skid marks from the rear tyres while sliding (tyre smoke is the Fx's).
+func _update_tire_fx(skidding: bool) -> void:
 	if skidding and _tiremarks != null:
 		if not _skid_active:
 			_skid_active = true
 			_skid_l = _new_skid_line()
 			_skid_r = _new_skid_line()
+		var rl := to_global(WHEEL_RL)
 		var pc := _skid_l.get_point_count()
-		if pc == 0 or _skid_l.get_point_position(pc - 1).distance_to($WheelRL.global_position) > 4.0:
-			_skid_l.add_point($WheelRL.global_position)
-			_skid_r.add_point($WheelRR.global_position)
+		if pc == 0 or _skid_l.get_point_position(pc - 1).distance_to(rl) > 4.0:
+			_skid_l.add_point(rl)
+			_skid_r.add_point(to_global(WHEEL_RR))
 	else:
 		_skid_active = false
 
@@ -456,7 +452,7 @@ func _update_tire_fx(skidding: bool, dust_extra: bool = false) -> void:
 func _new_skid_line() -> Line2D:
 	var l := Line2D.new()
 	l.width = 6.0
-	l.default_color = Color(0.05, 0.05, 0.05, 0.5)
+	l.default_color = Color(Palette.BLACK, 0.55)
 	l.joint_mode = Line2D.LINE_JOINT_ROUND
 	l.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	l.end_cap_mode = Line2D.LINE_CAP_ROUND

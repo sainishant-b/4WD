@@ -19,6 +19,7 @@ const OUTLINE := 3            # px of INK round every raised thing
 const LIP := 5                # px of hard INK lip under a raised panel
 const STRIPE := 28.0          # px: width of one backdrop stripe ...
 const STRIPE_PERIOD := 56.0   # ... and the distance between stripes (both across them)
+const STRIPE_SPEED := 24.0    # px/s the backdrop stripes drift to the right
 const CHEQUER := 22.0         # px: height of the chequered strip (two rows of squares)
 
 # Line icons as SVG path data on a 24 x 24 grid, for `icon()`.
@@ -33,9 +34,12 @@ const KEYBOARD_LEGEND := [
 	[["W", "S"], "DRIVE"], [["A", "D"], "FRONT"], [["<", ">"], "REAR"],
 	[["SHIFT"], "BOOST"], [["SPACE"], "DRIFT"], [["ESC"], "PAUSE"],
 ]
-# On touch a cap is a thumb pad pushed up or pulled down; two caps = both pads.
+# On touch a cap is a thumb pad, drawn like the real one (`pad_icon()`): "F" =
+# the left (front, red) pad, "R" = the right (rear, gold) one, then which way its
+# knob goes. Between two pads "/" means either one, "+" means both at once.
 const TOUCH_LEGEND := [
-	[["^"], "DRIVE"], [["^", "^"], "BOOST"], [["v"], "DRIFT"], [["v", "v"], "BRAKE"],
+	[["F^", "/", "R^"], "DRIVE"], [["F^", "+", "R^"], "BOOST"],
+	[["Fv", "/", "Rv"], "DRIFT"], [["Fv", "+", "Rv"], "BRAKE"],
 ]
 
 static var _glow: GradientTexture2D
@@ -270,7 +274,7 @@ static func rim() -> Texture2D:
 
 ## The controls as rows of "cap + action" pairs, `per_row` pairs to a row, in
 ## the bold display face. Keyboard keys are drawn as key caps; touch gestures
-## as little thumb pads (two = both pads, in the pads' own red and gold).
+## as little copies of the thumb pads, in the pads' own red and gold.
 ## Actions named in `omit` (e.g. "FRONT") are left out; `extra` entries (same
 ## shape as the legends, e.g. [["H"], "HIDE"]) are added at the end.
 ## `text_color` is the action words' colour: ink on a cream panel, TEXT_LIGHT
@@ -295,12 +299,20 @@ static func controls_legend(touch: bool, per_row: int, font_size: int, omit: Arr
 		var pair := HBoxContainer.new()
 		pair.add_theme_constant_override("separation", 5)
 		pair.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var caps: Array = entries[i][0]
-		for k in caps.size():
-			var tint := Palette.TEXT_LIGHT_MUTED
-			if touch and caps.size() > 1:
-				tint = Palette.POP if k == 0 else Palette.GOLD
-			pair.add_child(cap(String(caps[k]), font_size, touch, tint))
+		for token: String in entries[i][0]:
+			if token == "/" or token == "+":
+				var joiner := Label.new()
+				joiner.text = token
+				joiner.add_theme_font_size_override("font_size", font_size)
+				joiner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+				joiner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				style_panel_label(joiner, Color(text_color, 0.7))
+				pair.add_child(joiner)
+			elif touch:
+				var tint := Palette.POP if token.begins_with("F") else Palette.GOLD
+				pair.add_child(pad_icon(token.substr(1), font_size + 20.0, tint))
+			else:
+				pair.add_child(cap(token, font_size))
 		var action := Label.new()
 		action.text = String(entries[i][1])
 		action.add_theme_font_size_override("font_size", font_size)
@@ -312,58 +324,41 @@ static func controls_legend(touch: bool, per_row: int, font_size: int, omit: Arr
 	return rows
 
 
-## One cap of the legend: a cream key cap with an INK rim and a deep front face
-## (keyboard), or a round deep-blue thumb pad ringed in `tint` (touch), holding
-## a letter or a drawn arrow ("<" ">" "^" "v", or "<>" for a pad slid either way).
-static func cap(token: String, font_size: int, round_pad: bool, tint: Color) -> Control:
+## One key cap of the legend: cream with an INK rim and a deep front face,
+## holding a letter or a drawn arrow ("<" ">" "^" "v").
+static func cap(token: String, font_size: int) -> Control:
 	var key := PanelContainer.new()
 	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()
 	sb.anti_aliasing = true
-	if round_pad:
-		sb.bg_color = Palette.BG_RAISED
-		sb.border_color = tint
-		sb.set_border_width_all(3)
-		sb.set_corner_radius_all(999)
-		sb.set_content_margin_all(0)
-		sb.shadow_color = Palette.INK
-		sb.shadow_size = 1
-		sb.shadow_offset = Vector2(0, 2)
-	else:
-		sb.bg_color = Palette.SURFACE
-		sb.border_color = Palette.INK
-		sb.set_border_width_all(2)
-		sb.border_width_bottom = 5   # the key's front face
-		sb.set_corner_radius_all(6)
-		sb.content_margin_left = 7.0
-		sb.content_margin_right = 7.0
-		sb.content_margin_top = 1.0
-		sb.content_margin_bottom = 3.0
+	sb.bg_color = Palette.SURFACE
+	sb.border_color = Palette.INK
+	sb.set_border_width_all(2)
+	sb.border_width_bottom = 5   # the key's front face
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 7.0
+	sb.content_margin_right = 7.0
+	sb.content_margin_top = 1.0
+	sb.content_margin_bottom = 3.0
 	key.add_theme_stylebox_override("panel", sb)
-	var ink := Palette.TEXT_LIGHT if round_pad else Palette.TEXT
+	var ink := Palette.TEXT
 
-	var arrows := {
-		"<": [Vector2.LEFT], ">": [Vector2.RIGHT], "^": [Vector2.UP], "v": [Vector2.DOWN],
-		"<>": [Vector2.LEFT, Vector2.RIGHT],
-	}
+	var arrows := {"<": Vector2.LEFT, ">": Vector2.RIGHT, "^": Vector2.UP, "v": Vector2.DOWN}
 	if arrows.has(token):
-		var dirs: Array = arrows[token]
+		var dir: Vector2 = arrows[token]
 		var icon := Control.new()
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var side := font_size + 10.0
-		icon.custom_minimum_size = Vector2(side, side) if round_pad else Vector2(font_size, font_size * 1.3)
+		icon.custom_minimum_size = Vector2(font_size, font_size * 1.3)
 		icon.draw.connect(func() -> void:
-			var r := font_size * (0.22 if dirs.size() > 1 else 0.32)
-			for dir: Vector2 in dirs:
-				# A pair of arrows sits apart, one either side of the middle.
-				var c := icon.size * 0.5 + (dir * font_size * 0.36 if dirs.size() > 1 else Vector2.ZERO)
-				var across := Vector2(-dir.y, dir.x)
-				var pts := PackedVector2Array([
-					c + dir * r, c - dir * r * 0.8 + across * r, c - dir * r * 0.8 - across * r,
-				])
-				icon.draw_colored_polygon(pts, ink)
-				pts.append(pts[0])
-				icon.draw_polyline(pts, ink, 1.0, true)
+			var r := font_size * 0.32
+			var c := icon.size * 0.5
+			var across := Vector2(-dir.y, dir.x)
+			var pts := PackedVector2Array([
+				c + dir * r, c - dir * r * 0.8 + across * r, c - dir * r * 0.8 - across * r,
+			])
+			icon.draw_colored_polygon(pts, ink)
+			pts.append(pts[0])
+			icon.draw_polyline(pts, ink, 1.0, true)
 		)
 		key.add_child(icon)
 	else:
@@ -378,6 +373,51 @@ static func cap(token: String, font_size: int, round_pad: bool, tint: Color) -> 
 	return key
 
 
+## A little copy of a thumb pad (touch_controls.gd), `side` px across: a deep
+## blue well ringed in the pad's colour (`tint`: POP = left/front, GOLD =
+## right/rear) and its knob in the same colour. For "^" "v" "<" ">" the knob is
+## pushed that way with a white chevron behind it; for "<>" (slide either way)
+## it sits in the middle between two chevrons.
+static func pad_icon(token: String, side: float, tint: Color) -> Control:
+	var dirs := {"<": Vector2.LEFT, ">": Vector2.RIGHT, "^": Vector2.UP, "v": Vector2.DOWN}
+	var icon := Control.new()
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.custom_minimum_size = Vector2(side, side + 2.0)   # + the lip
+	icon.draw.connect(func() -> void:
+		var r := side * 0.5
+		var c := Vector2(icon.size.x * 0.5, r)
+		icon.draw_circle(c + Vector2(0, 2), r, Palette.INK, true, -1.0, true)   # the lip
+		icon.draw_circle(c, r, Palette.INK, true, -1.0, true)
+		icon.draw_circle(c, r - 2.0, Palette.BG_RAISED, true, -1.0, true)
+		icon.draw_arc(c, r - 3.5, 0.0, TAU, 40, tint, 3.0, true)
+		var room := r - 5.0          # inside the ring
+		var chev := side * 0.095     # chevron size
+		var knob_r := side * 0.19
+		var at := c
+		if dirs.has(token):
+			var dir: Vector2 = dirs[token]
+			at = c + dir * (room - knob_r)
+			# Its tip clears the knob's INK rim (knob_r + 1.5) by 1.5 px.
+			var back := knob_r + 1.5 - (room - knob_r) + 1.5
+			_chevron(icon, c - dir * back, dir, chev)
+		else:
+			knob_r = side * 0.15
+			_chevron(icon, c + Vector2.LEFT * (room - 0.5), Vector2.LEFT, chev)
+			_chevron(icon, c + Vector2.RIGHT * (room - 0.5), Vector2.RIGHT, chev)
+		icon.draw_circle(at, knob_r + 1.5, Palette.INK, true, -1.0, true)
+		icon.draw_circle(at, knob_r, tint, true, -1.0, true)
+	)
+	return icon
+
+
+## A white chevron with its tip at `tip`, pointing along `dir`.
+static func _chevron(item: CanvasItem, tip: Vector2, dir: Vector2, size: float) -> void:
+	var across := Vector2(-dir.y, dir.x)
+	item.draw_polyline(PackedVector2Array([
+		tip - dir * size + across * size, tip, tip - dir * size - across * size,
+	]), Palette.TEXT_LIGHT, 2.0, true)
+
+
 ## Draws a soft round glow (or, with a dark colour, a soft shadow) on `item`.
 static func draw_glow(item: CanvasItem, centre: Vector2, radius: float, color: Color) -> void:
 	item.draw_texture_rect(
@@ -386,24 +426,34 @@ static func draw_glow(item: CanvasItem, centre: Vector2, radius: float, color: C
 
 
 ## The shared menu background: saturated cobalt with wide diagonal stripes a
-## shade darker. Call it first in a screen's `_build()`.
+## shade darker, drifting slowly to the right. Call it first in a screen's
+## `_build()`.
 static func add_backdrop(screen: Control) -> void:
-	var bg := Control.new()
+	var bg := Backdrop.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg.draw.connect(func() -> void:
-		var area := Rect2(Vector2.ZERO, bg.size)
-		bg.draw_rect(area, Palette.BG)
+	screen.add_child(bg)
+
+
+## The striped backdrop (see `add_backdrop`). The stripes' place comes from the
+## clock, not from when the screen opened, so they carry on without a jump
+## from one menu screen to the next. The Reddit pages' CSS (`stripes-drift` in
+## reddit/public/styles) moves theirs at the same speed.
+class Backdrop extends Control:
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		var area := Rect2(Vector2.ZERO, size)
+		draw_rect(area, Palette.BG)
 		# Stripes run up to the right at 45 degrees; `step` is the period along x.
 		var step := STRIPE_PERIOD * sqrt(2.0)
 		var reach := area.size.y + STRIPE * 2.0
-		var x := 0.0
+		var x := fmod(Time.get_ticks_msec() * 0.001 * STRIPE_SPEED, step) - step
 		while x < area.size.x + reach:
 			var top := Vector2(x + STRIPE, -STRIPE)
-			bg.draw_line(top, top + Vector2(-reach, reach), Palette.BG_STRIPE, STRIPE, true)
+			draw_line(top, top + Vector2(-reach, reach), Palette.BG_STRIPE, STRIPE, true)
 			x += step
-	)
-	screen.add_child(bg)
 
 
 ## Smooths the edge of an opaque Polygon2D by tracing it with a thin

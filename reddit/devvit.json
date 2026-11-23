@@ -25,7 +25,7 @@
     "items": [
       {
         "label": "Post today's Daily Circuit",
-        "description": "Four Wheel Steer",
+        "description": "fourwd",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"

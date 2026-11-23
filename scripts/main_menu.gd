@@ -1,10 +1,10 @@
 extends Control
-## Title screen: Play -> Level Select (ranked: one lap, three wall hits; on
+## Title screen: Play -> Level Select (ranked: one lap, five wall hits; on
 ## Reddit, Today's Circuit), Casual -> every map for three laps with no wall-hit
 ## limit, Leaderboard, How to Play, Settings (volume), Quit. UI is built in code by `_build()`, which runs again when
 ## `Layout` flips, so the same screen fits a desktop window and a portrait phone.
 ## Styling comes from the design-system theme
-## (res://ui/four_wheel_steer_theme.tres) + Palette tokens: gold primary CTA,
+## (res://ui/fourwd_theme.tres) + Palette tokens: gold primary CTA,
 ## red-orange secondary, cream ghost, red danger, on a cream card over the
 ## striped cobalt backdrop.
 
@@ -43,7 +43,7 @@ func _build() -> void:
 
 	var title_top := 70.0 if narrow else 60.0
 	var title := Label.new()
-	title.text = "FOUR WHEEL STEER"
+	title.text = "FOURWD"
 	title.add_theme_font_size_override("font_size", 38 if narrow else 56)
 	HudStyle.style_title(title)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

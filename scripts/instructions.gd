@@ -3,7 +3,10 @@ extends Control
 ## asked for it short). Four tiles show the hook, each a little car with its
 ## wheels turned, the keys (or thumb pads) that do it, and its name: FRONT,
 ## REAR, SPIN TURN (opposite ways), SIDEWAYS (same way). Under them the one rule
-## (three red pips: 3 hits = out) and the rest of the controls as key caps.
+## (a red pip per hit: 5 hits = out, from game.gd `MAX_WALL_TOUCHES`) and the rest
+## of the controls as key caps.
+## On touch the pads are drawn like the real ones (`HudStyle.pad_icon()`: the
+## red FRONT / gold REAR ring and its knob pushed the way to slide).
 ## Shown once on first launch (and from the menu's "How to Play"). GOT IT -> menu.
 ## On Reddit it is never forced: Today's Circuit has a How to Play button, and
 ## GOT IT goes back to Today's Circuit.
@@ -14,6 +17,8 @@ extends Control
 # One tile each: [front wheel deg, rear wheel deg, motion hint, keyboard caps,
 # touch caps as [arrow, pad] (pad 0 = left/front, red; 1 = right/rear, gold),
 # both-at-once, label].
+const Race := preload("res://scripts/game.gd")   # for MAX_WALL_TOUCHES
+
 const TILES := [
 	[24.0, 0.0, "forward", ["A", "D"], [["<>", 0]], false, "FRONT"],
 	[0.0, -24.0, "forward", ["<", ">"], [["<>", 1]], false, "REAR"],
@@ -69,7 +74,7 @@ func _build() -> void:
 	rule.alignment = BoxContainer.ALIGNMENT_CENTER
 	rule.add_theme_constant_override("separation", 10)
 	rule.add_child(_make_strikes())
-	var rule_text := _label("3 WALL HITS = OUT", 20 if narrow else 24)
+	var rule_text := _label("%d WALL HITS = OUT" % Race.MAX_WALL_TOUCHES, 20 if narrow else 24)
 	rule_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	HudStyle.style_title(rule_text)
 	rule.add_child(rule_text)
@@ -144,9 +149,9 @@ func _tile(t: Array, touch: bool, narrow: bool) -> Control:
 			caps.add_child(plus)
 		if touch:
 			var pad: Array = tokens[k]
-			caps.add_child(HudStyle.cap(pad[0], fs, true, Palette.POP if pad[1] == 0 else Palette.GOLD))
+			caps.add_child(HudStyle.pad_icon(pad[0], fs + 26.0, Palette.POP if pad[1] == 0 else Palette.GOLD))
 		else:
-			caps.add_child(HudStyle.cap(tokens[k], fs, false, Palette.TEXT_MUTED))
+			caps.add_child(HudStyle.cap(tokens[k], fs))
 	box.add_child(caps)
 
 	var word := _label(t[6], 18 if narrow else 20)
@@ -196,15 +201,17 @@ func _make_car(front_deg: float, rear_deg: float, hint: String, zoom: float) -> 
 ## Three red pips, as the race HUD shows them once every wall hit is used up.
 func _make_strikes() -> Control:
 	var box := Control.new()
-	box.custom_minimum_size = Vector2(96, 40)
+	var n: int = Race.MAX_WALL_TOUCHES
+	const GAP := 24.0
+	box.custom_minimum_size = Vector2(GAP * (n - 1) + 26.0, 40)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.draw.connect(func() -> void:
 		var c := box.size * 0.5
-		for i in 3:
-			var at := c + Vector2((i - 1) * 28.0, 0.0)
-			box.draw_circle(at + Vector2(0, 2), 11.5, Palette.INK, true, -1.0, true)   # the lip
-			box.draw_circle(at, 11.5, Palette.INK, true, -1.0, true)
-			box.draw_circle(at, 9.0, Palette.DANGER, true, -1.0, true)
+		for i in n:
+			var at := c + Vector2((i - (n - 1) * 0.5) * GAP, 0.0)
+			box.draw_circle(at + Vector2(0, 2), 10.5, Palette.INK, true, -1.0, true)   # the lip
+			box.draw_circle(at, 10.5, Palette.INK, true, -1.0, true)
+			box.draw_circle(at, 8.0, Palette.DANGER, true, -1.0, true)
 	)
 	return box
 

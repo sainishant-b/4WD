@@ -57,6 +57,7 @@ body {
 body {
   background-color: var(--bg);
   background-image: repeating-linear-gradient(-45deg, var(--bg-stripe) 0 28px, transparent 28px 56px);
+  animation: stripes-drift 3.3s linear infinite;
   color: var(--text);
   font-family: 'Barlow', system-ui, sans-serif;
   overflow: hidden;
@@ -308,6 +309,7 @@ figcaption {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  body,
   .car,
   .front rect,
   .rear rect,
@@ -441,4 +443,11 @@ dd {
   .demo {
     display: none;
   }
+}
+
+/* The backdrop stripes drift right, like the game's menus (HudStyle.Backdrop):
+   one stripe period along x (56px * sqrt 2) every 3.3 s, about 24 px/s. */
+@keyframes stripes-drift {
+  from { background-position: 0 0; }
+  to { background-position: 79.196px 0; }
 }

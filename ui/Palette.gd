@@ -1,4 +1,4 @@
-# Four Wheel Steer — color tokens for GDScript / procedural drawing.
+# fourwd — color tokens for GDScript / procedural drawing.
 # Autoloaded as "Palette" (see project.godot) — use Palette.GOLD, Palette.TRACK,
 # etc. in _draw(), Polygon2D colors, shaders. (Also usable as FWSPalette.GOLD.)
 #
@@ -61,6 +61,12 @@ const TEXT_ON_POP      := Color("ffffff")
 const TRACK         := Color("1f9a4f")
 const TRACK_EDGE    := Color("17703a")
 const KERB          := Color("d9301a")   # alternates with white outside each wall
+# The race itself is a night circuit (2026-11-22): dark asphalt under warm lamp
+# light, with glowing limit lines. TRACK stays the green of the maps and menus.
+const ROAD          := Color("2b3163")   # asphalt
+const ROAD_EDGE     := Color("20254d")   # the darker strip beside each wall
+const ROAD_CROWN    := Color("353c72")   # the lifted middle of the road
+const LAMP          := Color("ffd98a")   # warm light pools from the track lamps
 
 # ---- HUD scrims (dim the race behind a dialog) ----
 const HUD_SCRIM         := Color(0.039, 0.078, 0.247, 0.72) # BLACK at 72%

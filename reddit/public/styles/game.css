@@ -70,6 +70,7 @@ body {
   gap: 12px;
   background-color: var(--bg);
   background-image: repeating-linear-gradient(-45deg, var(--bg-stripe) 0 28px, transparent 28px 56px);
+  animation: stripes-drift 3.3s linear infinite;
   text-align: center;
 }
 
@@ -155,33 +156,63 @@ body {
   color: var(--ink-text);
 }
 
-.pad {
-  width: 30px;
-  height: 30px;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--screen);
-  border: 3px solid var(--text-muted);
-  border-radius: 50%;
-  box-shadow: 0 2px 0 var(--ink);
-  color: #ffffff;
-}
-
-.pad.front {
-  border-color: var(--pop);
-}
-
-.pad.rear {
-  border-color: var(--gold);
-}
-
-.key svg,
-.pad svg {
+.key svg {
   width: 12px;
   height: 12px;
   fill: currentColor;
+}
+
+/* A thumb pad drawn like the game's (game.ts padIcon): ring + knob in the pad's colour. */
+.pad {
+  display: inline-flex;
+  width: 32px;
+  height: 34px;
+}
+
+.pad svg {
+  width: 100%;
+  height: 100%;
+}
+
+.pad .ink {
+  fill: var(--ink);
+}
+
+.pad .well {
+  fill: var(--screen);
+}
+
+.pad .ring {
+  fill: none;
+  stroke-width: 3;
+}
+
+.pad .chev {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pad.front .ring {
+  stroke: var(--pop);
+}
+
+.pad.front .knob {
+  fill: var(--pop);
+}
+
+.pad.rear .ring {
+  stroke: var(--gold);
+}
+
+.pad.rear .knob {
+  fill: var(--gold);
+}
+
+.joiner {
+  opacity: 0.7;
 }
 
 #loader.failed #loader-text {
@@ -190,4 +221,17 @@ body {
 
 #loader.failed .bar {
   display: none;
+}
+
+/* The backdrop stripes drift right, like the game's menus (HudStyle.Backdrop):
+   one stripe period along x (56px * sqrt 2) every 3.3 s, about 24 px/s. */
+@keyframes stripes-drift {
+  from { background-position: 0 0; }
+  to { background-position: 79.196px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #loader {
+    animation: none;
+  }
 }

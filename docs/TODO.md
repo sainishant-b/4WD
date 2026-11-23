@@ -80,7 +80,11 @@ Tick items off here as they land; the CHANGELOG has the details.
 
 - [x] Seven levels (one per weekday) with difficulty rising from Level 3; hairpins and
       switchbacks on Levels 4–7.
-- [x] Three wall hits = game over.
+- [x] Wall hits = game over (three at first; five since 2026-11-21).
+- [x] Boost pads, a night-circuit look, a new car, sparks, crash bursts, trails, speed lines and
+      sounds; cars 20% slower, roads 30% wider (2026-11-22). Stunt ramps tried and removed
+      (2026-11-23), gate numbers removed, menu stripes drift.
+- [ ] Feel the pads and the slower cars on a real phone; retune medals after real laps.
 - [x] Phone layout, twin thumb pads, key-cap control hints, mute button on every screen.
 - [x] Reddit server: per-level boards, OVERALL board (sum of best times, lowest first), daily
       board, streaks.

@@ -16,8 +16,13 @@
 //
 // Usage: node tools/export-godot.mjs
 //   GODOT=<path to a Godot 4 editor binary> overrides the lookup below.
+//
+// Godot 4.7 on Windows can finish an export and then never exit (seen
+// 2026-11-22, on older commits too: it prints its exit warnings and hangs), so
+// each Godot run here is watched: once its output is all there it gets a grace
+// period, then that Godot (and only it) is stopped and the script carries on.
 
-import { execFileSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -63,13 +68,46 @@ function findGodot() {
 const godot = findGodot();
 console.log(`Godot: ${godot}`);
 
+/**
+ * Runs Godot with `args` and waits for it to exit. If `finished()` has been
+ * true for `graceMs` and Godot is still running, its process tree is stopped
+ * and the run counts as a success (see the note at the top).
+ */
+function runGodot(args, finished, graceMs = 20_000) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(godot, args, { stdio: 'inherit' });
+    let finishedAt = 0;
+    let stopped = false;
+    const watch = setInterval(() => {
+      if (!finished()) return;
+      finishedAt ||= Date.now();
+      if (stopped || Date.now() - finishedAt < graceMs) return;
+      stopped = true;
+      console.warn('Godot finished its work but has not exited; stopping it.');
+      if (process.platform === 'win32') {
+        spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+      } else {
+        child.kill('SIGKILL');
+      }
+    }, 1000);
+    child.on('error', (error) => {
+      clearInterval(watch);
+      reject(error);
+    });
+    child.on('exit', (code, signal) => {
+      clearInterval(watch);
+      if (code === 0 || stopped) resolve();
+      else reject(new Error(`Godot exited with ${code ?? signal}`));
+    });
+  });
+}
+
 rmSync(exportDir, { recursive: true, force: true });
 mkdirSync(exportDir, { recursive: true });
 
-execFileSync(
-  godot,
+await runGodot(
   ['--headless', '--path', project, '--export-release', 'Web', join(exportDir, 'index.html')],
-  { stdio: 'inherit' },
+  () => ['index.html', ...ENGINE_FILES].every((file) => existsSync(join(exportDir, file))),
 );
 
 for (const file of ENGINE_FILES) {
@@ -112,9 +150,10 @@ for (const file of [...ENGINE_FILES, 'index.wasm.gz', 'godot-config.js']) {
 
 // The circuits' shapes for the post's start screen, straight from the game, so
 // the splash's track picture always matches the road (src/client/tracks.ts).
-execFileSync(
-  godot,
-  ['--headless', '--path', project, '-s', join(root, 'tools', 'track-shapes.gd'), '--',
-    join(root, 'src', 'client', 'tracks.ts')],
-  { stdio: 'inherit' },
+const tracksFile = join(root, 'src', 'client', 'tracks.ts');
+const shapesFrom = Date.now();
+await runGodot(
+  ['--headless', '--path', project, '-s', join(root, 'tools', 'track-shapes.gd'), '--', tracksFile],
+  () => (statSync(tracksFile, { throwIfNoEntry: false })?.mtimeMs ?? 0) >= shapesFrom,
+  5_000,
 );

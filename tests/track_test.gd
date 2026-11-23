@@ -2,12 +2,18 @@ extends SceneTree
 # Headless check of the track geometry: on every level (and the multiplayer
 # track) the road edges must not fold over themselves, no bend may be tighter
 # than the road can follow, and the gates / start slot must sit on the road.
+# The boost pads must sit on the road, clear of the gates, with at least
+# FEATURE_RUN px of gentle road after them (room to brake).
 # Run:
 #   godot --headless --path . -s tests/track_test.gd
 #
 # This folder is .gdignore'd, so the test is never imported or exported.
 
 var _failures := 0
+
+const FEATURE_RUN := 450.0      # px of road after a boost pad with no bend ...
+const FEATURE_BEND := 190.0     # ... tighter than this radius
+const FEATURE_GATE_GAP := 80.0  # px a feature keeps from any gate
 
 
 func _initialize() -> void:
@@ -126,6 +132,33 @@ func _run() -> void:
 			if line[builder.nearest(line, p)].distance_to(p) > hw:
 				stray += 1
 		_check("obstacles sit on the road", stray == 0, "%d off the road" % stray)
+
+		var want_features: int = (track.get("boost_pads", []) as Array).size()
+		var features: Array = built["features"]
+		_check("every boost pad was built", features.size() == want_features,
+			"%d of %d" % [features.size(), want_features])
+		var off_road := 0
+		var near_gate := 0
+		var short_run := []
+		for f in features:
+			var p: Vector2 = (f as Node2D).position
+			var at: int = builder.nearest(line, p)
+			if line[at].distance_to(p) > 1.0:
+				off_road += 1
+			for g in built["gate_points"]:
+				if (g as Vector2).distance_to(p) < FEATURE_GATE_GAP:
+					near_gate += 1
+			var run := 0
+			while run < FEATURE_RUN / builder.SPACING:
+				var k := (at + run) % n
+				if builder.bend_radius(line[(k - 3 + n) % n], line[k], line[(k + 3) % n]) < FEATURE_BEND:
+					break
+				run += 1
+			if run * builder.SPACING < FEATURE_RUN:
+				short_run.append("%.2f: %d px" % [float(at) / n, run * builder.SPACING])
+		_check("boost pads sit on the centre line", off_road == 0, "%d off it" % off_road)
+		_check("boost pads keep clear of the gates", near_gate == 0, "%d too close" % near_gate)
+		_check("boost pads have room after them", short_run.is_empty(), str(short_run))
 
 		holder.free()
 

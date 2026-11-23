@@ -46,7 +46,7 @@ const FIRST_DAY_UTC = Date.UTC(2026, 10, 16);
  * easiest) first, Sunday's (the hardest) last. Must match `LEVELS[i].id` in
  * scripts/game_data.gd: the game reports a finished race by this id.
  */
-export const LEVEL_IDS: readonly number[] = [10, 11, 12, 13, 14, 15, 16];
+export const LEVEL_IDS: readonly number[] = [17, 18, 19, 20, 21, 22, 23];
 
 /** Rows returned when the caller does not ask for a number. */
 export const TOP_COUNT = 10;
@@ -102,7 +102,7 @@ export function postTitle(day: number): string {
     day: 'numeric',
     timeZone: 'UTC',
   });
-  return `Four Wheel Steer: Daily Circuit #${day} (${label})`;
+  return `fourwd: Daily Circuit #${day} (${label})`;
 }
 
 /** The post's day if it carries one, else today. */
@@ -115,14 +115,16 @@ export function dayFromPostData(postData: unknown, nowMs: number): number {
 }
 
 // Sorted sets, member = username, score = time in ms (lowest ranks first).
-// The day and overall keys carry `1lap`: before 2026-11-20 races were three
-// laps on smaller tracks (ids 1, 2, 3, 8, 9), and those times must not mix
-// with these. Level boards need no tag: the new tracks have new ids.
-const dayKey = (day: number) => `1lap:board:${day}`;
+// The day and overall keys carry a tag so older times never mix with these:
+// `1lap` from 2026-11-20 (before, races were three laps on smaller tracks, ids
+// 1, 2, 3, 8, 9), then `wide` from 2026-11-22 (roads 30% wider, cars 20%
+// slower, boost pads and stunt ramps; ids 10-16 became 17-23). Level boards
+// need no tag: a changed track gets a new id.
+const dayKey = (day: number) => `wide:board:${day}`;
 /** Best time ever on one level. */
 const levelKey = (levelId: number) => `level:${levelId}`;
 /** Sum of a player's bests over every level; present only once they have them all. */
-const OVERALL_KEY = '1lap:overall';
+const OVERALL_KEY = 'wide:overall';
 /** A player's streak, and their streak-flair choice (see flair.ts). */
 export const playerKey = (name: string) => `player:${name}`;
 /** Holds the post id once a day's post exists, so it is only created once. */

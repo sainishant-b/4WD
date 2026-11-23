@@ -5,7 +5,9 @@ extends Area2D
 ## Drawn in `_draw()`: a thin painted line across the road (the node is rotated
 ## to face the travel direction, so local x = along the road, local y = across
 ## it). The gate you must hit next is gold and spills a soft glow up and down
-## the road; gate 0, the start/finish line, is a chequered strip instead.
+## the road; gate 0, the start/finish line, is a chequered strip instead. No
+## numbers on the road (the user had them removed, 2026-11-23): the HUD arrow
+## and the mini map show which gate is next.
 
 signal passed(index: int, body: Node)
 
@@ -18,14 +20,8 @@ const CHECK := 8.0         # one square of the start line's chequer
 var _state: String = "pending"
 var _width: float = 150.0
 
-@onready var _label: Label = $Label
-
 
 func _ready() -> void:
-	_label.text = str(index + 1)
-	_label.visible = index != 0   # the chequered line already says "start/finish"
-	_label.add_theme_font_size_override("font_size", 44)
-	_label.pivot_offset = _label.size * 0.5
 	body_entered.connect(_on_body_entered)
 	set_state("pending")
 
@@ -47,7 +43,6 @@ func configure_gate(width: float, collision_depth: float) -> void:
 	shape.size = Vector2(collision_depth, width)
 	$CollisionShape2D.shape = shape
 	_width = width
-	_label.rotation = -rotation  # keep the number upright despite the gate's rotation
 	queue_redraw()
 
 
@@ -56,8 +51,6 @@ func configure_gate(width: float, collision_depth: float) -> void:
 ## (a faint white line).
 func set_state(state: String) -> void:
 	_state = state
-	# Painted-on-the-road numbers: flat, no outline, faint until it is their turn.
-	HudStyle.style_panel_label(_label, Palette.GOLD if state == "active" else Color(Palette.TEXT_LIGHT, 0.4))
 	queue_redraw()
 
 

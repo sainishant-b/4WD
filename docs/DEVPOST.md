@@ -1,4 +1,4 @@
-# Devpost submission draft: Four Wheel Steer
+# Devpost submission draft: fourwd
 
 A draft to paste into Devpost and edit. Lines in *[brackets]* need filling in or checking before
 you submit (links, things not yet verified on a phone).
@@ -7,7 +7,7 @@ you submit (links, things not yet verified on a phone).
 
 ## Project name
 
-Four Wheel Steer: Daily Circuit
+fourwd: Daily Circuit
 
 ## Elevator pitch (one line)
 
@@ -40,7 +40,10 @@ puzzle of when to pivot and when to crab.
   circuits added up, lowest total first) and a board per circuit, each row with the player's
   Reddit avatar. Players can opt in to show
   their streak as their user flair in the subreddit ("🔥 4-day streak").
-- **Three strikes:** the third wall hit ends the race, so every corner matters.
+- **Five strikes:** the fifth wall hit ends the race, so every corner matters.
+- **Boost pads:** gold chevron pads fling you down the straights.
+- **A night circuit:** dark asphalt under street lamps, glowing limit lines, a grandstand and a
+  lit gantry at the start; sparks off the walls, light trails, speed lines and a sound for each.
 - **Made for phones:** a portrait layout and two thumb pads (left pad = front wheels, right pad
   = rear wheels; push up to drive, both up to boost, pull down to drift or brake). Keyboard on
   desktop.
@@ -52,7 +55,8 @@ puzzle of when to pivot and when to crab.
 1. Tap **Drive** on today's post, then **DRIVE** on Today's Circuit.
 2. Race one lap through the gates; the gold arrow points to the next one.
 3. Steer front and rear opposite ways to pivot, the same way to slide sideways.
-4. Don't hit the walls three times. Finish to see your place today and your streak.
+4. Hit the boost pads and don't hit the walls five times. Finish to see your
+   place today and your streak.
 
 ### How I built it
 
@@ -65,7 +69,7 @@ puzzle of when to pivot and when to crab.
   content-security policy blocks the inline script in Godot's default page, so the app ships its
   own loader and talks to the game through `JavaScriptBridge.get_interface` (never `eval`).
   A Hono server on Devvit keeps the boards and streaks in Devvit redis.
-- **Testing:** headless Godot tests for the track geometry, the three-strike rule, the
+- **Testing:** headless Godot tests for the track geometry, the five-strike rule, the
   multi-touch thumb pads and the Reddit leaderboard path; unit tests for the server's daily
   rules; a lap bot used to tune the handling (wall hits fell from 26 to 9 across the five
   circuits after the grip change).
@@ -100,7 +104,7 @@ levels, medals, an Appwrite leaderboard and a hidden multiplayer mode. New for t
 - **Tracks:** a new track builder (smooth edges that cannot fold), seven circuits (five
   redesigned and grown by half, two new) with rising difficulty and hairpins, one per weekday,
   and the obstacle levels removed.
-- **Rules:** ranked races are one lap and three wall hits end them; casual races are three laps
+- **Rules:** ranked races are one lap and five wall hits end them; casual races are three laps
   with no limit.
 - **Look and feel:** a saturated "Cobalt & Sun" look (striped cobalt, cream cards with ink
   outlines and hard shadows, red-and-white kerbs), a mini map, a radial speedometer, key-cap control hints,

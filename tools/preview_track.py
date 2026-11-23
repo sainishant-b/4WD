@@ -26,7 +26,7 @@ TRACKS = {
         (2990, 1612), (3198, 1924), (2652, 2028), (2080, 1840),
         (1508, 2028), (1014, 1820), (780, 1560), (1200, 1290),
         (780, 1000),
-    ], "road_width": 88.0, "checkpoints": 9},
+    ], "road_width": 114.0, "checkpoints": 9},
     # Level 2, Tuesday: tight and twisty; a hairpin tongue down into the infield.
     "t2": {"waypoints": [
         (1145, 708), (1700, 681), (2050, 700), (2100, 1150),
@@ -35,7 +35,7 @@ TRACKS = {
         (2830, 1925), (2362, 1954), (1941, 1785), (1566, 1972),
         (1192, 1832), (864, 1598), (1098, 1317), (845, 1074),
         (1061, 849),
-    ], "road_width": 75.0, "checkpoints": 10},
+    ], "road_width": 98.0, "checkpoints": 10},
     # Level 3, Wednesday: narrow esses; an S-shaped loop through the infield.
     "t3": {"waypoints": [
         (1066, 728), (1664, 650), (1950, 760), (1900, 1060),
@@ -43,7 +43,7 @@ TRACKS = {
         (3068, 1066), (2704, 1326), (3094, 1638), (2704, 1924),
         (2184, 1846), (1742, 1976), (1300, 1794), (988, 1924),
         (806, 1456), (1196, 1222), (832, 936),
-    ], "road_width": 72.0, "checkpoints": 10},
+    ], "road_width": 94.0, "checkpoints": 10},
     # Level 4, Thursday: esses along the top, a two-hairpin switchback, a hairpin tongue up from the bottom.
     "t4": {"waypoints": [
         (910, 624), (1235, 520), (1560, 689), (1885, 520),
@@ -53,7 +53,7 @@ TRACKS = {
         (2808, 1976), (2535, 1807), (2262, 1989), (1820, 1900),
         (1720, 1300), (1560, 1130), (1400, 1300), (1350, 1900),
         (884, 1846), (702, 1495), (910, 1170), (702, 910),
-    ], "road_width": 68.0, "checkpoints": 11},
+    ], "road_width": 88.0, "checkpoints": 11},
     # Level 5, Friday: two hairpin tongues off the top, esses along the bottom, a double switchback up the left.
     "t5": {"waypoints": [
         (910, 676), (1118, 585), (1352, 741), (1586, 598),
@@ -65,7 +65,7 @@ TRACKS = {
         (1950, 1872), (1625, 1950), (1391, 1820), (1352, 1365),
         (1222, 1170), (1092, 1365), (1092, 1664), (962, 1833),
         (832, 1664), (741, 1443), (884, 1235), (767, 1027),
-    ], "road_width": 64.0, "checkpoints": 13},
+    ], "road_width": 83.0, "checkpoints": 13},
     # Level 6, Saturday: a chicane, kinked hairpin rows across the middle, bottom esses, a switchback up the left.
     "t6": {"waypoints": [
         (1150, 575), (1600, 660), (1850, 540), (2250, 600),
@@ -77,7 +77,7 @@ TRACKS = {
         (800, 1850), (850, 1650), (1150, 1570), (1480, 1660),
         (1640, 1500), (1500, 1380), (1200, 1430), (950, 1340),
         (800, 1150), (900, 900), (840, 680),
-    ], "road_width": 62.0, "checkpoints": 13},
+    ], "road_width": 81.0, "checkpoints": 13},
     # Level 7, Sunday, the hardest: deep top esses, kinked hairpin rows, two tongues along the bottom, a switchback up the left.
     "t7": {"waypoints": [
         (900, 600), (1250, 500), (1500, 700), (1750, 500),
@@ -90,7 +90,7 @@ TRACKS = {
         (1500, 1450), (1300, 1600), (1250, 1950), (1000, 2150),
         (750, 1950), (760, 1700), (1050, 1500), (1120, 1250),
         (850, 1150), (760, 900),
-    ], "road_width": 60.0, "checkpoints": 14},
+    ], "road_width": 78.0, "checkpoints": 14},
     # Multiplayer (hidden): a wide flowing loop so cars race side-by-side and bump.
     "mp": {"waypoints": [
         (700, 400), (1500, 360), (2200, 460),

@@ -2,6 +2,166 @@
 
 Running history of major changes. Newest on top. See `CLAUDE.md` for when to add an entry.
 
+## 2026-11-23
+
+- **The backdrop stripes move.** *Why:* the user: "make the background lines moving like an
+  animation and apply it to all pages". `HudStyle.add_backdrop` now adds a `Backdrop` control
+  that redraws each frame with the stripes drifting right at 24 px/s (`STRIPE_SPEED`). Their
+  place comes from the clock, so they carry on without a jump from one menu screen to the
+  next. The Reddit splash and loading screen move theirs the same way (CSS `stripes-drift`,
+  off under `prefers-reduced-motion`).
+- **Stunt ramps removed.** *Why:* the user: "remove the car flipping board". Gone from every
+  track, with `stunt_ramp.gd`, `car.gd` `launch` / the flight along the centre line /
+  `stunt_landed`, the Look's flip / spin / roll, the HUD callout and the trick sound. The boost
+  pads stay. The dormant obstacle ramps' hop (`car.gd` `jump`) still works (grows the car, drops
+  collision, take-off and landing sounds). Medals re-set from a bot lap without the ramps
+  (27.9 to 41.9 s; the level ids stay 17-23, nothing about the roads changed).
+- **No checkpoint numbers on the road.** *Why:* the user: "Remove checkpoint numbers". The
+  gate's Label is gone from `Checkpoint.tscn` and `checkpoint.gd`; the gold next gate, the HUD
+  arrow and the mini map still show where to go.
+
+## 2026-11-22
+
+- **Boost pads and stunt ramps.** *Why:* the user: "make it look cool and fun... points where the
+  track speeds the car with arrow marks or your car spins a loop". Each track dict now lists
+  `boost_pads` (lap fractions) and `stunt_ramps` ([fraction, trick]); `track_builder.gd` lays
+  them at the start of the longer straights (two pads and one ramp per level, two ramps on
+  Level 6). A **boost pad** (`scripts/boost_pad.gd`: gold chevrons pulsing forward on a dark
+  plate) kicks the car +70 px/s and pushes it hard for 0.9 s (`car.gd` `hit_boost_pad`). A
+  **stunt ramp** (`scripts/stunt_ramp.gd`: a red-and-white hazard-striped kicker with a gold lip)
+  spans the road; at its lip the car takes off (`car.gd` `launch`) for 0.55-1 s, plays its
+  trick (a FRONT FLIP, a 360 SPIN or a BARREL ROLL), lands with a short push and the HUD shouts
+  the trick (`hud.gd` `show_callout`). In the air the car follows the road's centre line, so a
+  jump never lands in a wall (the first try flew straight and hit the bend after Level 1's
+  ramp); walls still count. Slower than 200 px/s it only hops, under 90 nothing happens.
+  `track_test` checks each pad and ramp sits on the road, 80+ px from any gate, with 450 px of
+  gentle road after it. Not obstacles: nothing on the road blocks the car.
+- **Night circuit look, a new car, effects and sounds.** *Why:* the same request ("pick an
+  artstyle either minimalist or very stylish... effects like sparks or crash or even sound").
+  The style chosen is very stylish: the race is a night circuit in the Cobalt & Sun colours.
+  - **Track** (`track_builder.gd`): dark asphalt (new `Palette.ROAD`, `ROAD_EDGE`,
+    `ROAD_CROWN`, `LAMP`) instead of the green road. The white limit lines glow, gold lane
+    dashes, street lamps every 300 px throw warm pools of light, tyre stacks sit outside the
+    tight bends, a grandstand with a crowd and a FOURWD banner sits beside the start, and a lit
+    gantry spans the road there (drawn over the cars). The field gets a scatter of far-off
+    lights. The menus' maps keep the green `TRACK`.
+  - **Car** (`scripts/car_look.gd`, replacing the Polygon2D shapes in `Car.tscn`): an
+    open-wheel racer, red-orange with INK outlines, gold stripes and a gold-helmeted driver.
+    The four wheels stand clear of the body so both steered axles show. Headlight beams, a red
+    underglow, tail lights that flare on the brakes and an exhaust flame on boost. Same
+    38 x 60 footprint as the collision box.
+  - **Effects** (`scripts/car_fx.gd`): sparks while scraping a wall, a burst of sparks and
+    flying bits plus a harder shake on a counted hit, tyre smoke on a slide, red light trails
+    and speed lines when fast, a dust ring on landing.
+  - **Sounds** (`tools/generate_sfx.py`, still no outside assets): boost whoosh, crash, wall
+    scrape (looped while grinding), take-off, landing thump and a trick chime.
+- **Cars 20% slower, roads 30% wider.** *Why:* the user: "since its getting very difficult on
+  mobile i want to reduce car speed and increase track width". `LEVELS` `max_speed` and
+  `accel_force`, and `car.gd` `boost_accel`, x0.8; `drag` / 0.8. The cruising speed drops a
+  fifth (Level 1: 334 -> 268 px/s) and builds just as gradually as before. Roads x1.3: 88 / 75
+  / 72 / 68 / 64 / 62 / 60 -> 114 / 98 / 94 / 88 / 83 / 81 / 78 px (still narrowing from Level 3
+  on); `track_test` passes on every level unchanged. The tracks changed, so the levels have new
+  ids 17-23 (`reddit/src/server/daily.ts` `LEVEL_IDS` too) and the Reddit day and overall boards
+  have a new key tag (`wide:`), so no old time mixes in. Local saves for ids 10-16 stay in
+  `save.json` unused; Level 1 is the only one open again. Medals re-set from a bot lap of each
+  level (27.6 to 41.7 s); the bot hit 1 wall in all seven levels (23 before the change).
+- **`npm run export:godot` no longer waits forever.** *Why:* Godot 4.7 here now finishes the Web
+  export (and `--import`) and then never exits; it does the same on the last commit, so it is
+  the machine or the engine, not this change. `reddit/tools/export-godot.mjs` watches each Godot
+  run: once every file it should write is there, Godot gets 20 s (5 s for the track shapes) and
+  then that process tree alone is stopped (`taskkill /T`) and the script carries on.
+
+## 2026-11-21
+
+## 2026-11-21
+
+- **Five wall hits and out (was three).** *Why:* the user: "game is still very difficult, but i
+  guess we can make the hit limit to 5". `game.gd` `MAX_WALL_TOUCHES` 3 -> 5: hits 1-4 warn (the
+  fourth says LAST WARNING), the fifth is GAME OVER. How to Play's pips and "5 WALL HITS = OUT"
+  and the level screen's "1 LAP · 5 WALL HITS AND YOU'RE OUT" now read the number from
+  `game.gd`, so the next change is one line. The HUD's pips size themselves to fit their box
+  (five fit in both layouts). `rules_test` drives the real car through all five hits (and six in
+  a casual race, still no limit); `capture_screens` rams five times for the game-over shot.
+
+- **The Android app turns with the phone** (`project.godot`
+  `display/window/handheld/orientation=6`, sensor). *Why:* the user asked whether landscape would
+  be easier on a phone and chose to allow both. The setting held the string `"portrait"`, which
+  Godot 4 reads as the number 0 = landscape, so an APK was most likely locked sideways. Every
+  screen already has both layouts and `Layout` refits when the window turns. A landscape touch
+  race (pads in the bottom corners, no legend) and How to Play were captured and look right.
+  The Reddit post is unchanged: it follows the browser window, upright or sideways.
+
+- **Gradual acceleration, stronger brakes.** *Why:* the user, playing on a phone: "make the
+  accellartion slower and more gradual, it instatly hits full speed", "make the breaks stronger".
+  - The drive (`LEVELS` `accel_force`), `rolling_resistance`, `drag` and `boost_accel` are all
+    0.4x what they were (`car.gd`, `game_data.gd`). The cruising speed is where drive meets
+    resistance, so it is unchanged on every level, but the car takes ~2.5x as long to get there:
+    half speed in 1.1 s (was 0.45 s), 90% in 3.2 s (was 1.3 s). Boost peaks at the same speed.
+  - Lifting off slows the car less now (1 s of coasting keeps 59% of its speed, was 30%), and
+    `brake_force` is doubled (600 -> 1200): a stop from cruising speed takes 0.3 s (was 0.45 s)
+    and a third less road. Reversing builds up gradually too.
+  - The driver bot's laps of all seven levels got ~5% slower and hit walls less (29 -> 23 when
+    pushing, 17 -> 12 when careful), so every medal target moved up 5% to stay as hard.
+  - `touch_test`'s "one pad up drives the car forward" now expects 40 px/s after 0.4 s (it
+    reaches ~66). All four Godot suites pass. **Not checked:** how it feels on a real phone.
+
+- **Phone fixes from a test in the Reddit app.** *Why:* the user played on a phone and asked:
+  "How to play instructions dont translate to joystick/pad UI", "Reduce the sensitivity on
+  mobile joystick", "Remove the instruction while playing on mobile".
+  - **Gentler steering on the thumb pads** (`touch_controls.gd`): full lock now needs a 60 px
+    slide (`STEER_TRAVEL`, was 52) and the response is curved (`STEER_CURVE` 1.7), so a small
+    slide turns the wheels only a little: a 30 px slide gives 25% lock (was 53%); a full slide
+    is still full lock. Up / down (drive, boost, drift, brake) are unchanged, and so are the
+    gestures. The knob is drawn where the thumb is on each axis.
+  - **No legend during a touch race** (`hud.gd`): the DRIVE / BOOST / DRIFT / BRAKE card covered
+    the road ahead. The keyboard legend stays (H hides it); `fade_hint()` is gone.
+  - **Pad icons look like the pads** (`HudStyle.pad_icon()`, How to Play and the Reddit loading
+    screen): a deep-blue well with the pad's red (FRONT, left) or gold (REAR, right) ring and its
+    knob, pushed the way to slide with a white chevron behind it (or centred between two for
+    "slide either way"). The old icons were plain rings with arrows, and DRIVE / DRIFT used a
+    grey ring that matched neither pad. The touch legend now reads red pad "/" gold pad for
+    either one (DRIVE, DRIFT) and "+" for both at once (BOOST, BRAKE). `HudStyle.cap()` is now
+    for key caps only. The loader (`game.ts` `padIcon`, `game.css`) draws the same pads as SVG.
+  - Checked: all four Godot suites (`touch_test` checks the new steering curve), 36 server
+    tests, typecheck; the loader legend viewed at phone size with no console errors; web build
+    re-exported; screenshots recaptured (`mobile-how-to-play.png`, `mobile-race.png` with no
+    legend). **Not checked:** how the steering feels on a real phone.
+
+- **Smaller tyres and hitbox, less drift.** *Why:* the user found the game very hard: "make the
+  tyres a bit small by few pixels so that the hitbox is also smaller", then "reduce drift".
+  - `Car.tscn`: each tyre is 6 x 14 px (was 8 x 18), 1 px further in (x = 16) and the rear pair
+    1 px forward, so they still stick out past the body. The collision box shrinks to match the
+    drawing, 38 x 60 (was 42 x 63); a tyre on the white line is still a hit.
+  - `car.gd`: `grip_accel` 800 -> 1400 and `traction` 6 -> 30, so a slide is pulled back to where
+    the wheels point about five times faster. Full lock at top speed slides 16% sideways on
+    average (was 25%). The handbrake keeps its 20% share of the pull and still drifts (55%,
+    was 62%).
+  - Measured with a scratch bot lapping all seven levels once (pure pursuit, same driving each
+    time). Wall hits, driving hard: 52 before, 41 with the smaller box, 29 with both changes.
+    Driving carefully: 29 before, 22 with the smaller box. Laps came out 0.6-3 s faster, so the
+    medal targets are a little easier to reach.
+  - Checked: all four Godot suites pass; web build re-exported; screenshots recaptured.
+
+- **Renamed the game to fourwd.** *Why:* the user asked to change the name everywhere; it matches
+  the Reddit app (`fourwd`).
+  - On screen: the main menu title (FOURWD), the window and app name (`project.godot`
+    `config/name`), the Android label, the Reddit post page and loader (`splash.html`,
+    `game.html`; their CSS shows it in capitals), the daily post title ("fourwd: Daily Circuit
+    #n", new posts only; Reddit cannot retitle old ones) and the moderator menu item.
+  - Ids and files: the Android app id is `com.saini.fourwd` (it installs beside old test
+    builds as a new app), exports are named `fourwd.*`, and the theme is `ui/fourwd_theme.tres`.
+  - Docs: both READMEs, CLAUDE.md, the Devpost draft and the design brief.
+  - Kept on purpose: the project folder `FourWheelSteer`, the GitHub repo `4WD`, the reference
+    kit folder `Four Wheel Steer — Design System/`, older changelog entries, and comments that
+    describe the four-wheel-steering mechanic.
+  - Saves kept: on desktop Godot names the `user://` folder after the project, so
+    `game_data.gd` now reads `save.json` from the old "Four Wheel Steer" folder (`OLD_NAMES`)
+    until the next save writes it under "fourwd". Checked: the old save loads (How to Play seen,
+    seven records). The web build's `user://` is `/userfs` whatever the name, so Reddit players
+    keep theirs; Android's went with the old app id. The Reddit boards live on the server.
+  - Checked: all four Godot suites, 36 server tests, typecheck; web build re-exported;
+    screenshots recaptured (the menu reads FOURWD).
+
 ## 2026-11-20
 
 - **Ranked = one lap, a new Casual mode, seven maps half as long again, one map per weekday.**

@@ -1,6 +1,6 @@
 extends SceneTree
-# Regenerates docs/screenshots/*.png: the race HUD (countdown, a wall-hit
-# warning, game over, the hairpin levels) and every menu (main menu, settings,
+# Regenerates docs/screenshots/*.png: the race HUD (countdown, a boost pad, a
+# wall-hit warning, game over, the hairpin levels) and every menu (main menu, settings,
 # How to Play, level select, and as shown inside a Reddit post today's circuit,
 # the results card and the leaderboard), at
 # phone size (860x1520, i.e. the 430x760 layout at 2x) and desktop size.
@@ -76,16 +76,37 @@ func _place(level: int, fraction: float) -> void:
 	car.velocity = Vector2.ZERO
 
 
-## Slides the car sideways into the left wall at `fraction` of the lap.
+## Puts the car on the centre line `back` px before `fraction` of the lap,
+## heading along the road at `speed` px/s (to run it over a boost pad).
+func _approach(level: int, fraction: float, back: float, speed: float) -> void:
+	var car = get_first_node_in_group("car")
+	var line: PackedVector2Array = _builder.centerline(_game.get_level(level)["track"])
+	var n := line.size()
+	var idx := posmod(int(n * fraction) - int(back / 10.0), n)
+	var along: Vector2 = _builder.tangent(line, idx)
+	car.position = line[idx]
+	car.rotation = along.angle() + PI / 2.0
+	car.velocity = along * speed
+	car.ang_vel = 0.0
+
+
+## Drives the car nose-first into the left wall at `fraction` of the lap and
+## waits (up to a second) for the hit to count.
 func _ram(level: int, fraction: float) -> void:
 	var car = get_first_node_in_group("car")
+	car._pad_t = 0.0   # no boost pad push left over
 	var line: PackedVector2Array = _builder.centerline(_game.get_level(level)["track"])
 	var idx := int(line.size() * fraction)
 	var along: Vector2 = _builder.tangent(line, idx)
+	var before: int = current_scene._wall_touches
 	car.position = line[idx]
-	car.rotation = along.angle() + PI / 2.0 - 0.5
-	car.velocity = Vector2(-along.y, along.x) * 240.0
-	await _frames(14)
+	car.rotation = along.angle() + PI / 2.0 + 0.6
+	car.velocity = (along * 0.5 + Vector2(-along.y, along.x) * 0.87) * 260.0
+	for i in 60:
+		await _frames(1)
+		if current_scene._wall_touches > before:
+			break
+	await _frames(6)
 
 
 ## A stand-in for the Devvit server, so the leaderboard shots have rows.
@@ -198,12 +219,20 @@ func _run() -> void:
 	_touch(0, Vector2.ZERO, false)
 	_touch(1, Vector2.ZERO, false)
 
+	# Level 1's second boost pad.
+	var track: Dictionary = _game.get_level(0)["track"]
+	await _approach(0, track["boost_pads"][1], 140.0, 260.0)
+	await _frames(22)
+	await _shot("mobile-boost-pad")
+	await _frames(60)
+
 	await _ram(0, 0.20)
 	await _shot("mobile-wall-warning")
-	await _frames(90)
-	await _ram(0, 0.45)
-	await _frames(90)
-	await _ram(0, 0.70)
+	for fraction in [0.35, 0.47, 0.70, 0.80]:   # hits 2-5: the fifth ends it (clear of the pads and ramp)
+		await _frames(90)
+		await _ram(0, fraction)
+		# Stop it grinding on the wall, so the next ram is a new hit, not the same one.
+		get_first_node_in_group("car").velocity = Vector2.ZERO
 	await _frames(20)
 	await _shot("mobile-game-over")
 

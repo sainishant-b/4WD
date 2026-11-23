@@ -14,7 +14,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="Four Wheel Steer"
+config/name="fourwd"
 run/main_scene="res://scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
@@ -36,11 +36,11 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-window/handheld/orientation="portrait"
+window/handheld/orientation=6
 
 [gui]
 
-theme/custom="res://ui/four_wheel_steer_theme.tres"
+theme/custom="res://ui/fourwd_theme.tres"
 
 [rendering]
 

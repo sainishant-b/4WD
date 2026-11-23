@@ -6,7 +6,7 @@ extends Node
 ## menus and the race scene don't duplicate paths.
 ##
 ## Two ways to race (the user's design):
-##  - **Ranked** (`casual` false): ONE lap, three wall hits and out. Its times
+##  - **Ranked** (`casual` false): ONE lap, five wall hits and out. Its times
 ##    are the records: medals, unlocks, the online leaderboard and the Daily
 ##    Circuit.
 ##  - **Casual** (`casual` true): THREE laps on any map, no wall-hit limit, just
@@ -34,7 +34,9 @@ const SCENE_LEADERBOARD := "res://scenes/Leaderboard.tscn"
 ## The circuits, one for each day of the week (Monday easiest, Sunday hardest).
 ## Each is a closed loop of waypoints plus a road width; the TrackBuilder turns
 ## it into the road (the waypoints guide a smoothed centre line, they are not
-## the exact road). Preview any of them, or all seven on one sheet, with
+## the exact road). `boost_pads` places the boost pads by their fraction of the
+## way round the centre line; they sit at the start of the longer straights,
+## with room to brake after (tests/track_test.gd checks). Preview any of them, or all seven on one sheet, with
 ## `python tools/preview_track.py t1..t7|all`, and keep that tool's presets in
 ## step with these.
 const TRACK_1 := {   # Monday, the easiest: wide and flowing; a broad sweep into the infield, a long S up the left
@@ -45,7 +47,8 @@ const TRACK_1 := {   # Monday, the easiest: wide and flowing; a broad sweep into
 		Vector2(1508, 2028), Vector2(1014, 1820), Vector2(780, 1560), Vector2(1200, 1290),
 		Vector2(780, 1000),
 	],
-	"road_width": 88.0,
+	"road_width": 114.0,
+	"boost_pads": [0.02, 0.63],
 	"checkpoint_count": 9,
 }
 
@@ -58,7 +61,8 @@ const TRACK_2 := {   # Tuesday: tight and twisty; a hairpin tongue down into the
 		Vector2(1192, 1832), Vector2(864, 1598), Vector2(1098, 1317), Vector2(845, 1074),
 		Vector2(1061, 849),
 	],
-	"road_width": 75.0,
+	"road_width": 98.0,
+	"boost_pads": [0.02, 0.59],
 	"checkpoint_count": 10,
 }
 
@@ -70,7 +74,8 @@ const TRACK_3 := {   # Wednesday: narrow esses; an S-shaped loop through the inf
 		Vector2(2184, 1846), Vector2(1742, 1976), Vector2(1300, 1794), Vector2(988, 1924),
 		Vector2(806, 1456), Vector2(1196, 1222), Vector2(832, 936),
 	],
-	"road_width": 72.0,
+	"road_width": 94.0,
+	"boost_pads": [0.015, 0.605],
 	"checkpoint_count": 10,
 }
 
@@ -84,7 +89,8 @@ const TRACK_4 := {   # Thursday: esses along the top, a two-hairpin switchback, 
 		Vector2(1720, 1300), Vector2(1560, 1130), Vector2(1400, 1300), Vector2(1350, 1900),
 		Vector2(884, 1846), Vector2(702, 1495), Vector2(910, 1170), Vector2(702, 910),
 	],
-	"road_width": 68.0,
+	"road_width": 88.0,
+	"boost_pads": [0.40, 0.82],
 	"checkpoint_count": 11,
 }
 
@@ -100,7 +106,8 @@ const TRACK_5 := {   # Friday: two hairpin tongues off the top, esses along the 
 		Vector2(1222, 1170), Vector2(1092, 1365), Vector2(1092, 1664), Vector2(962, 1833),
 		Vector2(832, 1664), Vector2(741, 1443), Vector2(884, 1235), Vector2(767, 1027),
 	],
-	"road_width": 64.0,
+	"road_width": 83.0,
+	"boost_pads": [0.087, 0.29],
 	"checkpoint_count": 13,
 }
 
@@ -116,7 +123,8 @@ const TRACK_6 := {   # Saturday: a chicane, kinked hairpin rows across the middl
 		Vector2(1640, 1500), Vector2(1500, 1380), Vector2(1200, 1430), Vector2(950, 1340),
 		Vector2(800, 1150), Vector2(900, 900), Vector2(840, 680),
 	],
-	"road_width": 62.0,
+	"road_width": 81.0,
+	"boost_pads": [0.42, 0.69],
 	"checkpoint_count": 13,
 }
 
@@ -133,7 +141,8 @@ const TRACK_7 := {   # Sunday, the hardest: deep top esses, kinked hairpin rows,
 		Vector2(750, 1950), Vector2(760, 1700), Vector2(1050, 1500), Vector2(1120, 1250),
 		Vector2(850, 1150), Vector2(760, 900),
 	],
-	"road_width": 60.0,
+	"road_width": 78.0,
+	"boost_pads": [0.49, 0.965],
 	"checkpoint_count": 14,
 }
 
@@ -151,29 +160,33 @@ const TRACK_MP := {
 
 ## Multiplayer race config (no medals/unlocks — it's not part of SP progression).
 const MP_RACE := {
-	"name": "Multiplayer", "track": TRACK_MP, "max_speed": 520.0, "accel_force": 400.0, "laps": 3,
+	"name": "Multiplayer", "track": TRACK_MP, "max_speed": 416.0, "accel_force": 128.0, "laps": 3,
 }
 
 ## Per-level: which track, car speed, and medal targets for ONE lap (the
 ## ranked race, seconds). Targets come from a simple bot's lap (gold ~ +10%,
-## silver ~ +40%, bronze ~ +80%): retune after real laps.
+## silver ~ +40%, bronze ~ +80%): retune after real laps. Last set 2026-11-23
+## (wider roads, slower cars, boost pads, no stunt ramps): the bot lapped in
+## 27.9 / 26.9 / 28.8 / 35.4 / 38.1 / 39.7 / 41.9 s and hit 1 wall in all seven.
 ##
 ## `id` is the level's PERMANENT identity: saved records and the online
 ## leaderboard are keyed by it, so levels can be reordered or dropped without
 ## times landing on the wrong track. Never renumber or reuse one; give a new
 ## track the next unused number. (0-9 belonged to retired tracks: 1, 2, 3, 8 and
-## 9 were the five 3-lap circuits before they grew by half on 2026-11-20.)
+## 9 were the five 3-lap circuits before they grew by half on 2026-11-20; 10-16
+## were these seven before their roads widened by 30%, the cars slowed by 20%
+## and the boost pads went in on 2026-11-22.)
 ##
 ## Level n is the Daily Circuit on weekday n (Monday = Level 1); the Reddit
 ## server's LEVEL_IDS lists the same ids in the same order.
 const LEVELS := [
-	{"id": 10, "name": "Level 1", "track": TRACK_1, "max_speed": 620.0, "accel_force": 480.0, "gold": 29.0, "silver": 37.0, "bronze": 47.5},
-	{"id": 11, "name": "Level 2", "track": TRACK_2, "max_speed": 600.0, "accel_force": 460.0, "gold": 30.0, "silver": 38.5, "bronze": 49.5},
-	{"id": 12, "name": "Level 3", "track": TRACK_3, "max_speed": 665.0, "accel_force": 510.0, "gold": 31.5, "silver": 40.0, "bronze": 51.5},
-	{"id": 13, "name": "Level 4", "track": TRACK_4, "max_speed": 700.0, "accel_force": 535.0, "gold": 36.5, "silver": 46.5, "bronze": 60.0},
-	{"id": 14, "name": "Level 5", "track": TRACK_5, "max_speed": 725.0, "accel_force": 555.0, "gold": 41.5, "silver": 53.0, "bronze": 68.0},
-	{"id": 15, "name": "Level 6", "track": TRACK_6, "max_speed": 745.0, "accel_force": 570.0, "gold": 40.0, "silver": 51.0, "bronze": 65.5},
-	{"id": 16, "name": "Level 7", "track": TRACK_7, "max_speed": 765.0, "accel_force": 585.0, "gold": 45.0, "silver": 57.5, "bronze": 73.5},
+	{"id": 17, "name": "Level 1", "track": TRACK_1, "max_speed": 496.0, "accel_force": 153.6, "gold": 30.5, "silver": 39.0, "bronze": 50.0},
+	{"id": 18, "name": "Level 2", "track": TRACK_2, "max_speed": 480.0, "accel_force": 147.2, "gold": 29.5, "silver": 37.5, "bronze": 48.5},
+	{"id": 19, "name": "Level 3", "track": TRACK_3, "max_speed": 532.0, "accel_force": 163.2, "gold": 31.5, "silver": 40.5, "bronze": 52.0},
+	{"id": 20, "name": "Level 4", "track": TRACK_4, "max_speed": 560.0, "accel_force": 171.2, "gold": 39.0, "silver": 49.5, "bronze": 63.5},
+	{"id": 21, "name": "Level 5", "track": TRACK_5, "max_speed": 580.0, "accel_force": 177.6, "gold": 42.0, "silver": 53.5, "bronze": 68.5},
+	{"id": 22, "name": "Level 6", "track": TRACK_6, "max_speed": 596.0, "accel_force": 182.4, "gold": 43.5, "silver": 55.5, "bronze": 71.5},
+	{"id": 23, "name": "Level 7", "track": TRACK_7, "max_speed": 612.0, "accel_force": 187.2, "gold": 46.0, "silver": 58.5, "bronze": 75.5},
 ]
 
 var current_level: int = 0
@@ -240,11 +253,30 @@ func _default_progress() -> Dictionary:
 	}
 
 
+## The game's earlier names. Godot names the user:// folder after the project, so
+## after a rename the save is read from the old folder until the next save
+## writes it under the new one. (Desktop; the web build's user:// does not depend
+## on the name, and Android's went with the old app id.)
+const OLD_NAMES := ["Four Wheel Steer"]
+
+
+func _save_to_load() -> String:
+	if FileAccess.file_exists(SAVE_PATH):
+		return SAVE_PATH
+	var folder := OS.get_user_data_dir().get_base_dir()
+	for old: String in OLD_NAMES:
+		var path := folder.path_join(old).path_join("save.json")
+		if FileAccess.file_exists(path):
+			return path
+	return ""
+
+
 func load_progress() -> void:
 	progress = _default_progress()
-	if not FileAccess.file_exists(SAVE_PATH):
+	var path := _save_to_load()
+	if path.is_empty():
 		return
-	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		return
 	var text := f.get_as_text()

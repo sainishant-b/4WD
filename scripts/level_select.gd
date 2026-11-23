@@ -17,6 +17,9 @@ extends Control
 ## `_build()` runs again when `Layout` flips, and on Reddit when the day's data
 ## arrives (it can land after the engine has started).
 
+const Race := preload("res://scripts/game.gd")   # for MAX_WALL_TOUCHES
+
+
 func _ready() -> void:
 	Layout.changed.connect(_rebuild)
 	Reddit.init_loaded.connect(_rebuild)
@@ -49,7 +52,8 @@ func _build() -> void:
 	# What this mode is, in a few words.
 	var rules := _line(
 		"3 LAPS  ·  NO WALL-HIT LIMIT  ·  JUST THE TIME" if Game.casual
-		else "1 LAP  ·  3 WALL HITS AND YOU'RE OUT", 14 if narrow else 16, Palette.TEXT_LIGHT)
+		else "1 LAP  ·  %d WALL HITS AND YOU'RE OUT" % Race.MAX_WALL_TOUCHES,
+		14 if narrow else 16, Palette.TEXT_LIGHT)
 	rules.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	rules.offset_top = title.offset_bottom - 4.0
 	rules.offset_bottom = rules.offset_top + 24.0

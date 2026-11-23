@@ -106,8 +106,9 @@ void requestText('GET', '/api/init', '').then((text) => {
 
 // The wait is the tutorial: the controls as the same key caps / thumb pads the
 // game's own legend shows (ui/hud_style.gd KEYBOARD_LEGEND / TOUCH_LEGEND).
-// A cap is a key ("W", "SHIFT", "<", ">") or, on touch, a pad: "F" (front, red)
-// or "R" (rear, gold) or nothing (either pad), then an arrow ("<>", "^", "v").
+// A cap is a key ("W", "SHIFT", "<", ">") or, on touch, a pad drawn like the
+// real one: "F" (front, red) or "R" (rear, gold), then which way its knob goes
+// ("<>", "^", "v"). Between two pads "/" means either one, "+" both at once.
 const KEYBOARD_LEGEND: [string[], string][] = [
   [['W', 'S'], 'Drive'],
   [['A', 'D'], 'Front'],
@@ -119,38 +120,74 @@ const KEYBOARD_LEGEND: [string[], string][] = [
 const TOUCH_LEGEND: [string[], string][] = [
   [['F<>'], 'Front'],
   [['R<>'], 'Rear'],
-  [['^'], 'Drive'],
-  [['F^', 'R^'], 'Boost'],
-  [['v'], 'Drift'],
-  [['Fv', 'Rv'], 'Brake'],
+  [['F^', '/', 'R^'], 'Drive'],
+  [['F^', '+', 'R^'], 'Boost'],
+  [['Fv', '/', 'Rv'], 'Drift'],
+  [['Fv', '+', 'Rv'], 'Brake'],
 ];
 const ARROWS: Record<string, string[]> = {
   '<': ['8,2 3,6 8,10'],
   '>': ['4,2 9,6 4,10'],
   '^': ['2,8 6,3 10,8'],
   v: ['2,4 6,9 10,4'],
-  '<>': ['5,3 1,6 5,9', '7,3 11,6 7,9'],
 };
+// A 32 px pad as HudStyle.pad_icon draws it: the knob (x, y, radius) pushed the
+// way to slide with a white chevron behind it, or centred between two for '<>'.
+const PAD_KNOB: Record<string, [number, number, number]> = {
+  '^': [16, 11, 6],
+  v: [16, 21, 6],
+  '<': [11, 16, 6],
+  '>': [21, 16, 6],
+  '<>': [16, 16, 4.8],
+};
+const PAD_CHEVRONS: Record<string, string[]> = {
+  '^': ['13,23 16,20 19,23'],
+  v: ['13,9 16,12 19,9'],
+  '<': ['23,13 20,16 23,19'],
+  '>': ['9,13 12,16 9,19'],
+  '<>': ['8.5,13 5.5,16 8.5,19', '23.5,13 26.5,16 23.5,19'],
+};
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function svgShape(tag: string, attrs: Record<string, string | number>): SVGElement {
+  const shape = document.createElementNS(SVG_NS, tag);
+  for (const [name, value] of Object.entries(attrs)) shape.setAttribute(name, String(value));
+  return shape;
+}
 
 function arrow(token: string): SVGSVGElement {
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
+  const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', '0 0 12 12');
   svg.setAttribute('aria-hidden', 'true');
-  for (const points of ARROWS[token] ?? []) {
-    const shape = document.createElementNS(ns, 'polygon');
-    shape.setAttribute('points', points);
-    svg.append(shape);
-  }
+  for (const points of ARROWS[token] ?? []) svg.append(svgShape('polygon', { points }));
+  return svg;
+}
+
+function padIcon(way: string): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 32 34');
+  svg.setAttribute('aria-hidden', 'true');
+  const [x, y, r] = PAD_KNOB[way] ?? [16, 16, 4.8];
+  svg.append(
+    svgShape('circle', { cx: 16, cy: 18, r: 16, class: 'ink' }),
+    svgShape('circle', { cx: 16, cy: 16, r: 16, class: 'ink' }),
+    svgShape('circle', { cx: 16, cy: 16, r: 14, class: 'well' }),
+    svgShape('circle', { cx: 16, cy: 16, r: 12.5, class: 'ring' }),
+    ...(PAD_CHEVRONS[way] ?? []).map((points) => svgShape('polyline', { points, class: 'chev' })),
+    svgShape('circle', { cx: x, cy: y, r: r + 1.5, class: 'ink' }),
+    svgShape('circle', { cx: x, cy: y, r, class: 'knob' }),
+  );
   return svg;
 }
 
 function cap(token: string, touch: boolean): HTMLElement {
   const node = document.createElement('span');
-  if (touch) {
-    const side = token[0] === 'F' ? 'front' : token[0] === 'R' ? 'rear' : 'any';
-    node.className = `pad ${side}`;
-    node.append(arrow(side === 'any' ? token : token.slice(1)));
+  if (token === '/' || token === '+') {
+    node.className = 'joiner';
+    node.textContent = token;
+  } else if (touch) {
+    node.className = `pad ${token[0] === 'F' ? 'front' : 'rear'}`;
+    node.append(padIcon(token.slice(1)));
   } else {
     node.className = 'key';
     if (token in ARROWS) node.append(arrow(token));

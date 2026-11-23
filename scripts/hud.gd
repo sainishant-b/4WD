@@ -1,10 +1,11 @@
 extends CanvasLayer
 ## Race HUD (built in code): level + lap, total time, current lap time, best
 ## time + best lap, the wall-hit pips, a mini map, speedometer, boost meter, a
-## 3-2-1-GO countdown, an off-screen arrow to the next gate, a controls legend
-## (key caps, or thumb-pad icons on touch; H hides it, remembered in the
-## settings), and the Results / Game Over + Pause overlays. On touch it also
-## shows a pause button. In a wide keyboard window the mini map sits bottom-left
+## 3-2-1-GO countdown, an off-screen arrow to the next gate, a keyboard controls
+## legend (key caps; H hides it, remembered in the settings), and the Results /
+## Game Over + Pause overlays. On touch it shows a pause button and no legend
+## (the user: it covered the road; How to Play shows the pads). In a wide
+## keyboard window the mini map sits bottom-left
 ## and the legend bottom-right, so the top row is only lap, timer and best.
 ##
 ## Readouts sit on solid cream panels (`HudStyle.panel()`: INK outline and a hard
@@ -57,7 +58,7 @@ var _bestlap_label: Label
 var _walls_cap: Label
 var _walls_pips: Control
 var _wall_used: int = 0
-var _wall_limit: int = 3
+var _wall_limit: int = 5
 var _warn_label: Label
 var _warn_tween: Tween
 var _hit_flash: TextureRect
@@ -356,8 +357,8 @@ func _layout_landscape(touch: bool) -> void:
 	_box(_p_walls, 0.0, 0.0, 16, 86, 190, 40)
 	_font(_walls_cap, 12)
 	_walls_cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_box(_walls_cap, 0.0, 0.0, 32, 96, 84, 20)
-	_box(_walls_pips, 0.0, 0.0, 114, 94, 78, 24)
+	_box(_walls_cap, 0.0, 0.0, 32, 96, 68, 20)
+	_box(_walls_pips, 0.0, 0.0, 100, 94, 92, 24)
 
 	if touch:
 		_place_hint(0.5, 0.0, 0, 106)
@@ -408,7 +409,7 @@ func _layout_portrait() -> void:
 	_font(_walls_cap, 10)
 	_walls_cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_box(_walls_cap, 0.0, 0.0, 174, 84, 98, 16)
-	_box(_walls_pips, 0.0, 0.0, 174, 102, 98, 24)
+	_box(_walls_pips, 0.0, 0.0, 183, 102, 80, 24)
 
 	_place_hint(0.5, 0.0, 0, 184)
 	_font(_warn_label, 26)
@@ -421,25 +422,26 @@ func _layout_portrait() -> void:
 	_box(_delta_label, 0.5, 1.0, -100, -200, 200, 30)
 
 
-## Rebuilds the controls legend for the current device and layout: key caps for
-## the keyboard, little thumb pads for touch. A phone gets shorter rows; a wide
-## keyboard window stacks it in the bottom-right corner. With a keyboard it ends
-## in "H HIDE", and once hidden (saved with the settings) only a small
-## "H CONTROLS" chip is left to bring it back.
+## Rebuilds the keyboard controls legend (key caps) for the current layout: a
+## narrow window gets shorter rows; a wide one stacks it in the bottom-right
+## corner. It ends in "H HIDE", and once hidden (saved with the settings) only a
+## small "H CONTROLS" chip is left to bring it back. On touch there is none.
 func _rebuild_hint(touch: bool) -> void:
 	for child in _p_hint.get_children():
 		_p_hint.remove_child(child)
 		child.queue_free()
+	_p_hint.visible = not touch
+	if touch:
+		return
 	var narrow := Layout.portrait
 	var fs := 13 if narrow else 14
-	if not touch and Game.is_controls_hidden():
+	if Game.is_controls_hidden():
 		_p_hint.add_child(HudStyle.controls_legend(false, 1, fs, [
 			"DRIVE", "FRONT", "REAR", "BOOST", "DRIFT", "PAUSE"
 		], Palette.TEXT, [[["H"], "CONTROLS"]]))
 		return
-	var per_row := (2 if touch else 3) if narrow else (6 if touch else 2)
-	var extra := [] if touch else [[["H"], "HIDE"]]
-	_p_hint.add_child(HudStyle.controls_legend(touch, per_row, fs, [], Palette.TEXT, extra))
+	var per_row := 3 if narrow else 2
+	_p_hint.add_child(HudStyle.controls_legend(false, per_row, fs, [], Palette.TEXT, [[["H"], "HIDE"]]))
 
 
 ## H (keyboard only) hides or shows the controls legend, and remembers it.
@@ -448,7 +450,6 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if key == null or not key.pressed or key.echo or key.physical_keycode != KEY_H or Layout.touch:
 		return
 	Game.set_controls_hidden(not Game.is_controls_hidden())
-	_p_hint.modulate.a = 1.0
 	_layout()
 	get_viewport().set_input_as_handled()
 
@@ -475,8 +476,9 @@ func _draw_wall_pips() -> void:
 	if _wall_limit <= 0:
 		return
 	var area := _walls_pips.size
-	var r := minf(8.0, area.y * 0.5 - 2.0)
-	var gap := r * 2.0 + 8.0
+	# As big as fits: n pips of radius r, a half-radius apart, across the box.
+	var r := minf(minf(8.0, area.y * 0.5 - 2.0), area.x / (2.5 * (_wall_limit - 1) + 2.0))
+	var gap := r * 2.5
 	var x0 := area.x * 0.5 - gap * (_wall_limit - 1) * 0.5
 	for i in _wall_limit:
 		var c := Vector2(x0 + gap * i, area.y * 0.5)
@@ -630,16 +632,6 @@ func show_delta(delta: float) -> void:
 	var tw := create_tween()
 	tw.tween_interval(1.4)
 	tw.tween_property(_delta_label, "modulate:a", 0.0, 0.8)
-
-
-## Called at GO. On touch the hint has done its job once the player is moving,
-## and the screen is small, so it fades; the keyboard hint stays as before.
-func fade_hint() -> void:
-	if not Layout.touch:
-		return
-	var tw := create_tween()
-	tw.tween_interval(8.0)
-	tw.tween_property(_p_hint, "modulate:a", 0.0, 1.0)
 
 
 func show_countdown(text: String) -> void:
